@@ -1,0 +1,77 @@
+---
+/** Four matching monoline step icons — same viewBox, stroke, optical weight */
+interface Props {
+	kind: 'create' | 'build' | 'run' | 'backup';
+}
+
+const { kind } = Astro.props;
+---
+
+{
+	kind === 'create' && (
+		<svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
+			<rect x="20" y="30" width="80" height="60" rx="10" stroke="#1b2030" stroke-width="2.25" fill="#fffcf7" />
+			<circle cx="44" cy="60" r="12" stroke="#1b2030" stroke-width="2.25" fill="#f5f0e7" />
+			<rect x="62" y="48" width="24" height="24" rx="5" stroke="#1b2030" stroke-width="2.25" fill="#fffcf7" />
+			<path
+				d="M78 54v12M72 60h12"
+				stroke="#4f6b55"
+				stroke-width="2.25"
+				stroke-linecap="round"
+			/>
+		</svg>
+	)
+}
+{
+	kind === 'build' && (
+		<svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
+			<path
+				d="M18 42h30l8 8h28v36H18z"
+				stroke="#1b2030"
+				stroke-width="2.25"
+				stroke-linejoin="round"
+				fill="#fffcf7"
+			/>
+			<path
+				d="M18 42h30l8 8H18z"
+				stroke="#1b2030"
+				stroke-width="2.25"
+				stroke-linejoin="round"
+				fill="#f5f0e7"
+			/>
+			<path d="M74 66h16" stroke="#1b2030" stroke-width="2.25" stroke-linecap="round" />
+			<path d="M86 59l10 7-10 7" fill="#1b2030" />
+			<rect x="96" y="50" width="14" height="32" rx="3" fill="#1b2030" />
+			<rect x="99" y="56" width="8" height="4" rx="1" fill="#c45438" />
+			<rect x="99" y="63" width="8" height="3" rx="1" fill="#fffcf7" opacity="0.4" />
+			<rect x="99" y="69" width="8" height="3" rx="1" fill="#fffcf7" opacity="0.25" />
+			<rect x="99" y="75" width="8" height="3" rx="1" fill="#4f6b55" />
+		</svg>
+	)
+}
+{
+	kind === 'run' && (
+		<svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
+			<rect x="20" y="30" width="80" height="60" rx="10" fill="#1b2030" />
+			<circle cx="36" cy="44" r="3.5" fill="#c45438" />
+			<circle cx="48" cy="44" r="3.5" fill="#4f6b55" />
+			<circle cx="60" cy="44" r="3.5" fill="#8f97a3" />
+			<path d="M34 58h32" stroke="#4f6b55" stroke-width="2.25" stroke-linecap="round" />
+			<path d="M34 70h44" stroke="#4f6b55" stroke-width="2.25" stroke-linecap="round" opacity="0.7" />
+			<path d="M34 82h24" stroke="#4f6b55" stroke-width="2.25" stroke-linecap="round" opacity="0.45" />
+		</svg>
+	)
+}
+{
+	kind === 'backup' && (
+		<svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
+			<ellipse cx="40" cy="50" rx="16" ry="6" stroke="#1b2030" stroke-width="2.25" fill="#f5f0e7" />
+			<path d="M24 50v24c0 3.5 7 6 16 6s16-2.5 16-6V50" stroke="#1b2030" stroke-width="2.25" fill="#fffcf7" />
+			<ellipse cx="40" cy="74" rx="16" ry="6" stroke="#1b2030" stroke-width="2.25" fill="#fffcf7" />
+			<path d="M62 62h16" stroke="#c45438" stroke-width="2.25" stroke-linecap="round" stroke-dasharray="3 3" />
+			<path d="M74 56l10 6-10 6" fill="#c45438" />
+			<rect x="82" y="48" width="22" height="28" rx="4" stroke="#4f6b55" stroke-width="2.25" fill="#e3ede5" />
+			<path d="M82 56h22" stroke="#4f6b55" stroke-width="2.25" />
+		</svg>
+	)
+}
