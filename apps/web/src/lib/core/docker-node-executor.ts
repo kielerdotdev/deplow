@@ -2,6 +2,11 @@ import Docker from "dockerode"
 
 import type { DeployOptions, NodeStatus } from "@deplow/shared"
 
+import {
+  buildUserAppHostConfig,
+  missingRuntimeError,
+  type AppRuntimeLimits,
+} from "./host-config"
 import type { DeployResult, NodeExecutor } from "./node-executor"
 import type { PlatformConfig } from "./platform-config"
 
@@ -16,6 +21,13 @@ export type DockerDeployOptions = DeployOptions & {
   /** Optional command override (e.g. connectivity probe) */
   command?: string[]
   entrypoint?: string[]
+  /**
+   * When true (default for user apps), apply gVisor + hardened HostConfig.
+   * Set false for ephemeral probe helpers that should stay on runc.
+   */
+  secureRuntime?: boolean
+  /** Opt out of read-only rootfs for images that need a writable root */
+  readOnlyRootfs?: boolean
 }
 
 /**
@@ -26,6 +38,9 @@ export class DockerNodeExecutor implements NodeExecutor {
   readonly provider = "docker"
   private readonly docker: Docker
   private readonly platformNetwork: string
+  private readonly runtimeLimits: AppRuntimeLimits
+  private readonly runtimeRequired: boolean
+  private runtimeAvailableCache: boolean | null = null
 
   constructor(
     config: PlatformConfig,
@@ -35,10 +50,29 @@ export class DockerNodeExecutor implements NodeExecutor {
   ) {
     this.docker = new Docker({ socketPath: config.dockerSocketPath })
     this.platformNetwork = config.dockerNetwork
+    this.runtimeLimits = {
+      runtime: config.appRuntime,
+      memoryBytes: config.appMemoryBytes,
+      nanoCpus: config.appNanoCpus,
+      readOnlyRootfs: config.appReadOnlyRootfs,
+    }
+    this.runtimeRequired = config.appRuntimeRequired
   }
 
-  private containerName(nodeId: string, serviceName: string): string {
+  /** Container name used for deploy / proxy upstream. */
+  containerName(nodeId: string, serviceName: string): string {
     return `deplow-${nodeId.slice(0, 8)}-${serviceName}`.toLowerCase()
+  }
+
+  /**
+   * Upstream host:port for the platform reverse proxy (Docker network DNS).
+   */
+  proxyUpstream(
+    nodeId: string,
+    serviceName: string,
+    containerPort = 80,
+  ): string {
+    return `${this.containerName(nodeId, serviceName)}:${containerPort}`
   }
 
   async deployApp(
@@ -50,6 +84,12 @@ export class DockerNodeExecutor implements NodeExecutor {
 
     const serviceName = options.serviceName ?? "app"
     const name = this.containerName(nodeId, serviceName)
+    const useSecure =
+      options.secureRuntime !== false && !options.command?.length
+
+    if (useSecure) {
+      await this.assertRuntimeAvailable()
+    }
 
     try {
       const existing = this.docker.getContainer(name)
@@ -100,12 +140,41 @@ export class DockerNodeExecutor implements NodeExecutor {
       "deplow.managed": "true",
       "deplow.nodeId": nodeId,
       "deplow.service": serviceName,
+      "deplow.runtime": useSecure ? this.runtimeLimits.runtime : "runc",
     }
     if (options.projectId) {
       labels["deplow.projectId"] = options.projectId
     }
 
     const network = this.platformNetwork
+
+    const hostConfig = useSecure
+      ? buildUserAppHostConfig({
+          runtime: this.runtimeLimits,
+          networkMode: network,
+          portBindings,
+          restartPolicyName: "unless-stopped",
+          readOnlyRootfs: options.readOnlyRootfs,
+        })
+      : {
+          PortBindings: portBindings,
+          RestartPolicy: {
+            Name: options.command?.length ? "no" : "unless-stopped",
+          },
+          NetworkMode: network,
+        }
+
+    if (
+      useSecure &&
+      this.runtimeLimits.runtime !== "runc" &&
+      this.runtimeLimits.runtime !== "io.containerd.runc.v2"
+    ) {
+      // intentional; runsc is the secure default
+    } else if (useSecure && this.runtimeLimits.runtime === "runc") {
+      console.warn(
+        "[deplow] DEPLOW_APP_RUNTIME=runc — user apps are NOT sandboxed with gVisor",
+      )
+    }
 
     const container = await this.docker.createContainer({
       name,
@@ -115,20 +184,63 @@ export class DockerNodeExecutor implements NodeExecutor {
       ...(options.command ? { Cmd: options.command } : {}),
       ...(options.entrypoint ? { Entrypoint: options.entrypoint } : {}),
       ExposedPorts: exposed,
-      HostConfig: {
-        PortBindings: portBindings,
-        // One-shot command probes should not restart forever
-        RestartPolicy: {
-          Name: options.command?.length ? "no" : "unless-stopped",
-        },
-        // Join platform compose network so DATABASE_URL/REDIS_URL/S3_* with
-        // service DNS (postgres/redis/minio) resolve — not 127.0.0.1 host ports.
-        NetworkMode: network,
-      },
+      HostConfig: hostConfig,
     })
 
     await container.start()
     return { containerId: container.id, serviceName }
+  }
+
+  /**
+   * Preflight: ensure the configured app runtime is registered with Docker.
+   * Cached for process lifetime after first successful check.
+   */
+  async assertRuntimeAvailable(): Promise<void> {
+    if (this.runtimeAvailableCache === true) return
+    if (this.runtimeLimits.runtime === "runc") {
+      this.runtimeAvailableCache = true
+      return
+    }
+
+    const available = await this.isRuntimeAvailable(this.runtimeLimits.runtime)
+    if (available) {
+      this.runtimeAvailableCache = true
+      return
+    }
+
+    if (this.runtimeRequired) {
+      throw missingRuntimeError(this.runtimeLimits.runtime)
+    }
+
+    console.warn(
+      `[deplow] runtime ${this.runtimeLimits.runtime} missing; DEPLOW_APP_RUNTIME_REQUIRED=false — continuing without preflight fail`,
+    )
+  }
+
+  async isRuntimeAvailable(runtime: string): Promise<boolean> {
+    try {
+      const info = await this.docker.info()
+      const runtimes = (info as { Runtimes?: Record<string, unknown> }).Runtimes
+      if (!runtimes) return false
+      return Object.prototype.hasOwnProperty.call(runtimes, runtime)
+    } catch {
+      return false
+    }
+  }
+
+  async getRuntimeStatus(): Promise<{
+    appRuntime: string
+    appRuntimeAvailable: boolean
+    appRuntimeRequired: boolean
+  }> {
+    const appRuntimeAvailable = await this.isRuntimeAvailable(
+      this.runtimeLimits.runtime,
+    )
+    return {
+      appRuntime: this.runtimeLimits.runtime,
+      appRuntimeAvailable,
+      appRuntimeRequired: this.runtimeRequired,
+    }
   }
 
   async getLogs(nodeId: string, serviceName = "app"): Promise<string> {
@@ -145,12 +257,13 @@ export class DockerNodeExecutor implements NodeExecutor {
 
   async exec(nodeId: string, command: string): Promise<string> {
     void nodeId
+    // Probe helpers use default runc — not user app sandbox
+    await this.pullImage("alpine:3.20")
     const execContainer = await this.docker.createContainer({
       Image: "alpine:3.20",
       Cmd: ["sh", "-c", command],
       HostConfig: { AutoRemove: true },
     })
-    await this.pullImage("alpine:3.20")
     const stream = await execContainer.attach({
       stream: true,
       stdout: true,
@@ -170,7 +283,13 @@ export class DockerNodeExecutor implements NodeExecutor {
     void nodeId
     try {
       await this.docker.ping()
-      return { online: true, docker: "running", message: "Docker daemon OK" }
+      const runtime = await this.getRuntimeStatus()
+      return {
+        online: true,
+        docker: "running",
+        message: `Docker daemon OK · app runtime ${runtime.appRuntime}${runtime.appRuntimeAvailable ? "" : " (missing)"}`,
+        ...runtime,
+      } as NodeStatus
     } catch (error) {
       return {
         online: false,
@@ -236,7 +355,7 @@ export class DockerNodeExecutor implements NodeExecutor {
 function demuxDockerLogs(buffer: Buffer): string {
   if (buffer.length === 0) return ""
   const asText = buffer.toString("utf8")
-  if (!asText.includes("\u0000") && buffer[0] > 8) {
+  if (!asText.includes("\u0000") && buffer[0]! > 8) {
     return asText
   }
 

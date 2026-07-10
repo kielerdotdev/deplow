@@ -24,6 +24,32 @@ export interface PlatformConfig {
   dockerSocketPath: string
   /** Compose network name (project_default) for app containers */
   dockerNetwork: string
+  /**
+   * OCI runtime for user app containers (default runsc / gVisor).
+   * Platform services and builds stay on runc.
+   */
+  appRuntime: string
+  /** If true, deploy fails when appRuntime is missing from the daemon */
+  appRuntimeRequired: boolean
+  appMemoryBytes: number
+  appNanoCpus: number
+  /** Default true — user apps get a read-only rootfs + /tmp tmpfs */
+  appReadOnlyRootfs: boolean
+  /**
+   * Platform base domain for public URLs, e.g. apps.example.com.
+   * Empty → public URL features disabled until configured.
+   */
+  baseDomain: string
+  /** Directory for Caddy route snippets */
+  proxyRoutesDir: string
+  /** http for local dev without TLS; https for cloudflared edge */
+  publicUrlProtocol: "https" | "http"
+  /** Cloudflare tunnel token (operator-configured; optional) */
+  cloudflareTunnelToken: string
+  /** Absolute path for git clones used by webhook deploys */
+  gitCloneRoot: string
+  /** Public base URL of this control plane (webhook callback URLs) */
+  publicControlPlaneUrl: string
 }
 
 function requireEnv(name: string, fallback?: string): string {
@@ -32,6 +58,12 @@ function requireEnv(name: string, fallback?: string): string {
     throw new Error(`Missing required environment variable: ${name}`)
   }
   return value
+}
+
+function envBool(name: string, defaultValue: boolean): boolean {
+  const v = process.env[name]
+  if (v === undefined || v === "") return defaultValue
+  return !["0", "false", "no", "off"].includes(v.toLowerCase())
 }
 
 /**
@@ -45,6 +77,11 @@ export function loadPlatformConfig(): PlatformConfig {
   const redisPort = Number(process.env.DEPLOW_REDIS_PORT ?? "56379")
   const redisAdminPassword =
     process.env.DEPLOW_REDIS_PASSWORD ?? process.env.REDIS_PASSWORD ?? "deplow"
+
+  const memoryMb = Number(process.env.DEPLOW_APP_MEMORY_MB ?? "512")
+  const cpus = Number(process.env.DEPLOW_APP_CPUS ?? "1")
+  const publicProtocol =
+    process.env.DEPLOW_PUBLIC_URL_PROTOCOL === "http" ? "http" : "https"
 
   return {
     postgresAdminUrl:
@@ -81,5 +118,42 @@ export function loadPlatformConfig(): PlatformConfig {
     dockerSocketPath:
       process.env.DOCKER_HOST?.replace("unix://", "") ?? "/var/run/docker.sock",
     dockerNetwork: process.env.DEPLOW_DOCKER_NETWORK ?? "deplow_default",
+    appRuntime: process.env.DEPLOW_APP_RUNTIME?.trim() || "runsc",
+    appRuntimeRequired: envBool("DEPLOW_APP_RUNTIME_REQUIRED", true),
+    appMemoryBytes: (memoryMb > 0 ? memoryMb : 512) * 1024 * 1024,
+    appNanoCpus: Math.round((cpus > 0 ? cpus : 1) * 1e9),
+    appReadOnlyRootfs: envBool("DEPLOW_APP_READONLY_ROOTFS", true),
+    baseDomain: (process.env.DEPLOW_BASE_DOMAIN ?? "").trim(),
+    proxyRoutesDir:
+      process.env.DEPLOW_PROXY_ROUTES_DIR ?? pathFromCwd("infra/caddy/routes"),
+    publicUrlProtocol: publicProtocol,
+    cloudflareTunnelToken: (
+      process.env.CLOUDFLARE_TUNNEL_TOKEN ??
+      process.env.DEPLOW_CLOUDFLARE_TUNNEL_TOKEN ??
+      ""
+    ).trim(),
+    gitCloneRoot:
+      process.env.DEPLOW_GIT_CLONE_ROOT ?? pathFromCwd("data/git-clones"),
+    publicControlPlaneUrl: (
+      process.env.DEPLOW_PUBLIC_URL ??
+      process.env.BETTER_AUTH_URL ??
+      "http://localhost:3000"
+    ).replace(/\/$/, ""),
   }
+}
+
+function pathFromCwd(relative: string): string {
+  // Prefer monorepo root when running from apps/web
+  const candidates = [
+    `${process.cwd()}/${relative}`,
+    `${process.cwd()}/../../${relative}`,
+  ]
+  // Return the monorepo-root-ish path without requiring fs (config is pure-ish)
+  if (
+    process.cwd().endsWith("apps/web") ||
+    process.cwd().endsWith("apps\\web")
+  ) {
+    return `${process.cwd()}/../../${relative}`
+  }
+  return candidates[0]!
 }

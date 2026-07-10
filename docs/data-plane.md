@@ -11,9 +11,9 @@ How Postgres / Redis / S3 attach to projects. **Implement v1 simply; shape APIs 
 
 ## Future we design for (do not build yet)
 
-| Later | Implication for linking |
-| --- | --- |
-| **Previews (v2)** | Ephemeral app needs its **own** DB/redis/bucket slot (or an explicit “share prod” opt-in). Same node as the parent project. |
+| Later               | Implication for linking                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Previews (v2)**   | Ephemeral app needs its **own** DB/redis/bucket slot (or an explicit “share prod” opt-in). Same node as the parent project. |
 | **Multi-node (v3)** | Project pinned to a node; that node’s data plane is the only one the project talks to. Never split app and DB across nodes. |
 
 ## Design constraints (v1 code must respect)

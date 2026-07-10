@@ -20,6 +20,8 @@ export const router = {
     backup: projects.backup,
     listBackups: projects.listBackups,
     backupSchedule: projects.backupSchedule,
+    connectGit: projects.connectGit,
+    disconnectGit: projects.disconnectGit,
   },
   nodes: {
     list: nodes.list,
@@ -30,8 +32,11 @@ export const router = {
   },
   deployments: {
     list: deployments.list,
+    get: deployments.get,
     create: deployments.create,
     logs: deployments.logs,
     stop: deployments.stop,
+    retry: deployments.retry,
+    rollback: deployments.rollback,
   },
 }

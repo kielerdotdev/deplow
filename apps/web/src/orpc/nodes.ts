@@ -5,7 +5,13 @@ import { eq } from "@deplow/db"
 import { registerNodeInputSchema } from "@deplow/shared"
 
 import { encryptString } from "@/lib/core"
-import { db, dockerNodeExecutor, nodes, platformConfig } from "@/lib/services"
+import {
+  db,
+  dockerNodeExecutor,
+  ensureLocalNodeId,
+  nodes,
+  platformConfig,
+} from "@/lib/services"
 
 import { authedProcedure } from "./middleware"
 
@@ -99,23 +105,7 @@ export const status = authedProcedure
   })
 
 export const ensureLocal = authedProcedure.handler(async () => {
-  const [existing] = await db
-    .select()
-    .from(nodes)
-    .where(eq(nodes.name, "local"))
-  if (existing) return toSummary(existing)
-
-  const id = crypto.randomUUID()
-  const probe = await dockerNodeExecutor.getStatus(id)
-  await db.insert(nodes).values({
-    id,
-    name: "local",
-    provider: "docker",
-    host: "local",
-    port: 22,
-    status: probe.online ? "online" : "offline",
-    lastSeenAt: probe.online ? new Date() : null,
-  })
+  const id = await ensureLocalNodeId()
   const [row] = await db.select().from(nodes).where(eq(nodes.id, id))
   return toSummary(row!)
 })

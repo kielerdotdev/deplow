@@ -5,7 +5,7 @@ import {
   redirect,
   useRouter,
 } from "@tanstack/react-router"
-import { FolderPlusIcon, PlusIcon } from "lucide-react"
+import { ExternalLinkIcon, FolderPlusIcon, PlusIcon } from "lucide-react"
 
 import { AppShell } from "@/components/app-shell"
 import { StatusBadge } from "@/components/status-badge"
@@ -19,7 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -39,20 +38,17 @@ export const Route = createFileRoute("/")({
     if (!session) {
       throw redirect({ to: "/login" })
     }
-    const [projectList, nodeList] = await Promise.all([
-      client.projects.list(),
-      client.nodes.list(),
-    ])
-    return { session, projects: projectList, nodes: nodeList }
+    const projectList = await client.projects.list()
+    return { session, projects: projectList }
   },
   component: DashboardPage,
 })
 
 function DashboardPage() {
-  const { session, projects, nodes } = Route.useLoaderData()
+  const { session, projects } = Route.useLoaderData()
   const router = useRouter()
   const [name, setName] = useState("")
-  const [spawnBuildServer, setSpawnBuildServer] = useState(false)
+  const [gitRepoUrl, setGitRepoUrl] = useState("")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -61,8 +57,12 @@ function DashboardPage() {
     setPending(true)
     setError(null)
     try {
-      const project = await client.projects.create({ name, spawnBuildServer })
+      const project = await client.projects.create({
+        name,
+        gitRepoUrl: gitRepoUrl.trim() || undefined,
+      })
       setName("")
+      setGitRepoUrl("")
       await router.invalidate()
       await router.navigate({
         to: "/projects/$projectId",
@@ -79,9 +79,9 @@ function DashboardPage() {
     <AppShell
       user={session.user}
       title="Projects"
-      description="Each project ships with Postgres, Redis, S3, and secrets"
+      description="Each project is your app plus Postgres, Redis, and S3. Deploy source; we inject credentials, give you a URL, and back up Postgres."
     >
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
@@ -98,8 +98,8 @@ function DashboardPage() {
                   <FolderPlusIcon className="size-8 text-muted-foreground" />
                   <p className="text-sm font-medium">No projects yet</p>
                   <p className="max-w-xs text-xs text-muted-foreground">
-                    Use the form to create one. We&apos;ll provision Postgres,
-                    Redis, and object storage automatically.
+                    Name your project and we&apos;ll provision Postgres, Redis,
+                    and object storage automatically.
                   </p>
                 </div>
               ) : (
@@ -108,7 +108,9 @@ function DashboardPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="hidden sm:table-cell">ID</TableHead>
+                      <TableHead className="hidden sm:table-cell">
+                        URL
+                      </TableHead>
                       <TableHead className="text-right">Updated</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -132,8 +134,20 @@ function DashboardPage() {
                         <TableCell>
                           <StatusBadge status={project.status} />
                         </TableCell>
-                        <TableCell className="hidden font-mono text-xs text-muted-foreground sm:table-cell">
-                          {project.id.slice(0, 8)}
+                        <TableCell className="hidden max-w-[220px] truncate font-mono text-xs text-muted-foreground sm:table-cell">
+                          {project.publicUrl ? (
+                            <a
+                              href={project.publicUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+                            >
+                              {project.publicUrl.replace(/^https?:\/\//, "")}
+                              <ExternalLinkIcon className="size-3" />
+                            </a>
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">
                           {new Date(project.updatedAt).toLocaleString()}
@@ -145,51 +159,26 @@ function DashboardPage() {
               )}
             </CardContent>
           </Card>
-
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle>Nodes</CardTitle>
-              <CardDescription>
-                {nodes.length === 0
-                  ? "No Docker nodes registered."
-                  : `${nodes.length} node${nodes.length === 1 ? "" : "s"} available`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              {nodes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Open{" "}
-                  <Link to="/nodes" className="underline underline-offset-2">
-                    Nodes
-                  </Link>{" "}
-                  to register the local Docker socket.
-                </p>
-              ) : (
-                nodes.map((node) => (
-                  <div
-                    key={node.id}
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
-                  >
-                    <span className="font-medium">{node.name}</span>
-                    <StatusBadge status={node.status} />
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
         </div>
 
-        <Card className="h-fit">
+        <Card>
           <CardHeader>
             <CardTitle>New project</CardTitle>
             <CardDescription>
-              Slug becomes the resource namespace for DB, Redis, and S3.
+              One name is enough. We always provision Postgres, Redis, and S3
+              together.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleCreate}>
             <CardContent className="flex flex-col gap-4">
+              {error ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Could not create project</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="project-name">Name (slug)</Label>
+                <Label htmlFor="project-name">Name</Label>
                 <Input
                   id="project-name"
                   value={name}
@@ -197,35 +186,27 @@ function DashboardPage() {
                   placeholder="my-app"
                   pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
                   required
-                  autoComplete="off"
+                  autoFocus
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="git-url">
+                  Git repository{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="git-url"
+                  type="url"
+                  value={gitRepoUrl}
+                  onChange={(e) => setGitRepoUrl(e.target.value)}
+                  placeholder="https://github.com/you/app.git"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Lowercase letters, numbers, and hyphens.
+                  Connect now or later. Push to main deploys production.
                 </p>
               </div>
-
-              <label className="flex items-start gap-2 text-sm">
-                <Checkbox
-                  checked={spawnBuildServer}
-                  onCheckedChange={(checked) =>
-                    setSpawnBuildServer(checked === true)
-                  }
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-medium">Ephemeral build container</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Optional local Docker stand-in for a build VM.
-                  </span>
-                </span>
-              </label>
-
-              {error ? (
-                <Alert variant="destructive">
-                  <AlertTitle>Could not create project</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : null}
             </CardContent>
             <CardFooter>
               <Button
@@ -234,7 +215,7 @@ function DashboardPage() {
                 className="w-full"
               >
                 <PlusIcon data-icon="inline-start" />
-                {pending ? "Provisioning…" : "Create project"}
+                {pending ? "Creating…" : "Create project"}
               </Button>
             </CardFooter>
           </form>
