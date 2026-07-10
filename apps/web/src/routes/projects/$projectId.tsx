@@ -1057,8 +1057,8 @@ function AppSheetBody({
         />
         <ol className="space-y-2 rounded-lg border border-border/80 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
           <li>
-            <span className="font-medium text-foreground">1. Git</span> —
-            connect the repo (left rail or button above)
+            <span className="font-medium text-foreground">1. Settings</span> —
+            connect the repo under Source
           </li>
           <li>
             <span className="font-medium text-foreground">2. Deploy</span> — one
