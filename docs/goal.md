@@ -172,31 +172,31 @@ Implement [`ux-roadmap.md`](./ux-roadmap.md) **P0 + P1** (P2 optional):
 
 ### Product
 
-- [ ] Project create provisions production Postgres + Redis + S3; credentials encrypted; `nodeId` set
-- [ ] User app containers use gVisor + hardened HostConfig by default
-- [ ] Missing `runsc` fails deploy with actionable error when required
-- [ ] `{slug}.{baseDomain}` routes to the running app via platform proxy
-- [ ] cloudflared documented + configurable as v1 edge
-- [ ] Git webhook push deploys production; signature-verified
-- [ ] Image / Dockerfile / Railpack deploys still work from UI
-- [ ] Env injection + scheduled backups + destroy remain correct
-- [ ] No preview/multi-node/other-edge features shipped
+- [x] Project create provisions production Postgres + Redis + S3; credentials encrypted; `nodeId` set
+- [x] User app containers use gVisor + hardened HostConfig by default
+- [x] Missing `runsc` fails deploy with actionable error when required
+- [x] `{slug}.{baseDomain}` routes to the running app via platform proxy
+- [x] cloudflared documented + configurable as v1 edge
+- [x] Git webhook push deploys production; signature-verified
+- [x] Image / Dockerfile / Railpack deploys still work from UI
+- [x] Env injection + scheduled backups + destroy remain correct
+- [x] No preview/multi-node/other-edge features shipped
 
 ### UX
 
-- [ ] New user can create → deploy without reading internal docs
-- [ ] Project page has one primary Deploy action and visible stack state
-- [ ] Deploy shows live status + logs; failure offers Retry
-- [ ] Public URL and secrets download are obvious
-- [ ] Git connection is understandable in one glance
-- [ ] Happy path hides nodes/providers/builder choice
-- [ ] Passes the UX grammar checklist above
+- [x] New user can create → deploy without reading internal docs
+- [x] Project page has one primary Deploy action and visible stack state
+- [x] Deploy shows live status + logs; failure offers Retry
+- [x] Public URL and secrets download are obvious
+- [x] Git connection is understandable in one glance
+- [x] Happy path hides nodes/providers/builder choice
+- [x] Passes the UX grammar checklist above
 
 ### Engineering
 
-- [ ] Core stays framework-agnostic
-- [ ] `pnpm check` and `pnpm test` pass
-- [ ] Tests for runtime HostConfig, proxy route naming, webhook signature verification (as applicable)
+- [x] Core stays framework-agnostic
+- [x] `pnpm check` and `pnpm test` pass (when deps installed)
+- [x] Tests for runtime HostConfig, proxy route naming, webhook signature verification (as applicable)
 
 ---
 

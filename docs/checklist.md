@@ -13,52 +13,53 @@ Core logic: `apps/web/src/lib/core/` (no oRPC / TanStack / React imports).
 
 ## Philosophy (summary)
 
-| Principle | Meaning |
-| --- | --- |
-| **Bundle, not tabs** | DB + object storage + runtime provisioned together. |
-| **One instance per node** | Shared Postgres/Redis/MinIO per node; many projects; no per-project DB containers. |
-| **Slots** | Production now; preview slots later — [data-plane.md](./data-plane.md). |
-| **Proxy + cloudflared (v1)** | Wildcard once → `{slug}.{baseDomain}`. |
-| **Git webhooks (v1)** | Push-to-deploy. Previews = v2. |
-| **Security first** | gVisor + hardened HostConfig. |
+| Principle                    | Meaning                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| **Bundle, not tabs**         | DB + object storage + runtime provisioned together.                                |
+| **One instance per node**    | Shared Postgres/Redis/MinIO per node; many projects; no per-project DB containers. |
+| **Slots**                    | Production now; preview slots later — [data-plane.md](./data-plane.md).            |
+| **Proxy + cloudflared (v1)** | Wildcard once → `{slug}.{baseDomain}`.                                             |
+| **Git webhooks (v1)**        | Push-to-deploy. Previews = v2.                                                     |
+| **Security first**           | gVisor + hardened HostConfig.                                                      |
 
 ---
 
 ## Status
 
-| Area | Status |
-| --- | --- |
-| Auth | ✅ |
-| Schema (`projects` / `nodes` / `deployments` / `backups`) | ✅ |
-| Provision Postgres / Redis / MinIO | ✅ (harden toward slots + `nodeId` — [data-plane.md](./data-plane.md)) |
-| Encrypt credentials + secrets.yaml | ✅ |
-| Docker image deploy + logs + stop | ✅ |
-| oRPC projects / nodes / deployments | ✅ |
-| Basic project UI | ✅ |
-| On-demand Postgres backup → S3 | ✅ |
-| **Railpack / Dockerfile source build** | ✅ **M1** |
-| **Scheduled auto-backups** | ✅ **M2** |
-| Destroy cleans containers + infra reliably | ✅ |
-| **gVisor + hardened HostConfig** | ⬜ [secure-runtime.md](./secure-runtime.md) |
-| **Proxy + cloudflared + wildcard URLs** | ⬜ **v1** [access.md](./access.md) |
-| **Git webhooks** | ⬜ **v1** |
-| Preview deployments | ⬜ **v2** (design only) |
-| Multi-node | ⬜ **v3** (design only) |
+| Area                                                                         | Status                                 |
+| ---------------------------------------------------------------------------- | -------------------------------------- |
+| Auth                                                                         | ✅                                     |
+| Schema (`projects` / `nodes` / `deployments` / `backups`)                    | ✅                                     |
+| Provision Postgres / Redis / MinIO                                           | ✅                                     |
+| Encrypt credentials + secrets.yaml                                           | ✅                                     |
+| Docker image deploy + logs + stop                                            | ✅                                     |
+| oRPC projects / nodes / deployments                                          | ✅                                     |
+| Project UI (stack, deploy, settings, secrets)                                | ✅                                     |
+| On-demand Postgres backup → S3                                               | ✅                                     |
+| **Railpack / Dockerfile source build**                                       | ✅                                     |
+| **Scheduled auto-backups**                                                   | ✅                                     |
+| Destroy cleans containers + proxy + infra                                    | ✅                                     |
+| **G0 — Data-plane hooks** (`nodeId`, production slot, Docker-network inject) | ✅                                     |
+| **G1 — gVisor + hardened HostConfig**                                        | ✅                                     |
+| **G2 — Proxy + cloudflared + wildcard URLs**                                 | ✅                                     |
+| **G3 — Git webhooks** (signature-verified push-to-deploy)                    | ✅                                     |
+| Preview deployments                                                          | ⬜ **v2** (design only — do not build) |
+| Multi-node                                                                   | ⬜ **v3** (design only — do not build) |
 
 ---
 
 ## GOAL milestones (see [goal.md](./goal.md))
 
 - [x] **M1–M4** — Railpack, backups, harden loop, opinionated stack (prior)
-- [ ] **G0** — Data-plane hooks (`nodeId`, production slot)
-- [ ] **G1** — Secure runtime (gVisor)
-- [ ] **G2** — Proxy + cloudflared
-- [ ] **G3** — Git webhooks
-- [ ] **G4** — World-class UX (ux-roadmap P0+P1)
-- [ ] **G5** — Harden + docs
+- [x] **G0** — Data-plane hooks (`nodeId`, production slot)
+- [x] **G1** — Secure runtime (gVisor)
+- [x] **G2** — Proxy + cloudflared
+- [x] **G3** — Git webhooks
+- [x] **G4** — World-class UX (modular project surface, humanized errors, empty states, retry/rollback)
+- [x] **G5** — Harden + docs (slot naming, proxy disk-truth, deploy lock, doctor, e2e portable, secrets fail-closed)
 
 ---
 
 ## Do not build now
 
-Previews UI, multi-node, Tailscale/Netbird edges, Compose deploys, MySQL/Mongo, per-project DB containers, templates, teams/RBAC, CLI, metrics UI.
+Previews UI, multi-node, Tailscale/Netbird edges, Compose deploys, MySQL/Mongo, per-project DB containers, templates, teams/RBAC, CLI product, metrics UI.

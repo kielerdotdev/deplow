@@ -1,33 +1,33 @@
 :root {
-	--sl-font: 'IBM Plex Sans', system-ui, sans-serif;
-	--sl-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-	--sl-color-accent-low: #e8efe9;
-	--sl-color-accent: #5d7a62;
-	--sl-color-accent-high: #3d5240;
-	--sl-color-white: #fbf8f3;
-	--sl-color-gray-1: #f3ede4;
-	--sl-color-gray-2: #8b939f;
-	--sl-color-gray-3: #4a5568;
-	--sl-color-gray-4: #2a3347;
-	--sl-color-gray-5: #1c2333;
-	--sl-color-gray-6: #141a26;
-	--sl-color-black: #0f131c;
+  --sl-font: "IBM Plex Sans", system-ui, sans-serif;
+  --sl-font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --sl-color-accent-low: #e8efe9;
+  --sl-color-accent: #5d7a62;
+  --sl-color-accent-high: #3d5240;
+  --sl-color-white: #fbf8f3;
+  --sl-color-gray-1: #f3ede4;
+  --sl-color-gray-2: #8b939f;
+  --sl-color-gray-3: #4a5568;
+  --sl-color-gray-4: #2a3347;
+  --sl-color-gray-5: #1c2333;
+  --sl-color-gray-6: #141a26;
+  --sl-color-black: #0f131c;
 }
 
 :root,
-:root[data-theme='light'],
-:root[data-theme='dark'],
+:root[data-theme="light"],
+:root[data-theme="dark"],
 ::backdrop {
-	--sl-color-bg: #fbf8f3;
-	--sl-color-bg-nav: #fbf8f3;
-	--sl-color-hairline: rgba(28, 35, 51, 0.12);
-	--sl-color-text: #1c2333;
-	--sl-color-text-accent: #5d7a62;
+  --sl-color-bg: #fbf8f3;
+  --sl-color-bg-nav: #fbf8f3;
+  --sl-color-hairline: rgba(28, 35, 51, 0.12);
+  --sl-color-text: #1c2333;
+  --sl-color-text-accent: #5d7a62;
 }
 
 .sl-markdown-content h1,
 .sl-markdown-content h2 {
-	font-family: 'Bricolage Grotesque', system-ui, sans-serif;
-	font-weight: 700;
-	letter-spacing: -0.03em;
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
