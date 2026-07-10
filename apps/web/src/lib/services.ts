@@ -17,6 +17,8 @@ import {
   type BackupStore,
   BuildService,
   DockerNodeExecutor,
+  GitService,
+  ProxyService,
   ProvisioningService,
   createServerSpawners,
   decryptString,
@@ -108,6 +110,14 @@ export const dockerNodeExecutor = new DockerNodeExecutor(
   },
 )
 
+export const proxyService = new ProxyService({
+  routesDir: config.proxyRoutesDir,
+  baseDomain: config.baseDomain,
+  publicProtocol: config.publicUrlProtocol,
+})
+
+export const gitService = new GitService(config.gitCloneRoot)
+
 export function decryptProjectCredentials(
   encrypted: string | null | undefined,
 ): ProjectCredentials | null {
@@ -132,6 +142,28 @@ export function scheduleProjectBackups(
       return decryptProjectCredentials(row.credentialsEncrypted)
     },
   })
+}
+
+/** Ensure the local Docker node exists; return its id. */
+export async function ensureLocalNodeId(): Promise<string> {
+  const [existing] = await db
+    .select()
+    .from(nodes)
+    .where(eq(nodes.name, "local"))
+  if (existing) return existing.id
+
+  const id = crypto.randomUUID()
+  const probe = await dockerNodeExecutor.getStatus(id)
+  await db.insert(nodes).values({
+    id,
+    name: "local",
+    provider: "docker",
+    host: "local",
+    port: 22,
+    status: probe.online ? "online" : "offline",
+    lastSeenAt: probe.online ? new Date() : null,
+  })
+  return id
 }
 
 /** Resume schedules for ready projects (web process start). */

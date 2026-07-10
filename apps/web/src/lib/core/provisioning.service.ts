@@ -26,7 +26,8 @@ export interface DestroyProjectInput {
 }
 
 /**
- * Provisions default project resources: Postgres + Redis + S3 + secrets.
+ * Provisions default project resources: production-slot Postgres + Redis + S3 + secrets.
+ * Resource names derive from the production slot (preview slots later).
  */
 export class ProvisioningService {
   private readonly postgres: PostgresProvisioner
@@ -48,16 +49,19 @@ export class ProvisioningService {
   ): Promise<CreateProjectResult> {
     const projectId = input.projectId ?? crypto.randomUUID()
     const slug = input.name
+    // v1: always provision the production slot (see docs/data-plane.md)
+    const resourceName = slug
 
-    const dbCreds = await this.postgres.createDatabase(slug)
-    const redisCreds = await this.redis.createNamespace(slug)
+    const dbCreds = await this.postgres.createDatabase(resourceName)
+    const redisCreds = await this.redis.createNamespace(resourceName)
     await this.storage.ensureBackupBucket()
-    const storageCreds = await this.storage.createBucket(slug)
+    const storageCreds = await this.storage.createBucket(resourceName)
 
     const credentials: ProjectCredentials = {
       database: dbCreds,
       redis: redisCreds,
       storage: storageCreds,
+      slotKind: "production",
     }
 
     const secrets = this.secretsService.generateSecretsYaml(credentials)

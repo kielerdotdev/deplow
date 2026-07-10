@@ -12,15 +12,40 @@ export const projects = sqliteTable(
     ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    /**
+     * Node that owns app + data plane for this project (v1 = local Docker).
+     * Every project is pinned even with a single node.
+     */
+    nodeId: text("node_id").references(() => nodes.id, {
+      onDelete: "set null",
+    }),
     status: text("status", {
       enum: ["provisioning", "ready", "error", "destroying"],
     })
       .notNull()
       .default("provisioning"),
-    /** AES-GCM encrypted JSON of Database/Redis/Storage credentials */
+    /**
+     * AES-GCM encrypted JSON of production-slot Database/Redis/Storage credentials.
+     * Preview slots (v2) will use a separate map/table — do not overload this blob.
+     */
     credentialsEncrypted: text("credentials_encrypted"),
     secretsYaml: text("secrets_yaml"),
     errorMessage: text("error_message"),
+    /** Public URL https://{slug}.{baseDomain} when proxy + base domain configured */
+    publicUrl: text("public_url"),
+    /** github | gitlab | null */
+    gitProvider: text("git_provider"),
+    gitRepoUrl: text("git_repo_url"),
+    /** Production branch that webhooks deploy (default main) */
+    gitBranch: text("git_branch").default("main"),
+    /** AES-GCM encrypted webhook shared secret */
+    gitWebhookSecretEncrypted: text("git_webhook_secret_encrypted"),
+    gitLastDeliveryAt: integer("git_last_delivery_at", {
+      mode: "timestamp_ms",
+    }),
+    gitLastDeliveryStatus: text("git_last_delivery_status"),
+    gitLastDeliveryError: text("git_last_delivery_error"),
+    gitConnectedAt: integer("git_connected_at", { mode: "timestamp_ms" }),
     /** Backup interval in ms (default daily); scheduler reads this */
     backupIntervalMs: integer("backup_interval_ms")
       .notNull()
@@ -34,7 +59,10 @@ export const projects = sqliteTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (t) => [index("projects_owner_idx").on(t.ownerId)],
+  (t) => [
+    index("projects_owner_idx").on(t.ownerId),
+    index("projects_node_idx").on(t.nodeId),
+  ],
 )
 
 export const nodes = sqliteTable(
@@ -88,13 +116,28 @@ export const deployments = sqliteTable(
     buildStrategy: text("build_strategy"),
     buildLogs: text("build_logs"),
     sourcePath: text("source_path"),
+    /**
+     * Living deploy status machine:
+     * queued → building → deploying → running | failed
+     * (pending kept as synonym for queued for older rows)
+     */
     status: text("status", {
-      enum: ["pending", "building", "running", "failed", "stopped"],
+      enum: [
+        "pending",
+        "queued",
+        "building",
+        "deploying",
+        "running",
+        "failed",
+        "stopped",
+      ],
     })
       .notNull()
-      .default("pending"),
+      .default("queued"),
     containerId: text("container_id"),
     errorMessage: text("error_message"),
+    /** git_webhook | manual | retry | rollback */
+    triggeredBy: text("triggered_by").default("manual"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -156,6 +199,10 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   owner: one(user, {
     fields: [projects.ownerId],
     references: [user.id],
+  }),
+  node: one(nodes, {
+    fields: [projects.nodeId],
+    references: [nodes.id],
   }),
   deployments: many(deployments),
   backups: many(backups),

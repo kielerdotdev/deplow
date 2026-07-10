@@ -23,18 +23,18 @@ We are **not** a kitchen-sink ingress controller. We **are** “give this projec
 
 ## Lanes
 
-| Lane | v1 | Later |
-| --- | --- | --- |
-| **App HTTP** | `{slug}.{baseDomain}` via proxy + cloudflared | Same; more edge adapters |
-| **Preview HTTP** | **Not built** — reserve hostname scheme | `pr-{n}-{slug}.{baseDomain}` (v2) |
-| **Data plane** | Private on the node | Still private; never through the app proxy |
+| Lane             | v1                                            | Later                                      |
+| ---------------- | --------------------------------------------- | ------------------------------------------ |
+| **App HTTP**     | `{slug}.{baseDomain}` via proxy + cloudflared | Same; more edge adapters                   |
+| **Preview HTTP** | **Not built** — reserve hostname scheme       | `pr-{n}-{slug}.{baseDomain}` (v2)          |
+| **Data plane**   | Private on the node                           | Still private; never through the app proxy |
 
 ## Git
 
-| Feature | When |
-| --- | --- |
-| **Webhooks** (push → deploy main / production slot) | **v1 must** |
-| **Preview deployments** | **v2** — design slots + routes now ([data-plane.md](./data-plane.md)) |
+| Feature                                             | When                                                                  |
+| --------------------------------------------------- | --------------------------------------------------------------------- |
+| **Webhooks** (push → deploy main / production slot) | **v1 must**                                                           |
+| **Preview deployments**                             | **v2** — design slots + routes now ([data-plane.md](./data-plane.md)) |
 
 ## What deplow owns (v1)
 

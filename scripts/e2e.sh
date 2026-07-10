@@ -10,7 +10,7 @@ ORIGIN="$BASE"
 EMAIL="e2e-$(date +%s)@example.com"
 PASS="testpass123"
 PROJECT="demo$(date +%s | tail -c 6)"
-SCRATCH="${SCRATCH_DIR:-/tmp/grok-goal-b700eca08f44/implementer}"
+SCRATCH="${SCRATCH_DIR:-/tmp/grok-goal-494b43c839d0/implementer}"
 mkdir -p "$SCRATCH"
 
 cleanup() {
@@ -54,10 +54,14 @@ NODE_ID=$(echo "$NODE" | json_field "id")
 test -n "$NODE_ID"
 
 echo "==> Create project $PROJECT" | tee -a "$SCRATCH/provision.log"
-CREATE=$(rpc "projects/create" "{\"json\":{\"name\":\"$PROJECT\",\"spawnBuildServer\":false}}")
+CREATE=$(rpc "projects/create" "{\"json\":{\"name\":\"$PROJECT\"}}")
 echo "$CREATE" | tee -a "$SCRATCH/provision.log"
 PROJECT_ID=$(echo "$CREATE" | json_field "id")
 test -n "$PROJECT_ID"
+# nodeId pinned to local Docker node (data-plane)
+CREATE_NODE=$(echo "$CREATE" | json_field "nodeId")
+test -n "$CREATE_NODE"
+echo "nodeId=$CREATE_NODE" | tee -a "$SCRATCH/provision.log"
 echo "$CREATE" | grep -q 'database:'
 echo "$CREATE" | grep -q 'redis:'
 echo "$CREATE" | grep -q 'storage:'
@@ -100,6 +104,20 @@ docker inspect "$CID" --format '{{range .Config.Env}}{{println .}}{{end}}' \
   | grep -q 'REDIS_URL='
 docker inspect "$CID" --format '{{range .Config.Env}}{{println .}}{{end}}' \
   | grep -q 'S3_BUCKET='
+# Runtime should be configured (runsc when available; may be runc escape hatch)
+RUNTIME=$(docker inspect "$CID" --format '{{.HostConfig.Runtime}}')
+echo "runtime=$RUNTIME" | tee -a "$SCRATCH/deploy-image.log"
+CAPDROP=$(docker inspect "$CID" --format '{{json .HostConfig.CapDrop}}')
+echo "capDrop=$CAPDROP" | tee -a "$SCRATCH/deploy-image.log"
+echo "$CAPDROP" | grep -q 'ALL'
+# Proxy route file for project (Caddy)
+ROUTE_FILE="$ROOT/infra/caddy/routes/${PROJECT_ID}.caddy"
+if [ -f "$ROUTE_FILE" ]; then
+  echo "==> Proxy route registered" | tee -a "$SCRATCH/deploy-image.log"
+  cat "$ROUTE_FILE" | tee -a "$SCRATCH/deploy-image.log"
+else
+  echo "WARN: proxy route file missing at $ROUTE_FILE (base domain may be unset)" | tee -a "$SCRATCH/deploy-image.log"
+fi
 
 sleep 1
 BODY=$(curl -sS "http://127.0.0.1:18080/" || true)
@@ -133,6 +151,12 @@ echo "$DESTROY" | grep -q 'ok\|true'
 REMAINING=$(docker ps -aq --filter "label=deplow.projectId=$PROJECT_ID" | wc -l | tr -d ' ')
 echo "remaining_containers=$REMAINING" | tee -a "$SCRATCH/destroy.log"
 test "$REMAINING" = "0"
+# proxy route should be removed
+if [ -f "$ROOT/infra/caddy/routes/${PROJECT_ID}.caddy" ]; then
+  echo "proxy route still present after destroy" | tee -a "$SCRATCH/destroy.log"
+  exit 1
+fi
+echo "proxy_route_removed=ok" | tee -a "$SCRATCH/destroy.log"
 
 echo ""
 echo "=============================="

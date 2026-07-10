@@ -1,22 +1,35 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { createProjectInputSchema } from "@deplow/shared"
+import { connectGitInputSchema, createProjectInputSchema } from "@deplow/shared"
 import { eq } from "@deplow/db"
 
-import { BackupScheduler } from "@/lib/core"
+import {
+  BackupScheduler,
+  assertProductionSlug,
+  encryptString,
+  decryptString,
+} from "@/lib/core"
 import {
   backupScheduler,
   backupService,
   db,
   decryptProjectCredentials,
   dockerNodeExecutor,
+  ensureLocalNodeId,
+  gitService,
+  platformConfig,
   projects,
+  proxyService,
   provisioningService,
   scheduleProjectBackups,
 } from "@/lib/services"
 
 import { authedProcedure } from "./middleware"
+
+function webhookUrlFor(projectId: string): string {
+  return `${platformConfig.publicControlPlaneUrl}/api/webhooks/git/${projectId}`
+}
 
 function toSummary(row: typeof projects.$inferSelect) {
   return {
@@ -24,11 +37,30 @@ function toSummary(row: typeof projects.$inferSelect) {
     name: row.name,
     slug: row.slug,
     status: row.status,
+    nodeId: row.nodeId,
+    publicUrl: row.publicUrl,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     errorMessage: row.errorMessage,
     backupIntervalMs: row.backupIntervalMs,
     lastBackupAt: row.lastBackupAt ? row.lastBackupAt.toISOString() : null,
+  }
+}
+
+function toGitStatus(row: typeof projects.$inferSelect) {
+  const connected = Boolean(row.gitRepoUrl && row.gitWebhookSecretEncrypted)
+  return {
+    connected,
+    provider: (row.gitProvider as "github" | "gitlab" | null) ?? null,
+    repoUrl: row.gitRepoUrl,
+    branch: row.gitBranch ?? "main",
+    webhookUrl: connected ? webhookUrlFor(row.id) : null,
+    lastDeliveryAt: row.gitLastDeliveryAt
+      ? row.gitLastDeliveryAt.toISOString()
+      : null,
+    lastDeliveryStatus: row.gitLastDeliveryStatus,
+    lastDeliveryError: row.gitLastDeliveryError,
+    connectedAt: row.gitConnectedAt ? row.gitConnectedAt.toISOString() : null,
   }
 }
 
@@ -60,6 +92,7 @@ export const get = authedProcedure
       hasCredentials: Boolean(row.credentialsEncrypted),
       backupIntervalMs: row.backupIntervalMs,
       lastBackupAt: row.lastBackupAt ? row.lastBackupAt.toISOString() : null,
+      git: toGitStatus(row),
     }
   })
 
@@ -67,6 +100,14 @@ export const create = authedProcedure
   .input(createProjectInputSchema)
   .handler(async ({ context, input }) => {
     const ownerId = context.session!.user.id
+    try {
+      assertProductionSlug(input.name)
+    } catch (error) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+
     const existing = await db
       .select()
       .from(projects)
@@ -77,15 +118,20 @@ export const create = authedProcedure
       })
     }
 
+    const nodeId = await ensureLocalNodeId()
     const projectId = crypto.randomUUID()
     const backupIntervalMs = BackupScheduler.defaultIntervalMs()
+    const publicUrl = proxyService.publicUrlForSlug(input.name)
+
     await db.insert(projects).values({
       id: projectId,
       name: input.name,
       slug: input.name,
       ownerId,
+      nodeId,
       status: "provisioning",
       backupIntervalMs,
+      publicUrl,
     })
 
     try {
@@ -93,6 +139,26 @@ export const create = authedProcedure
         ...input,
         projectId,
       })
+
+      let gitProvider: string | null = null
+      let gitRepoUrl: string | null = null
+      let gitBranch: string | null = "main"
+      let gitWebhookSecretEncrypted: string | null = null
+      let gitConnectedAt: Date | null = null
+
+      const repoUrl = input.gitRepoUrl?.trim()
+      if (repoUrl) {
+        const secret = gitService.generateWebhookSecret()
+        gitProvider = gitService.detectProvider(repoUrl)
+        gitRepoUrl = repoUrl
+        gitBranch = "main"
+        gitWebhookSecretEncrypted = encryptString(
+          secret,
+          platformConfig.secretsEncryptionKey,
+        )
+        gitConnectedAt = new Date()
+      }
+
       await db
         .update(projects)
         .set({
@@ -101,6 +167,13 @@ export const create = authedProcedure
           secretsYaml: result.secrets,
           errorMessage: null,
           backupIntervalMs,
+          nodeId,
+          publicUrl,
+          gitProvider,
+          gitRepoUrl,
+          gitBranch,
+          gitWebhookSecretEncrypted,
+          gitConnectedAt,
         })
         .where(eq(projects.id, projectId))
 
@@ -114,7 +187,16 @@ export const create = authedProcedure
         ...toSummary(row!),
         secretsYaml: row!.secretsYaml,
         hasCredentials: true,
+        git: toGitStatus(row!),
         spawnedServerId: result.spawnedServerId,
+        /** Only returned once at create when git was connected */
+        webhookSecret: repoUrl
+          ? decryptString(
+              row!.gitWebhookSecretEncrypted!,
+              platformConfig.secretsEncryptionKey,
+            )
+          : undefined,
+        webhookUrl: repoUrl ? webhookUrlFor(projectId) : undefined,
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -147,6 +229,7 @@ export const destroy = authedProcedure
     await dockerNodeExecutor
       .removeProjectContainers(row.id)
       .catch(() => undefined)
+    await proxyService.removeProjectRoute(row.id).catch(() => undefined)
 
     const credentials = decryptProjectCredentials(row.credentialsEncrypted)
     await provisioningService.destroyProject({
@@ -223,4 +306,70 @@ export const listBackups = authedProcedure
       throw new ORPCError("NOT_FOUND", { message: "Project not found" })
     }
     return backupService.list(row.id)
+  })
+
+export const connectGit = authedProcedure
+  .input(connectGitInputSchema)
+  .handler(async ({ context, input }) => {
+    const ownerId = context.session!.user.id
+    const [row] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, input.projectId))
+    if (!row || row.ownerId !== ownerId) {
+      throw new ORPCError("NOT_FOUND", { message: "Project not found" })
+    }
+
+    const secret =
+      input.webhookSecret?.trim() || gitService.generateWebhookSecret()
+    const encrypted = encryptString(secret, platformConfig.secretsEncryptionKey)
+
+    await db
+      .update(projects)
+      .set({
+        gitProvider: input.provider,
+        gitRepoUrl: input.repoUrl,
+        gitBranch: input.branch,
+        gitWebhookSecretEncrypted: encrypted,
+        gitConnectedAt: new Date(),
+        gitLastDeliveryError: null,
+        gitLastDeliveryStatus: null,
+      })
+      .where(eq(projects.id, row.id))
+
+    return {
+      connected: true as const,
+      provider: input.provider,
+      repoUrl: input.repoUrl,
+      branch: input.branch,
+      webhookUrl: webhookUrlFor(row.id),
+      webhookSecret: secret,
+    }
+  })
+
+export const disconnectGit = authedProcedure
+  .input(z.object({ projectId: z.string().min(1) }))
+  .handler(async ({ context, input }) => {
+    const ownerId = context.session!.user.id
+    const [row] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, input.projectId))
+    if (!row || row.ownerId !== ownerId) {
+      throw new ORPCError("NOT_FOUND", { message: "Project not found" })
+    }
+    await db
+      .update(projects)
+      .set({
+        gitProvider: null,
+        gitRepoUrl: null,
+        gitBranch: "main",
+        gitWebhookSecretEncrypted: null,
+        gitConnectedAt: null,
+        gitLastDeliveryAt: null,
+        gitLastDeliveryStatus: null,
+        gitLastDeliveryError: null,
+      })
+      .where(eq(projects.id, row.id))
+    return { ok: true as const }
   })

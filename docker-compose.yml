@@ -1,10 +1,15 @@
 # Central platform services for local / self-hosted deplow.
 # Host ports chosen to avoid common collisions on shared machines.
+#
+# User apps join the `default` network (name: deplow_default) so they can
+# resolve postgres/redis/minio by Docker DNS. The Caddy proxy is the only
+# public HTTP entry for apps; Postgres/Redis stay private.
 services:
   postgres:
     image: postgres:16-alpine
     container_name: deplow-postgres
     restart: unless-stopped
+    # Platform services stay on default runc — never runsc
     environment:
       POSTGRES_USER: deplow
       POSTGRES_PASSWORD: deplow
@@ -66,6 +71,37 @@ services:
       mc mb -p local/deplow-backups || true;
       exit 0;
       "
+
+  # Platform reverse proxy: Host {slug}.{baseDomain} → app container.
+  # cloudflared (optional profile `edge`) points at this proxy.
+  caddy:
+    image: caddy:2-alpine
+    container_name: deplow-caddy
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./infra/caddy/routes:/etc/caddy/routes
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # v1 edge: Cloudflare Tunnel. Enable with:
+  #   CLOUDFLARE_TUNNEL_TOKEN=... docker compose --profile edge up -d
+  # Point wildcard DNS (*.apps.example.com) at the tunnel once.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: deplow-cloudflared
+    restart: unless-stopped
+    profiles: ["edge"]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - caddy
 
 volumes:
   deplow_pg_data:

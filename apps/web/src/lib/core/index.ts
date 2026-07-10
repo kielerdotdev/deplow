@@ -44,3 +44,32 @@ export { encryptString, decryptString, randomPassword } from "./crypto"
 export { PostgresProvisioner } from "./infra/postgres"
 export { RedisProvisioner } from "./infra/redis"
 export { StorageProvisioner } from "./infra/storage"
+export { productionSlot, slotResourceName, slotLabel } from "./slot"
+export type { ResourceSlot, SlotKind } from "./slot"
+export {
+  PREVIEW_HOSTNAME_PREFIX,
+  productionHostname,
+  productionPublicUrl,
+  previewHostname,
+  slugCollidesWithPreviewPrefix,
+  assertProductionSlug,
+} from "./proxy-hostname"
+export { ProxyService } from "./proxy.service"
+export type { ProxyRoute, ProxyServiceOptions } from "./proxy.service"
+export {
+  buildUserAppHostConfig,
+  missingRuntimeError,
+  parseRuntimeLimits,
+} from "./host-config"
+export type { AppRuntimeLimits, UserAppHostConfigInput } from "./host-config"
+export {
+  verifyGitHubSignature,
+  verifyGitLabToken,
+  verifyWebhookSignature,
+  branchFromRef,
+  extractPushBranch,
+  detectGitProvider,
+} from "./webhook-signature"
+export type { GitProvider } from "./webhook-signature"
+export { GitService } from "./git.service"
+export type { GitConnectResult, GitCloneResult } from "./git.service"
