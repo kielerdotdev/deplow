@@ -6,11 +6,8 @@
 import { spawn } from "node:child_process"
 
 export interface CaddyReloadOptions {
-  /** Docker container name (default: deplow-caddy) */
   containerName?: string
-  /** Path inside the container (default: /etc/caddy/Caddyfile) */
   configPath?: string
-  /** Inject for tests */
   runCommand?: (
     cmd: string,
     args: string[],
@@ -24,10 +21,7 @@ export interface CaddyReloadOptions {
 export async function reloadCaddyProxy(
   options: CaddyReloadOptions = {},
 ): Promise<{ ok: boolean; message: string }> {
-  const container =
-    options.containerName ??
-    process.env.DEPLOW_CADDY_CONTAINER ??
-    "deplow-caddy"
+  const container = options.containerName ?? "deplow-caddy"
   const configPath = options.configPath ?? "/etc/caddy/Caddyfile"
   const run = options.runCommand ?? defaultRun
 
@@ -46,11 +40,7 @@ export async function reloadCaddyProxy(
     return { ok: true, message: "caddy reloaded" }
   }
 
-  const message = (
-    result.stderr ||
-    result.stdout ||
-    `exit ${result.code}`
-  ).trim()
+  const message = (result.stderr || result.stdout || `exit ${result.code}`).trim()
   // Do not throw — deploy should succeed even if proxy is offline in local dev
   console.warn(`[deplow] caddy reload failed (${container}): ${message}`)
   return { ok: false, message }
@@ -73,17 +63,9 @@ function defaultRun(
     const child = spawn(cmd, args, { env: process.env })
     let stdout = ""
     let stderr = ""
-    child.stdout.on("data", (d: Buffer) => {
-      stdout += d.toString()
-    })
-    child.stderr.on("data", (d: Buffer) => {
-      stderr += d.toString()
-    })
-    child.on("close", (code) => {
-      resolve({ code: code ?? 1, stdout, stderr })
-    })
-    child.on("error", (err) => {
-      resolve({ code: 1, stdout, stderr: err.message })
-    })
+    child.stdout.on("data", (d: Buffer) => (stdout += d.toString()))
+    child.stderr.on("data", (d: Buffer) => (stderr += d.toString()))
+    child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }))
+    child.on("error", (err) => resolve({ code: 1, stdout, stderr: err.message }))
   })
 }

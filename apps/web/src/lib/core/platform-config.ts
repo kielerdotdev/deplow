@@ -1,3 +1,5 @@
+import { env } from "@/lib/env"
+
 export interface PlatformConfig {
   postgresAdminUrl: string
   /** Host:port for host-side clients / secrets.yaml */
@@ -54,122 +56,67 @@ export interface PlatformConfig {
   githubToken: string
   /** Optional platform-level GitLab PAT for repo listing (operator) */
   gitlabToken: string
-}
-
-function requireEnv(name: string, fallback?: string): string {
-  const value = process.env[name] ?? fallback
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`)
-  }
-  return value
-}
-
-function envBool(name: string, defaultValue: boolean): boolean {
-  const v = process.env[name]
-  if (v === undefined || v === "") return defaultValue
-  return !["0", "false", "no", "off"].includes(v.toLowerCase())
+  /** GitHub App from env (DB integration row overrides when present) */
+  githubAppId: string
+  githubAppClientId: string
+  githubAppClientSecret: string
+  githubAppPrivateKey: string
+  githubAppWebhookSecret: string
+  githubAppSlug: string
+  /** GitLab OAuth Application */
+  gitlabOAuthClientId: string
+  gitlabOAuthClientSecret: string
+  gitlabOAuthBaseUrl: string
 }
 
 /**
- * Load platform connection settings from environment.
+ * Load platform connection settings from the central env module.
  * Safe defaults target the local docker-compose stack.
  */
 export function loadPlatformConfig(): PlatformConfig {
-  const postgresHost = process.env.DEPLOW_POSTGRES_HOST ?? "127.0.0.1"
-  const postgresPort = Number(process.env.DEPLOW_POSTGRES_PORT ?? "55432")
-  const redisHost = process.env.DEPLOW_REDIS_HOST ?? "127.0.0.1"
-  const redisPort = Number(process.env.DEPLOW_REDIS_PORT ?? "56379")
-  const redisAdminPassword =
-    process.env.DEPLOW_REDIS_PASSWORD ?? process.env.REDIS_PASSWORD ?? "deplow"
-
-  const memoryMb = Number(process.env.DEPLOW_APP_MEMORY_MB ?? "512")
-  const cpus = Number(process.env.DEPLOW_APP_CPUS ?? "1")
-  const isDev = process.env.NODE_ENV === "development"
-  // Local default so URL features work out of the box in `vite dev`
-  const baseDomain =
-    (process.env.DEPLOW_BASE_DOMAIN ?? "").trim() ||
-    (isDev ? "apps.localhost" : "")
-  const protocolEnv = process.env.DEPLOW_PUBLIC_URL_PROTOCOL?.trim()
-  const publicProtocol: "https" | "http" =
-    protocolEnv === "http" || protocolEnv === "https"
-      ? protocolEnv
-      : isDev || baseDomain === "localhost" || baseDomain.endsWith(".localhost")
-        ? "http"
-        : "https"
-
   return {
-    postgresAdminUrl:
-      process.env.DEPLOW_POSTGRES_ADMIN_URL ??
-      `postgres://deplow:deplow@${postgresHost}:${postgresPort}/postgres`,
-    postgresHost,
-    postgresPort,
-    postgresDockerHost: process.env.DEPLOW_POSTGRES_DOCKER_HOST ?? "postgres",
-    postgresDockerPort: Number(
-      process.env.DEPLOW_POSTGRES_DOCKER_PORT ?? "5432",
-    ),
-    redisUrl:
-      process.env.DEPLOW_REDIS_URL ??
-      `redis://:${encodeURIComponent(redisAdminPassword)}@${redisHost}:${redisPort}`,
-    redisHost,
-    redisPort,
-    redisDockerHost: process.env.DEPLOW_REDIS_DOCKER_HOST ?? "redis",
-    redisDockerPort: Number(process.env.DEPLOW_REDIS_DOCKER_PORT ?? "6379"),
-    redisAdminPassword,
-    minioEndpoint:
-      process.env.DEPLOW_MINIO_ENDPOINT ?? "http://127.0.0.1:59000",
-    minioAccessKey: process.env.DEPLOW_MINIO_ACCESS_KEY ?? "deplow",
-    minioSecretKey: process.env.DEPLOW_MINIO_SECRET_KEY ?? "deplowsecret",
-    minioRegion: process.env.DEPLOW_MINIO_REGION ?? "us-east-1",
-    minioPublicEndpoint:
-      process.env.DEPLOW_MINIO_PUBLIC_ENDPOINT ?? "http://127.0.0.1:59000",
-    minioDockerEndpoint:
-      process.env.DEPLOW_MINIO_DOCKER_ENDPOINT ?? "http://minio:9000",
-    backupBucket: process.env.DEPLOW_BACKUP_BUCKET ?? "deplow-backups",
-    secretsEncryptionKey: requireEnv(
-      "DEPLOW_SECRETS_KEY",
-      process.env.BETTER_AUTH_SECRET ?? "dev-only-change-me-deplow-secrets",
-    ),
-    dockerSocketPath:
-      process.env.DOCKER_HOST?.replace("unix://", "") ?? "/var/run/docker.sock",
-    dockerNetwork: process.env.DEPLOW_DOCKER_NETWORK ?? "deplow_default",
-    appRuntime: process.env.DEPLOW_APP_RUNTIME?.trim() || "runsc",
-    appRuntimeRequired: envBool("DEPLOW_APP_RUNTIME_REQUIRED", true),
-    appMemoryBytes: (memoryMb > 0 ? memoryMb : 512) * 1024 * 1024,
-    appNanoCpus: Math.round((cpus > 0 ? cpus : 1) * 1e9),
-    appReadOnlyRootfs: envBool("DEPLOW_APP_READONLY_ROOTFS", true),
-    baseDomain,
-    proxyRoutesDir:
-      process.env.DEPLOW_PROXY_ROUTES_DIR ?? pathFromCwd("infra/caddy/routes"),
-    publicUrlProtocol: publicProtocol,
-    cloudflareTunnelToken: (
-      process.env.CLOUDFLARE_TUNNEL_TOKEN ??
-      process.env.DEPLOW_CLOUDFLARE_TUNNEL_TOKEN ??
-      ""
-    ).trim(),
-    githubToken: (process.env.DEPLOW_GITHUB_TOKEN ?? "").trim(),
-    gitlabToken: (process.env.DEPLOW_GITLAB_TOKEN ?? "").trim(),
-    gitCloneRoot:
-      process.env.DEPLOW_GIT_CLONE_ROOT ?? pathFromCwd("data/git-clones"),
-    publicControlPlaneUrl: (
-      process.env.DEPLOW_PUBLIC_URL ??
-      process.env.BETTER_AUTH_URL ??
-      "http://localhost:3000"
-    ).replace(/\/$/, ""),
+    postgresAdminUrl: env.postgresAdminUrl,
+    postgresHost: env.postgresHost,
+    postgresPort: env.postgresPort,
+    postgresDockerHost: env.postgresDockerHost,
+    postgresDockerPort: env.postgresDockerPort,
+    redisUrl: env.redisUrl,
+    redisHost: env.redisHost,
+    redisPort: env.redisPort,
+    redisDockerHost: env.redisDockerHost,
+    redisDockerPort: env.redisDockerPort,
+    redisAdminPassword: env.redisPassword,
+    minioEndpoint: env.minioEndpoint,
+    minioAccessKey: env.minioAccessKey,
+    minioSecretKey: env.minioSecretKey,
+    minioRegion: env.minioRegion,
+    minioPublicEndpoint: env.minioPublicEndpoint,
+    minioDockerEndpoint: env.minioDockerEndpoint,
+    backupBucket: env.backupBucket,
+    secretsEncryptionKey: env.secretsEncryptionKey,
+    dockerSocketPath: env.dockerSocketPath,
+    dockerNetwork: env.dockerNetwork,
+    appRuntime: env.appRuntime,
+    appRuntimeRequired: env.appRuntimeRequired,
+    appMemoryBytes: env.appMemoryBytes,
+    appNanoCpus: env.appNanoCpus,
+    appReadOnlyRootfs: env.appReadOnlyRootfs,
+    baseDomain: env.baseDomain,
+    proxyRoutesDir: env.proxyRoutesDir,
+    publicUrlProtocol: env.publicUrlProtocol,
+    cloudflareTunnelToken: env.cloudflareTunnelToken,
+    gitCloneRoot: env.gitCloneRoot,
+    publicControlPlaneUrl: env.publicControlPlaneUrl,
+    githubToken: env.githubToken,
+    gitlabToken: env.gitlabToken,
+    githubAppId: env.githubAppId,
+    githubAppClientId: env.githubAppClientId,
+    githubAppClientSecret: env.githubAppClientSecret,
+    githubAppPrivateKey: env.githubAppPrivateKey,
+    githubAppWebhookSecret: env.githubAppWebhookSecret,
+    githubAppSlug: env.githubAppSlug,
+    gitlabOAuthClientId: env.gitlabOAuthClientId,
+    gitlabOAuthClientSecret: env.gitlabOAuthClientSecret,
+    gitlabOAuthBaseUrl: env.gitlabOAuthBaseUrl,
   }
-}
-
-function pathFromCwd(relative: string): string {
-  // Prefer monorepo root when running from apps/web
-  const candidates = [
-    `${process.cwd()}/${relative}`,
-    `${process.cwd()}/../../${relative}`,
-  ]
-  // Return the monorepo-root-ish path without requiring fs (config is pure-ish)
-  if (
-    process.cwd().endsWith("apps/web") ||
-    process.cwd().endsWith("apps\\web")
-  ) {
-    return `${process.cwd()}/../../${relative}`
-  }
-  return candidates[0]!
 }

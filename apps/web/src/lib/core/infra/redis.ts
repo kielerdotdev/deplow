@@ -5,30 +5,44 @@ import type { RedisCredentials } from "@deplow/shared"
 import { randomPassword, sanitizeIdentifier } from "../crypto"
 import type { PlatformConfig } from "../platform-config"
 
+/**
+ * Per-project Redis ACL commands — restricted to key-space commands only.
+ * Never grant +@all to per-project users.
+ */
+const ACL_GRANTS = [
+  "-@all",
+  "+@read",
+  "+@write",
+  "+@keyspace",
+  "+@string",
+  "+@hash",
+  "+@list",
+  "+@set",
+  "+@sortedset",
+  "+@stream",
+  "+ping",
+  "+info",
+  "+select",
+  "+ttl",
+  "+expire",
+  "+type",
+  "+exists",
+  "+del",
+  "+scan",
+]
+
 export class RedisProvisioner {
   constructor(private readonly config: PlatformConfig) {}
-
-  private client(): Redis {
-    return new Redis(this.config.redisUrl, {
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    })
-  }
 
   async createNamespace(projectSlug: string): Promise<RedisCredentials> {
     const username = sanitizeIdentifier(`u_${projectSlug}`)
     const namespace = sanitizeIdentifier(projectSlug)
     const password = randomPassword(28)
+
     const redis = this.client()
     await redis.connect()
     try {
-      // Redis ACL: user can only touch keys under namespace:*
-      // ACL SETUSER name on >pass ~ns:* &* -@all +@read +@write +@keyspace +@string +@hash +@list +@set +@sortedset +@stream +ping +info +select
-      try {
-        await redis.call("ACL", "DELUSER", username)
-      } catch {
-        // ignore
-      }
+      await safeDelUser(redis, username)
       await redis.call(
         "ACL",
         "SETUSER",
@@ -37,9 +51,8 @@ export class RedisProvisioner {
         `>${password}`,
         `~${namespace}:*`,
         "&*",
-        "+@all",
+        ...ACL_GRANTS,
       )
-      // ACL SAVE may fail when users.acl is mounted read-only — runtime ACL is enough
     } finally {
       redis.disconnect()
     }
@@ -56,28 +69,49 @@ export class RedisProvisioner {
   async destroyNamespace(projectSlug: string): Promise<void> {
     const username = sanitizeIdentifier(`u_${projectSlug}`)
     const namespace = sanitizeIdentifier(projectSlug)
+
     const redis = this.client()
     await redis.connect()
     try {
-      // Delete namespaced keys via SCAN
-      let cursor = "0"
-      do {
-        const [next, keys] = (await redis.scan(
-          cursor,
-          "MATCH",
-          `${namespace}:*`,
-          "COUNT",
-          200,
-        )) as [string, string[]]
-        cursor = next
-        if (keys.length > 0) {
-          await redis.del(...keys)
-        }
-      } while (cursor !== "0")
-
-      await redis.call("ACL", "DELUSER", username).catch(() => undefined)
+      await deleteNamespacedKeys(redis, namespace)
+      await safeDelUser(redis, username)
     } finally {
       redis.disconnect()
     }
   }
+
+  private client(): Redis {
+    return new Redis(this.config.redisUrl, {
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    })
+  }
+}
+
+async function safeDelUser(redis: Redis, username: string): Promise<void> {
+  try {
+    await redis.call("ACL", "DELUSER", username)
+  } catch {
+    // user may not exist yet — safe to ignore
+  }
+}
+
+async function deleteNamespacedKeys(
+  redis: Redis,
+  namespace: string,
+): Promise<void> {
+  let cursor = "0"
+  do {
+    const [next, keys] = (await redis.scan(
+      cursor,
+      "MATCH",
+      `${namespace}:*`,
+      "COUNT",
+      200,
+    )) as [string, string[]]
+    cursor = next
+    if (keys.length > 0) {
+      await redis.del(...keys)
+    }
+  } while (cursor !== "0")
 }

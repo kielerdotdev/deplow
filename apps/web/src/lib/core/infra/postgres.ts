@@ -5,8 +5,70 @@ import type { DatabaseCredentials } from "@deplow/shared"
 import { randomPassword, sanitizeIdentifier } from "../crypto"
 import type { PlatformConfig } from "../platform-config"
 
+const ADMIN_TIMEOUT_DELAY = 5000
+
 export class PostgresProvisioner {
   constructor(private readonly config: PlatformConfig) {}
+
+  async createDatabase(projectSlug: string): Promise<DatabaseCredentials> {
+    const role = sanitizeIdentifier(`p_${projectSlug}`)
+    const database = sanitizeIdentifier(`d_${projectSlug}`)
+    const password = randomPassword(28)
+
+    await this.withAdmin(async (client) => {
+      await terminateBackendSessions(client, database)
+      await upsertRole(client, role, password)
+      await upsertDatabase(client, database, role)
+    })
+
+    await this.grantSchemaPrivileges(role, password, database, projectSlug)
+
+    return {
+      host: this.config.postgresHost,
+      port: this.config.postgresPort,
+      database,
+      user: role,
+      password,
+      url: this.buildUrl(role, password, database),
+    }
+  }
+
+  async dropDatabase(projectSlug: string): Promise<void> {
+    const role = sanitizeIdentifier(`p_${projectSlug}`)
+    const database = sanitizeIdentifier(`d_${projectSlug}`)
+
+    await this.withAdmin(async (client) => {
+      await terminateBackendSessions(client, database)
+      await client.query(`DROP DATABASE IF EXISTS ${quoteIdent(database)}`)
+      await client.query(`DROP ROLE IF EXISTS ${quoteIdent(role)}`)
+    })
+  }
+
+  async dumpDatabase(creds: DatabaseCredentials): Promise<Buffer> {
+    const client = new pg.Client({ connectionString: creds.url })
+    await client.connect()
+    try {
+      const tables = await listPublicTables(client)
+
+      const parts: string[] = [
+        `-- deplow backup for ${creds.database}`,
+        `SET client_encoding = 'UTF8';`,
+        "",
+      ]
+
+      for (const { tablename } of tables.rows) {
+        const columns = await listTableColumns(client, tablename)
+        const rows = await client.query(`SELECT * FROM ${quoteIdent(tablename)}`)
+        parts.push(...dumpTable(tablename, columns.rows, rows.rows))
+      }
+
+      return Buffer.from(parts.join("\n"), "utf8")
+    } finally {
+      await client.end()
+    }
+  }
+
+  // ── internal helpers ──────────────────────────────────────────
 
   private async withAdmin<T>(
     fn: (client: pg.Client) => Promise<T>,
@@ -22,58 +84,12 @@ export class PostgresProvisioner {
     }
   }
 
-  async createDatabase(projectSlug: string): Promise<DatabaseCredentials> {
-    const role = sanitizeIdentifier(`p_${projectSlug}`)
-    const database = sanitizeIdentifier(`d_${projectSlug}`)
-    const password = randomPassword(28)
-
-    await this.withAdmin(async (client) => {
-      // Terminate existing sessions if re-provisioning
-      await client
-        .query(
-          `
-        SELECT pg_terminate_backend(pid)
-        FROM pg_stat_activity
-        WHERE datname = $1 AND pid <> pg_backend_pid()
-        `,
-          [database],
-        )
-        .catch(() => undefined)
-
-      const roleExists = await client.query(
-        `SELECT 1 FROM pg_roles WHERE rolname = $1`,
-        [role],
-      )
-      if (roleExists.rowCount === 0) {
-        await client.query(
-          `CREATE ROLE ${quoteIdent(role)} LOGIN PASSWORD ${quoteLiteral(password)}`,
-        )
-      } else {
-        await client.query(
-          `ALTER ROLE ${quoteIdent(role)} WITH PASSWORD ${quoteLiteral(password)}`,
-        )
-      }
-
-      const dbExists = await client.query(
-        `SELECT 1 FROM pg_database WHERE datname = $1`,
-        [database],
-      )
-      if (dbExists.rowCount === 0) {
-        await client.query(
-          `CREATE DATABASE ${quoteIdent(database)} OWNER ${quoteIdent(role)}`,
-        )
-      } else {
-        await client.query(
-          `ALTER DATABASE ${quoteIdent(database)} OWNER TO ${quoteIdent(role)}`,
-        )
-      }
-
-      await client.query(
-        `GRANT ALL PRIVILEGES ON DATABASE ${quoteIdent(database)} TO ${quoteIdent(role)}`,
-      )
-    })
-
-    // Grant schema privileges and seed a meta table for backup smoke tests
+  private async grantSchemaPrivileges(
+    role: string,
+    password: string,
+    database: string,
+    projectSlug: string,
+  ): Promise<void> {
     const dbClient = new pg.Client({
       connectionString: this.buildUrl(role, password, database),
     })
@@ -101,94 +117,6 @@ export class PostgresProvisioner {
     } finally {
       await dbClient.end()
     }
-
-    return {
-      host: this.config.postgresHost,
-      port: this.config.postgresPort,
-      database,
-      user: role,
-      password,
-      url: this.buildUrl(role, password, database),
-    }
-  }
-
-  async dropDatabase(projectSlug: string): Promise<void> {
-    const role = sanitizeIdentifier(`p_${projectSlug}`)
-    const database = sanitizeIdentifier(`d_${projectSlug}`)
-
-    await this.withAdmin(async (client) => {
-      await client
-        .query(
-          `
-        SELECT pg_terminate_backend(pid)
-        FROM pg_stat_activity
-        WHERE datname = $1 AND pid <> pg_backend_pid()
-        `,
-          [database],
-        )
-        .catch(() => undefined)
-
-      await client.query(`DROP DATABASE IF EXISTS ${quoteIdent(database)}`)
-      await client.query(`DROP ROLE IF EXISTS ${quoteIdent(role)}`)
-    })
-  }
-
-  async dumpDatabase(creds: DatabaseCredentials): Promise<Buffer> {
-    // Use pg client COPY for a portable SQL dump without shelling out to pg_dump
-    // (pg_dump binary may not exist on the control plane). Export schema+data via SQL.
-    const client = new pg.Client({ connectionString: creds.url })
-    await client.connect()
-    try {
-      const tables = await client.query<{ tablename: string }>(
-        `
-        SELECT tablename
-        FROM pg_tables
-        WHERE schemaname = 'public'
-        ORDER BY tablename
-        `,
-      )
-
-      const parts: string[] = [
-        `-- deplow backup for ${creds.database}`,
-        `SET client_encoding = 'UTF8';`,
-        "",
-      ]
-
-      for (const { tablename } of tables.rows) {
-        const cols = await client.query<{ column_name: string }>(
-          `
-          SELECT column_name
-          FROM information_schema.columns
-          WHERE table_schema = 'public' AND table_name = $1
-          ORDER BY ordinal_position
-          `,
-          [tablename],
-        )
-        const colList = cols.rows
-          .map((c) => quoteIdent(c.column_name))
-          .join(", ")
-        const rows = await client.query(
-          `SELECT * FROM ${quoteIdent(tablename)}`,
-        )
-        parts.push(`-- table ${tablename}`)
-        parts.push(`TRUNCATE TABLE ${quoteIdent(tablename)} CASCADE;`)
-        for (const row of rows.rows) {
-          const values = cols.rows
-            .map((c) =>
-              sqlLiteral((row as Record<string, unknown>)[c.column_name]),
-            )
-            .join(", ")
-          parts.push(
-            `INSERT INTO ${quoteIdent(tablename)} (${colList}) VALUES (${values});`,
-          )
-        }
-        parts.push("")
-      }
-
-      return Buffer.from(parts.join("\n"), "utf8")
-    } finally {
-      await client.end()
-    }
   }
 
   private buildUrl(user: string, password: string, database: string): string {
@@ -196,11 +124,116 @@ export class PostgresProvisioner {
   }
 }
 
-function quoteIdent(ident: string): string {
+// ── module-level helpers (pure, no state) ────────────────────────
+
+async function terminateBackendSessions(
+  client: pg.Client,
+  database: string,
+): Promise<void> {
+  // Sessions may not exist — ignore errors so re-provisioning works
+  await client
+    .query(
+      `
+      SELECT pg_terminate_backend(pid)
+      FROM pg_stat_activity
+      WHERE datname = $1 AND pid <> pg_backend_pid()
+      `,
+      [database],
+    )
+    .catch(() => undefined)
+}
+
+async function upsertRole(
+  client: pg.Client,
+  role: string,
+  password: string,
+): Promise<void> {
+  const { rowCount } = await client.query(
+    `SELECT 1 FROM pg_roles WHERE rolname = $1`,
+    [role],
+  )
+  if (rowCount === 0) {
+    await client.query(
+      `CREATE ROLE ${quoteIdent(role)} LOGIN PASSWORD ${quoteLiteral(password)}`,
+    )
+    return
+  }
+  await client.query(
+    `ALTER ROLE ${quoteIdent(role)} WITH PASSWORD ${quoteLiteral(password)}`,
+  )
+}
+
+async function upsertDatabase(
+  client: pg.Client,
+  database: string,
+  role: string,
+): Promise<void> {
+  const { rowCount } = await client.query(
+    `SELECT 1 FROM pg_database WHERE datname = $1`,
+    [database],
+  )
+  if (rowCount === 0) {
+    await client.query(
+      `CREATE DATABASE ${quoteIdent(database)} OWNER ${quoteIdent(role)}`,
+    )
+    return
+  }
+  await client.query(
+    `ALTER DATABASE ${quoteIdent(database)} OWNER TO ${quoteIdent(role)}`,
+  )
+  await client.query(
+    `GRANT ALL PRIVILEGES ON DATABASE ${quoteIdent(database)} TO ${quoteIdent(role)}`,
+  )
+}
+
+async function listPublicTables(client: pg.Client) {
+  return client.query<{ tablename: string }>(`
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
+    ORDER BY tablename
+  `)
+}
+
+async function listTableColumns(
+  client: pg.Client,
+  tablename: string,
+) {
+  return client.query<{ column_name: string }>(
+    `
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = $1
+    ORDER BY ordinal_position
+    `,
+    [tablename],
+  )
+}
+
+function dumpTable(
+  tablename: string,
+  columns: { column_name: string }[],
+  rows: Record<string, unknown>[],
+): string[] {
+  const colList = columns.map((c) => quoteIdent(c.column_name)).join(", ")
+  const parts = [`-- table ${tablename}`, `TRUNCATE TABLE ${quoteIdent(tablename)} CASCADE;`]
+  for (const row of rows) {
+    const values = columns
+      .map((c) => sqlLiteral(row[c.column_name]))
+      .join(", ")
+    parts.push(
+      `INSERT INTO ${quoteIdent(tablename)} (${colList}) VALUES (${values});`,
+    )
+  }
+  parts.push("")
+  return parts
+}
+
+export function quoteIdent(ident: string): string {
   return `"${ident.replace(/"/g, '""')}"`
 }
 
-function quoteLiteral(value: string): string {
+export function quoteLiteral(value: string): string {
   return `'${value.replace(/'/g, "''")}'`
 }
 
@@ -213,3 +246,5 @@ function sqlLiteral(value: unknown): string {
   if (typeof value === "object") return quoteLiteral(JSON.stringify(value))
   return quoteLiteral(String(value))
 }
+
+void ADMIN_TIMEOUT_DELAY

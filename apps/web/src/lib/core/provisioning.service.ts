@@ -49,7 +49,6 @@ export class ProvisioningService {
   ): Promise<CreateProjectResult> {
     const projectId = input.projectId ?? crypto.randomUUID()
     const slug = input.name
-    // v1: always provision the production slot (see docs/data-plane.md)
     const resourceName = slug
 
     const dbCreds = await this.postgres.createDatabase(resourceName)
@@ -70,17 +69,9 @@ export class ProvisioningService {
       this.config.secretsEncryptionKey,
     )
 
-    let spawnedServerId: string | undefined
-    if (input.spawnBuildServer) {
-      const spawner = getServerSpawner(this.spawners, "docker")
-      const server = await spawner.spawn({
-        name: `${slug}-build`,
-        serverType: "docker-alpine",
-        ttlMinutes: 30,
-        labels: { projectId, slug },
-      })
-      spawnedServerId = server.id
-    }
+    const spawnedServerId = input.spawnBuildServer
+      ? await this.spawnBuildServer(slug, projectId)
+      : undefined
 
     return {
       projectId,
@@ -94,19 +85,49 @@ export class ProvisioningService {
   }
 
   async destroyProject(input: DestroyProjectInput): Promise<void> {
-    const slug = input.slug
-    if (input.credentials) {
-      await this.postgres.dropDatabase(slug).catch(() => undefined)
-      await this.redis.destroyNamespace(slug).catch(() => undefined)
-      await this.storage
-        .destroyBucket(
-          input.credentials.storage.bucket,
-          input.credentials.storage.accessKeyId,
-        )
-        .catch(() => undefined)
-    } else {
-      await this.postgres.dropDatabase(slug).catch(() => undefined)
-      await this.redis.destroyNamespace(slug).catch(() => undefined)
+    const { slug, credentials } = input
+
+    // Drop infrastructure resources — best-effort, don't fail on partial errors
+    await safeDrop(this.postgres.dropDatabase(slug), "postgres")
+    await safeDrop(this.redis.destroyNamespace(slug), "redis")
+
+    if (credentials) {
+      await safeDrop(
+        this.storage.destroyBucket(
+          credentials.storage.bucket,
+          credentials.storage.accessKeyId,
+        ),
+        "storage",
+      )
     }
+  }
+
+  private async spawnBuildServer(
+    slug: string,
+    projectId: string,
+  ): Promise<string | undefined> {
+    const spawner = getServerSpawner(this.spawners, "docker")
+    const server = await spawner.spawn({
+      name: `${slug}-build`,
+      serverType: "docker-alpine",
+      ttlMinutes: 30,
+      labels: { projectId, slug },
+    })
+    return server.id
+  }
+}
+
+/**
+ * Best-effort resource teardown — logs the error but never throws,
+ * so a failure in one resource doesn't prevent cleanup of others.
+ */
+async function safeDrop(promise: Promise<unknown>, label: string): Promise<void> {
+  try {
+    await promise
+  } catch (error) {
+    console.warn(
+      `[deplow] failed to drop ${label} resource:`,
+      error instanceof Error ? error.message : error,
+    )
   }
 }
