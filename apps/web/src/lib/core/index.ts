@@ -84,3 +84,9 @@ export {
 export type { GitProvider } from "./webhook-signature"
 export { GitService } from "./git.service"
 export type { GitConnectResult, GitCloneResult } from "./git.service"
+export {
+  listRemoteRepos,
+  listRemoteBranches,
+  normalizeRepoUrl,
+} from "./git-remote"
+export type { RemoteRepo, ListReposResult } from "./git-remote"

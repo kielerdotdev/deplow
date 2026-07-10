@@ -1,7 +1,12 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { connectGitInputSchema, createProjectInputSchema } from "@deplow/shared"
+import {
+  connectGitInputSchema,
+  createProjectInputSchema,
+  listGitBranchesInputSchema,
+  listGitReposInputSchema,
+} from "@deplow/shared"
 import { eq } from "@deplow/db"
 
 import {
@@ -9,6 +14,9 @@ import {
   assertProductionSlug,
   encryptString,
   decryptString,
+  listRemoteBranches,
+  listRemoteRepos,
+  normalizeRepoUrl,
 } from "@/lib/core"
 import {
   backupScheduler,
@@ -38,7 +46,9 @@ function toSummary(row: typeof projects.$inferSelect) {
     slug: row.slug,
     status: row.status,
     nodeId: row.nodeId,
-    publicUrl: row.publicUrl,
+    // Resolve from live proxy config so older rows (created before base domain)
+    // and env changes still show a URL in the UI.
+    publicUrl: row.publicUrl ?? proxyService.publicUrlForSlug(row.slug),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     errorMessage: row.errorMessage,
@@ -372,4 +382,79 @@ export const disconnectGit = authedProcedure
       })
       .where(eq(projects.id, row.id))
     return { ok: true as const }
+  })
+
+function resolveGitToken(
+  provider: "github" | "gitlab",
+  token?: string,
+): string {
+  const fromInput = token?.trim()
+  if (fromInput) return fromInput
+  const platform =
+    provider === "github"
+      ? platformConfig.githubToken
+      : platformConfig.gitlabToken
+  if (platform) return platform
+  throw new ORPCError("BAD_REQUEST", {
+    message:
+      provider === "github"
+        ? "Paste a GitHub personal access token (repo scope), or set DEPLOW_GITHUB_TOKEN on the server."
+        : "Paste a GitLab personal access token (read_api), or set DEPLOW_GITLAB_TOKEN on the server.",
+  })
+}
+
+export const listGitRepos = authedProcedure
+  .input(listGitReposInputSchema)
+  .handler(async ({ input }) => {
+    try {
+      const token = resolveGitToken(input.provider, input.token)
+      const result = await listRemoteRepos({
+        provider: input.provider,
+        token,
+        query: input.query,
+      })
+      return {
+        repos: result.repos,
+        truncated: result.truncated,
+        usedPlatformToken: !input.token?.trim(),
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new ORPCError("BAD_REQUEST", { message })
+    }
+  })
+
+export const listGitBranches = authedProcedure
+  .input(listGitBranchesInputSchema)
+  .handler(async ({ input }) => {
+    try {
+      const token = resolveGitToken(input.provider, input.token)
+      const branches = await listRemoteBranches({
+        provider: input.provider,
+        token,
+        fullName: input.fullName,
+      })
+      return { branches }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new ORPCError("BAD_REQUEST", { message })
+    }
+  })
+
+/** Resolve owner/repo shorthand before connect when needed. */
+export const normalizeGitRepoUrl = authedProcedure
+  .input(
+    z.object({
+      provider: z.enum(["github", "gitlab"]),
+      input: z.string().min(1),
+    }),
+  )
+  .handler(async ({ input }) => {
+    try {
+      return { repoUrl: normalizeRepoUrl(input.provider, input.input) }
+    } catch (error) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
   })
