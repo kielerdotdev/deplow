@@ -56,6 +56,17 @@ export {
 } from "./proxy-hostname"
 export { ProxyService } from "./proxy.service"
 export type { ProxyRoute, ProxyServiceOptions } from "./proxy.service"
+export { reloadCaddyProxy, createCaddyReloadOnChange } from "./caddy-reload"
+export type { CaddyReloadOptions } from "./caddy-reload"
+export {
+  handleGitWebhook,
+  gitWebhookResultToResponse,
+} from "./git-webhook-handler"
+export type {
+  GitWebhookHandlerDeps,
+  GitWebhookProject,
+  GitWebhookResult,
+} from "./git-webhook-handler"
 export {
   buildUserAppHostConfig,
   missingRuntimeError,

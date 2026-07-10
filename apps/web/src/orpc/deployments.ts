@@ -305,6 +305,12 @@ export const stop = authedProcedure
     }
     await assertProjectOwner(row.projectId, context.session!.user.id)
     await dockerNodeExecutor.stopApp(row.nodeId, row.serviceName)
+    // Drop proxy route so Host no longer reverse_proxies a dead upstream
+    await proxyService.removeProjectRoute(row.projectId).catch(() => undefined)
+    await db
+      .update(projects)
+      .set({ publicUrl: null })
+      .where(eq(projects.id, row.projectId))
     await db
       .update(deployments)
       .set({ status: "stopped" })

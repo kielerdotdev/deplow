@@ -116,12 +116,25 @@ if [ -f "$ROUTE_FILE" ]; then
   echo "==> Proxy route registered" | tee -a "$SCRATCH/deploy-image.log"
   cat "$ROUTE_FILE" | tee -a "$SCRATCH/deploy-image.log"
 else
-  echo "WARN: proxy route file missing at $ROUTE_FILE (base domain may be unset)" | tee -a "$SCRATCH/deploy-image.log"
+  echo "ERROR: proxy route file missing at $ROUTE_FILE" | tee -a "$SCRATCH/deploy-image.log"
+  exit 1
 fi
 
 sleep 1
 BODY=$(curl -sS "http://127.0.0.1:18080/" || true)
 echo "body=$BODY" | tee -a "$SCRATCH/deploy-image.log"
+
+# Primary proxy observable: Host routing through Caddy :8088 (after reload)
+BASE_DOMAIN="${DEPLOW_BASE_DOMAIN:-apps.localhost}"
+HOST_HEADER="${PROJECT}.${BASE_DOMAIN}"
+echo "==> Caddy Host route Host=$HOST_HEADER via :8088" | tee -a "$SCRATCH/deploy-image.log"
+# Ensure caddy is up; reload may have been best-effort during deploy
+docker exec deplow-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1 \
+  | tee -a "$SCRATCH/deploy-image.log" || true
+sleep 1
+PROXY_BODY=$(curl -sS -H "Host: $HOST_HEADER" "http://127.0.0.1:8088/" || true)
+echo "proxy_body=$PROXY_BODY" | tee -a "$SCRATCH/deploy-image.log"
+echo "$PROXY_BODY" | grep -q 'deplow-e2e'
 
 if [ -n "${DEPLOY_SOURCE_DOCKERFILE:-}" ] && [ -d "$DEPLOY_SOURCE_DOCKERFILE" ]; then
   echo "==> Deploy Dockerfile source $DEPLOY_SOURCE_DOCKERFILE" | tee "$SCRATCH/deploy-dockerfile.log"

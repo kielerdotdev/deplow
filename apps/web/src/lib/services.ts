@@ -20,6 +20,7 @@ import {
   GitService,
   ProxyService,
   ProvisioningService,
+  createCaddyReloadOnChange,
   createServerSpawners,
   decryptString,
   loadPlatformConfig,
@@ -114,6 +115,10 @@ export const proxyService = new ProxyService({
   routesDir: config.proxyRoutesDir,
   baseDomain: config.baseDomain,
   publicProtocol: config.publicUrlProtocol,
+  // Caddy only re-reads routes/*.caddy on reload — wire after every upsert/remove
+  onChange: createCaddyReloadOnChange({
+    containerName: process.env.DEPLOW_CADDY_CONTAINER ?? "deplow-caddy",
+  }),
 })
 
 export const gitService = new GitService(config.gitCloneRoot)

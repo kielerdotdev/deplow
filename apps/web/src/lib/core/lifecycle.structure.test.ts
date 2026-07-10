@@ -32,18 +32,31 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     expect(src).toContain('status: "running"')
   })
 
-  it("webhook verifies signature before deploy pipeline", () => {
+  it("webhook route drives handleGitWebhook (signature + deploy entry)", () => {
     const src = readFileSync(
       path.join(root, "routes/api/webhooks/git.$projectId.ts"),
       "utf8",
     )
-    expect(src).toContain("verifyWebhookSignature")
-    expect(src).toContain("Invalid signature")
+    expect(src).toContain("handleGitWebhook")
+    expect(src).toContain("runProductionDeployFromGit")
     expect(src).toContain("gitService.syncRepo")
     expect(src).toContain("buildService.buildFromSource")
     expect(src).toContain("dockerNodeExecutor.deployApp")
     expect(src).toContain("proxyService.upsertProductionRoute")
     expect(src).toContain("git_webhook")
+  })
+
+  it("proxyService is wired with caddy reload onChange", () => {
+    const src = readFileSync(path.join(root, "lib/services.ts"), "utf8")
+    expect(src).toContain("createCaddyReloadOnChange")
+    expect(src).toContain("onChange")
+    expect(src).toContain("deplow-caddy")
+  })
+
+  it("deployments.stop removes proxy route", () => {
+    const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
+    expect(src).toContain("stopApp")
+    expect(src).toContain("proxyService.removeProjectRoute")
   })
 
   it("DockerNodeExecutor uses buildUserAppHostConfig for user apps", () => {
