@@ -61,6 +61,20 @@ describe("UI shell structure", () => {
     expect(src).toContain("Filter settings")
     expect(src).toContain("ConnectionChip")
     expect(src).toContain("SettingsSection")
+    expect(src).toContain("RepoSelector")
+  })
+
+  it("repo selector is a searchable list not a raw URL field", () => {
+    const src = readFileSync(
+      path.join(root, "components/repo-selector.tsx"),
+      "utf8",
+    )
+    expect(src).toContain("listGitRepos")
+    expect(src).toContain("listGitBranches")
+    expect(src).toContain("Search repositories")
+    expect(src).toContain("Personal access token")
+    expect(src).toContain("Load repos")
+    expect(src).toContain("Production branch")
   })
 
   it("project rail exposes Settings instead of bare Git", () => {

@@ -50,6 +50,10 @@ export interface PlatformConfig {
   gitCloneRoot: string
   /** Public base URL of this control plane (webhook callback URLs) */
   publicControlPlaneUrl: string
+  /** Optional platform-level GitHub PAT for repo listing (operator) */
+  githubToken: string
+  /** Optional platform-level GitLab PAT for repo listing (operator) */
+  gitlabToken: string
 }
 
 function requireEnv(name: string, fallback?: string): string {
@@ -80,8 +84,18 @@ export function loadPlatformConfig(): PlatformConfig {
 
   const memoryMb = Number(process.env.DEPLOW_APP_MEMORY_MB ?? "512")
   const cpus = Number(process.env.DEPLOW_APP_CPUS ?? "1")
-  const publicProtocol =
-    process.env.DEPLOW_PUBLIC_URL_PROTOCOL === "http" ? "http" : "https"
+  const isDev = process.env.NODE_ENV === "development"
+  // Local default so URL features work out of the box in `vite dev`
+  const baseDomain =
+    (process.env.DEPLOW_BASE_DOMAIN ?? "").trim() ||
+    (isDev ? "apps.localhost" : "")
+  const protocolEnv = process.env.DEPLOW_PUBLIC_URL_PROTOCOL?.trim()
+  const publicProtocol: "https" | "http" =
+    protocolEnv === "http" || protocolEnv === "https"
+      ? protocolEnv
+      : isDev || baseDomain === "localhost" || baseDomain.endsWith(".localhost")
+        ? "http"
+        : "https"
 
   return {
     postgresAdminUrl:
@@ -123,7 +137,7 @@ export function loadPlatformConfig(): PlatformConfig {
     appMemoryBytes: (memoryMb > 0 ? memoryMb : 512) * 1024 * 1024,
     appNanoCpus: Math.round((cpus > 0 ? cpus : 1) * 1e9),
     appReadOnlyRootfs: envBool("DEPLOW_APP_READONLY_ROOTFS", true),
-    baseDomain: (process.env.DEPLOW_BASE_DOMAIN ?? "").trim(),
+    baseDomain,
     proxyRoutesDir:
       process.env.DEPLOW_PROXY_ROUTES_DIR ?? pathFromCwd("infra/caddy/routes"),
     publicUrlProtocol: publicProtocol,
@@ -132,6 +146,8 @@ export function loadPlatformConfig(): PlatformConfig {
       process.env.DEPLOW_CLOUDFLARE_TUNNEL_TOKEN ??
       ""
     ).trim(),
+    githubToken: (process.env.DEPLOW_GITHUB_TOKEN ?? "").trim(),
+    gitlabToken: (process.env.DEPLOW_GITLAB_TOKEN ?? "").trim(),
     gitCloneRoot:
       process.env.DEPLOW_GIT_CLONE_ROOT ?? pathFromCwd("data/git-clones"),
     publicControlPlaneUrl: (

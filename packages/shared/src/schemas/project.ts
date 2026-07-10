@@ -45,6 +45,38 @@ export const connectGitInputSchema = z.object({
 
 export type ConnectGitInput = z.infer<typeof connectGitInputSchema>
 
+export const listGitReposInputSchema = z.object({
+  provider: gitProviderSchema,
+  /** PAT — if omitted, server uses DEPLOW_GITHUB_TOKEN / DEPLOW_GITLAB_TOKEN */
+  token: z.string().min(1).optional(),
+  query: z.string().max(200).optional(),
+})
+
+export type ListGitReposInput = z.infer<typeof listGitReposInputSchema>
+
+export const gitRemoteRepoSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  name: z.string(),
+  owner: z.string(),
+  description: z.string().nullable(),
+  private: z.boolean(),
+  defaultBranch: z.string(),
+  cloneUrl: z.string(),
+  htmlUrl: z.string(),
+  updatedAt: z.string().nullable(),
+})
+
+export type GitRemoteRepo = z.infer<typeof gitRemoteRepoSchema>
+
+export const listGitBranchesInputSchema = z.object({
+  provider: gitProviderSchema,
+  fullName: z.string().min(1),
+  token: z.string().min(1).optional(),
+})
+
+export type ListGitBranchesInput = z.infer<typeof listGitBranchesInputSchema>
+
 export const projectSummarySchema = z.object({
   id: z.string(),
   name: z.string(),

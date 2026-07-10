@@ -22,6 +22,9 @@ export const router = {
     backupSchedule: projects.backupSchedule,
     connectGit: projects.connectGit,
     disconnectGit: projects.disconnectGit,
+    listGitRepos: projects.listGitRepos,
+    listGitBranches: projects.listGitBranches,
+    normalizeGitRepoUrl: projects.normalizeGitRepoUrl,
   },
   nodes: {
     list: nodes.list,

@@ -13,6 +13,10 @@ import {
 } from "lucide-react"
 
 import {
+  RepoSelector,
+  type RepoSelectorValue,
+} from "@/components/repo-selector"
+import {
   ConnectionChip,
   SettingsField,
   SettingsGroupLabel,
@@ -23,7 +27,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   formatDateTime,
   repoShortName,
@@ -279,56 +282,44 @@ function ConnectSourceForm({
   pending,
   gitProvider,
   setGitProvider,
-  gitRepoUrl,
   setGitRepoUrl,
-  gitBranch,
   setGitBranch,
   onConnect,
 }: ProjectSettingsProps) {
+  const [selection, setSelection] = useState<RepoSelectorValue | null>(null)
+
+  function handleSelect(value: RepoSelectorValue | null) {
+    setSelection(value)
+    if (value) {
+      setGitRepoUrl(value.cloneUrl)
+      setGitBranch(value.branch)
+      setGitProvider(value.provider)
+    } else {
+      setGitRepoUrl("")
+    }
+  }
+
   return (
     <div className="space-y-4">
       <SettingsHint>
-        Connect a GitHub or GitLab repo. Push to the production branch deploys
-        automatically once the webhook is configured.
+        Pick a repository from your account. We list them via a personal access
+        token — then one click connects push-to-deploy.
       </SettingsHint>
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={gitProvider === "github" ? "default" : "outline"}
-          onClick={() => setGitProvider("github")}
-        >
-          GitHub
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={gitProvider === "gitlab" ? "default" : "outline"}
-          onClick={() => setGitProvider("gitlab")}
-        >
-          GitLab
-        </Button>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="settings-git-repo">Repository URL</Label>
-        <Input
-          id="settings-git-repo"
-          value={gitRepoUrl}
-          onChange={(e) => setGitRepoUrl(e.target.value)}
-          placeholder="https://github.com/you/app.git"
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="settings-git-branch">Production branch</Label>
-        <Input
-          id="settings-git-branch"
-          value={gitBranch}
-          onChange={(e) => setGitBranch(e.target.value)}
-          placeholder="main"
-        />
-      </div>
-      <Button disabled={pending || !gitRepoUrl.trim()} onClick={onConnect}>
-        Connect repository
+      <RepoSelector
+        provider={gitProvider}
+        onProviderChange={setGitProvider}
+        onChange={handleSelect}
+      />
+      <Button
+        disabled={pending || !selection?.cloneUrl}
+        onClick={onConnect}
+        className="w-full sm:w-auto"
+      >
+        {pending
+          ? "Connecting…"
+          : selection
+            ? `Connect ${selection.fullName}`
+            : "Select a repository"}
       </Button>
     </div>
   )
