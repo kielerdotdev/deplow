@@ -10,6 +10,9 @@ export interface SecretsInput {
   storage: StorageCredentials
 }
 
+/** Characters that make a YAML scalar unsafe to emit unquoted. */
+const YAML_UNSAFE_RE = /[-:#\n\r"'{}[\],&*?|>!%@`\t]/
+
 /**
  * Generates connection secrets for a project as YAML.
  */
@@ -48,9 +51,20 @@ export class SecretsService {
   }
 }
 
+/**
+ * Quote a YAML scalar value, defaulting to double-quoted JSON form when the
+ * value contains any character that YAML would interpret specially.
+ */
 function yamlQuote(value: string): string {
-  if (/[:#\n"'{}[\],&*?|>!%@`]/.test(value) || value.includes(" ")) {
-    return JSON.stringify(value)
-  }
+  if (needsYamlQuoting(value)) return JSON.stringify(value)
   return value
+}
+
+function needsYamlQuoting(value: string): boolean {
+  if (value === "") return true
+  if (YAML_UNSAFE_RE.test(value)) return true
+  if (value.includes(" ")) return true
+  if (/^\d/.test(value)) return true
+  if (/^(true|false|null|yes|no|on|off|~)$/i.test(value)) return true
+  return false
 }

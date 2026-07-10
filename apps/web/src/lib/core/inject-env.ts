@@ -13,35 +13,8 @@ export function injectDeployEnv(
   config: PlatformConfig,
   extra: Record<string, string> = {},
 ): Record<string, string> {
-  const databaseUrl = `postgres://${encodeURIComponent(credentials.database.user)}:${encodeURIComponent(credentials.database.password)}@${config.postgresDockerHost}:${config.postgresDockerPort}/${credentials.database.database}`
-
-  let redisUrl: string
-  if (credentials.redis.url) {
-    redisUrl = rewriteUrlHost(
-      credentials.redis.url,
-      config.redisDockerHost,
-      config.redisDockerPort,
-    )
-  } else if (credentials.redis.password) {
-    // ACL username is not known without url; use password-only (default user won't work for ACL namespaces)
-    redisUrl = `redis://:${encodeURIComponent(credentials.redis.password)}@${config.redisDockerHost}:${config.redisDockerPort}`
-  } else {
-    redisUrl = `redis://${config.redisDockerHost}:${config.redisDockerPort}`
-  }
-
-  // Prefer ACL form from provisioner: redis://username:password@host:port
-  // rewrite only host/port
-  if (credentials.redis.url?.includes("://")) {
-    try {
-      const u = new URL(credentials.redis.url)
-      // Redis URLs may use redis://user:pass@host:port — URL parser works
-      u.hostname = config.redisDockerHost
-      u.port = String(config.redisDockerPort)
-      redisUrl = u.href.replace(/\/$/, "")
-    } catch {
-      // keep fallback
-    }
-  }
+  const databaseUrl = buildDatabaseUrl(credentials, config)
+  const redisUrl = buildRedisUrl(credentials, config)
 
   return {
     ...extra,
@@ -55,7 +28,36 @@ export function injectDeployEnv(
   }
 }
 
-function rewriteUrlHost(url: string, host: string, port: number): string {
+function buildDatabaseUrl(
+  creds: ProjectCredentials,
+  config: PlatformConfig,
+): string {
+  const { user, password, database } = creds.database
+  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${config.postgresDockerHost}:${config.postgresDockerPort}/${database}`
+}
+
+function buildRedisUrl(
+  creds: ProjectCredentials,
+  config: PlatformConfig,
+): string {
+  const dockerHost = config.redisDockerHost
+  const dockerPort = config.redisDockerPort
+
+  // Prefer ACL form from provisioner: redis://username:password@host:port
+  if (creds.redis.url?.includes("://")) {
+    return rewriteHost(creds.redis.url, dockerHost, dockerPort)
+  }
+
+  // Password-only (no ACL username known without url)
+  if (creds.redis.password) {
+    return `redis://:${encodeURIComponent(creds.redis.password)}@${dockerHost}:${dockerPort}`
+  }
+
+  // No auth (development / single-tenant)
+  return `redis://${dockerHost}:${dockerPort}`
+}
+
+function rewriteHost(url: string, host: string, port: number): string {
   try {
     const u = new URL(url)
     u.hostname = host

@@ -4,23 +4,16 @@ import { tanstackStartCookies } from "better-auth/tanstack-start"
 
 import { db } from "@deplow/db"
 import * as schema from "@deplow/db/auth-schema"
+import { env } from "@/lib/env"
 
-function getBaseUrl() {
-  return (
-    process.env.BETTER_AUTH_URL ??
-    process.env.APP_URL ??
-    "http://localhost:3000"
-  )
-}
-
-const isDev = process.env.NODE_ENV !== "production"
+const isDev = env.isDev
 
 export const auth = betterAuth({
   appName: "Deplow",
-  baseURL: getBaseUrl(),
-  secret: process.env.BETTER_AUTH_SECRET,
+  baseURL: env.betterAuthUrl,
+  secret: env.betterAuthSecret,
   // Vite binds on all interfaces; allow LAN / Tailscale origins in dev.
-  trustedOrigins: isDev ? ["*"] : [getBaseUrl()],
+  trustedOrigins: isDev ? ["*"] : [env.betterAuthUrl],
   database: drizzleAdapter(db, {
     provider: "sqlite",
     schema,
