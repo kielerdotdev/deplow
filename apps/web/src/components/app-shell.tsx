@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router"
 import {
   BoxIcon,
   ChevronsUpDownIcon,
-  ContainerIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   ServerIcon,
@@ -183,11 +182,10 @@ export function AppShell({
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-1 h-4" />
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <ContainerIcon className="size-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0">
                 {title ? (
                   <>
-                    <h1 className="truncate text-sm font-semibold leading-none">
+                    <h1 className="truncate text-lg font-semibold leading-none">
                       {title}
                     </h1>
                     {description ? (

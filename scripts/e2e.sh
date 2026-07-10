@@ -10,7 +10,8 @@ ORIGIN="$BASE"
 EMAIL="e2e-$(date +%s)@example.com"
 PASS="testpass123"
 PROJECT="demo$(date +%s | tail -c 6)"
-SCRATCH="${SCRATCH_DIR:-/tmp/grok-goal-494b43c839d0/implementer}"
+# Portable scratch: SCRATCH_DIR override, else private temp under TMPDIR
+SCRATCH="${SCRATCH_DIR:-${TMPDIR:-/tmp}/deplow-e2e-$$}"
 mkdir -p "$SCRATCH"
 
 cleanup() {

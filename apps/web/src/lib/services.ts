@@ -146,6 +146,13 @@ export function scheduleProjectBackups(
       if (!row) return null
       return decryptProjectCredentials(row.credentialsEncrypted)
     },
+    getLastBackupAt: async () => {
+      const [row] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+      return row?.lastBackupAt ?? null
+    },
   })
 }
 

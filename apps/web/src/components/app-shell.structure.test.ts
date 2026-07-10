@@ -35,15 +35,36 @@ describe("UI shell structure", () => {
     expect(src).toContain("ActionDialog")
     expect(src).toContain("EmptyState")
     expect(src).toContain("Public URL")
-    expect(src).toContain("secrets.yaml")
-    expect(src).toContain("Download")
     expect(src).toContain("fromGit")
     expect(src).toContain("summarizeDeployError")
-    expect(src).toContain("Retry")
-    expect(src).toContain("Image")
-    expect(src).toContain('mode === "git"')
     expect(src).toContain("Destroy project")
     expect(src).toContain('section === "settings"')
+    expect(src).toContain('data-primary-action="deploy"')
+    // modular panels — not one unmaintainable monolith of local helpers only
+    expect(src).toContain("DeploymentsPanel")
+    expect(src).toContain("SecretsPanel")
+    expect(src).toContain("BackupsPanel")
+    expect(src).toContain("AppSheetBody")
+    expect(src).toContain("@/components/project-deployments-panel")
+    expect(src).toContain("@/components/project-app-sheet")
+  })
+
+  it("project panel modules keep retry/rollback and humanized errors", () => {
+    const appSheet = readFileSync(
+      path.join(root, "components/project-app-sheet.tsx"),
+      "utf8",
+    )
+    expect(appSheet).toContain("Retry")
+    expect(appSheet).toContain("Roll back")
+    expect(appSheet).toContain("summarizeDeployError")
+    expect(appSheet).toContain("Connect a repository to deploy")
+
+    const secrets = readFileSync(
+      path.join(root, "components/project-secrets-panel.tsx"),
+      "utf8",
+    )
+    expect(secrets).toContain("secrets.yaml")
+    expect(secrets).toContain("Download")
   })
 
   it("project settings steals Railway source + networking patterns", () => {

@@ -95,4 +95,31 @@ describe("ProxyService route files", () => {
     expect(proxy.listRoutes()).toHaveLength(0)
     expect(onChange).toHaveBeenCalledTimes(2)
   })
+
+  it("rehydrates routes from disk after control-plane restart", async () => {
+    dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    const writer = new ProxyService({
+      routesDir: dir,
+      baseDomain: "apps.example.com",
+    })
+    await writer.upsertProductionRoute({
+      projectId: "restart-me",
+      slug: "demo",
+      upstream: "deplow-deadbeef-app:80",
+    })
+
+    // Simulate new process: fresh service, same routes dir
+    const reloaded = new ProxyService({
+      routesDir: dir,
+      baseDomain: "apps.example.com",
+      publicProtocol: "https",
+    })
+    const route = reloaded.getRoute("restart-me")
+    expect(route).toBeDefined()
+    expect(route!.slug).toBe("demo")
+    expect(route!.upstream).toContain("deplow-deadbeef-app")
+    expect(route!.hostname).toBe("demo.apps.example.com")
+    expect(route!.publicUrl).toBe("https://demo.apps.example.com")
+    expect(reloaded.listRoutes()).toHaveLength(1)
+  })
 })
