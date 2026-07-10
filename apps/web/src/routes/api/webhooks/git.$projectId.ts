@@ -5,22 +5,12 @@ import {
   decryptString,
   gitWebhookResultToResponse,
   handleGitWebhook,
-  injectDeployEnv,
-  selectBuildStrategy,
+  isWebhookBodyTooLarge,
+  MAX_WEBHOOK_BODY_BYTES,
   type GitWebhookProject,
 } from "@/lib/core"
-import {
-  buildService,
-  db,
-  decryptProjectCredentials,
-  deployments,
-  dockerNodeExecutor,
-  ensureLocalNodeId,
-  gitService,
-  platformConfig,
-  projects,
-  proxyService,
-} from "@/lib/services"
+import { db, gitService, platformConfig, projects } from "@/lib/services"
+import { runProductionDeploy } from "@/orpc/deployments"
 
 /**
  * GitHub / GitLab push webhook → production deploy.
@@ -32,6 +22,19 @@ export const Route = createFileRoute("/api/webhooks/git/$projectId")({
       POST: async ({ request, params }) => {
         const projectId = params.projectId
         const rawBody = await request.text()
+
+        if (isWebhookBodyTooLarge(Buffer.byteLength(rawBody, "utf8"))) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: `Webhook body too large (max ${MAX_WEBHOOK_BODY_BYTES} bytes)`,
+            }),
+            {
+              status: 413,
+              headers: { "Content-Type": "application/json" },
+            },
+          )
+        }
 
         const result = await handleGitWebhook(
           {
@@ -90,7 +93,7 @@ function rowToWebhookProject(
   }
 }
 
-/** Clone → build → deploy production slot → update proxy. */
+/** Clone → shared production deploy pipeline (locked, proxy, gVisor). */
 async function runGitProductionDeploy(
   project: GitWebhookProject,
   branch: string,
@@ -105,82 +108,13 @@ async function runGitProductionDeploy(
     branch,
   })
 
-  let nodeId = project.nodeId
-  if (!nodeId) {
-    nodeId = await ensureLocalNodeId()
-    await db.update(projects).set({ nodeId }).where(eq(projects.id, project.id))
-  }
-
-  const strategy = selectBuildStrategy({ sourcePath: clone.sourcePath })
-  const deploymentId = crypto.randomUUID()
-  const serviceName = "app"
-
-  await db.insert(deployments).values({
-    id: deploymentId,
+  const summary = await runProductionDeploy({
     projectId: project.id,
-    nodeId,
-    serviceName,
+    nodeId: project.nodeId,
+    serviceName: "app",
     sourcePath: clone.sourcePath,
-    buildStrategy: strategy,
-    status: "building",
     triggeredBy: "git_webhook",
-    buildLogs: clone.logs,
   })
 
-  const built = await buildService.buildFromSource({
-    sourcePath: clone.sourcePath,
-    projectSlug: project.slug,
-    deploymentId,
-  })
-
-  await db
-    .update(deployments)
-    .set({
-      image: built.image,
-      buildLogs: [clone.logs, built.logs].filter(Boolean).join("\n"),
-      buildStrategy: built.strategy,
-      status: "deploying",
-    })
-    .where(eq(deployments.id, deploymentId))
-
-  const credentials = decryptProjectCredentials(project.credentialsEncrypted)
-  const env = credentials ? injectDeployEnv(credentials, platformConfig) : {}
-
-  const containerPort = 80
-  const result = await dockerNodeExecutor.deployApp(nodeId, {
-    image: built.image,
-    serviceName,
-    env,
-    containerPort,
-    projectId: project.id,
-  })
-
-  const upstream = dockerNodeExecutor.proxyUpstream(
-    nodeId,
-    serviceName,
-    containerPort,
-  )
-  const route = await proxyService.upsertProductionRoute({
-    projectId: project.id,
-    slug: project.slug,
-    upstream,
-  })
-  if (route.publicUrl) {
-    await db
-      .update(projects)
-      .set({ publicUrl: route.publicUrl })
-      .where(eq(projects.id, project.id))
-  }
-
-  await db
-    .update(deployments)
-    .set({
-      status: "running",
-      containerId: result.containerId,
-      image: built.image,
-      errorMessage: null,
-    })
-    .where(eq(deployments.id, deploymentId))
-
-  return { deploymentId, status: "running" }
+  return { deploymentId: summary.id, status: summary.status }
 }

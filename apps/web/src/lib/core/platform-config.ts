@@ -56,6 +56,8 @@ export interface PlatformConfig {
   gitlabToken: string
 }
 
+const DEV_SECRETS_FALLBACK = "dev-only-change-me-deplow-secrets"
+
 function requireEnv(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback
   if (!value) {
@@ -71,10 +73,49 @@ function envBool(name: string, defaultValue: boolean): boolean {
 }
 
 /**
+ * Production (or DEPLOW_REQUIRE_SECRETS=true) must set real secrets —
+ * never the dev-only fallback.
+ */
+export function assertProductionSecrets(
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  const requireSecrets =
+    env.NODE_ENV === "production" ||
+    env.DEPLOW_REQUIRE_SECRETS === "1" ||
+    env.DEPLOW_REQUIRE_SECRETS === "true"
+
+  if (!requireSecrets) return
+
+  const auth = (env.BETTER_AUTH_SECRET ?? "").trim()
+  const secrets = (env.DEPLOW_SECRETS_KEY ?? "").trim()
+  const effective = secrets || auth
+
+  if (!effective) {
+    throw new Error(
+      "Missing required secrets for production: set BETTER_AUTH_SECRET and DEPLOW_SECRETS_KEY",
+    )
+  }
+  if (
+    effective === DEV_SECRETS_FALLBACK ||
+    auth === DEV_SECRETS_FALLBACK ||
+    secrets === DEV_SECRETS_FALLBACK
+  ) {
+    throw new Error(
+      "Refusing to start with the dev-only secrets fallback. Set BETTER_AUTH_SECRET and DEPLOW_SECRETS_KEY to strong values.",
+    )
+  }
+  if (effective.length < 16) {
+    throw new Error("Secrets keys must be at least 16 characters in production")
+  }
+}
+
+/**
  * Load platform connection settings from environment.
  * Safe defaults target the local docker-compose stack.
  */
 export function loadPlatformConfig(): PlatformConfig {
+  assertProductionSecrets()
+
   const postgresHost = process.env.DEPLOW_POSTGRES_HOST ?? "127.0.0.1"
   const postgresPort = Number(process.env.DEPLOW_POSTGRES_PORT ?? "55432")
   const redisHost = process.env.DEPLOW_REDIS_HOST ?? "127.0.0.1"
@@ -127,7 +168,7 @@ export function loadPlatformConfig(): PlatformConfig {
     backupBucket: process.env.DEPLOW_BACKUP_BUCKET ?? "deplow-backups",
     secretsEncryptionKey: requireEnv(
       "DEPLOW_SECRETS_KEY",
-      process.env.BETTER_AUTH_SECRET ?? "dev-only-change-me-deplow-secrets",
+      process.env.BETTER_AUTH_SECRET ?? DEV_SECRETS_FALLBACK,
     ),
     dockerSocketPath:
       process.env.DOCKER_HOST?.replace("unix://", "") ?? "/var/run/docker.sock",

@@ -37,7 +37,7 @@ export type {
   BuildSelectionInput,
   BuildStrategy,
 } from "./build.service"
-export { loadPlatformConfig } from "./platform-config"
+export { loadPlatformConfig, assertProductionSecrets } from "./platform-config"
 export type { PlatformConfig } from "./platform-config"
 export { injectDeployEnv } from "./inject-env"
 export { encryptString, decryptString, randomPassword } from "./crypto"
@@ -90,3 +90,18 @@ export {
   normalizeRepoUrl,
 } from "./git-remote"
 export type { RemoteRepo, ListReposResult } from "./git-remote"
+export { summarizeDeployError, isExpectedDeployFailure } from "./user-error"
+export { ProjectDeployLock, projectDeployLock } from "./deploy-lock"
+export { isBackupDue, nextBackupDueAt } from "./backup-due"
+export type { BackupDueInput } from "./backup-due"
+export {
+  evaluateDoctorChecks,
+  doctorSummary,
+  MAX_WEBHOOK_BODY_BYTES,
+  isWebhookBodyTooLarge,
+} from "./doctor"
+export type {
+  DoctorCheckResult,
+  DoctorProbeResults,
+  DoctorStatus,
+} from "./doctor"

@@ -17,12 +17,12 @@ description: Control plane and platform configuration reference.
 
 ## Secure runtime (user apps)
 
-| Variable                      | Purpose                                      | Default  |
-| ----------------------------- | -------------------------------------------- | -------- |
-| `DEPLOW_APP_RUNTIME`          | OCI runtime name for user app containers     | `runsc`  |
-| `DEPLOW_APP_RUNTIME_REQUIRED` | Fail deploy if the runtime is not installed  | `true`   |
-| `DEPLOW_APP_MEMORY_MB`        | Memory limit for user apps                   | `512`    |
-| `DEPLOW_APP_CPUS`             | CPU limit for user apps                      | `1`      |
+| Variable                      | Purpose                                     | Default |
+| ----------------------------- | ------------------------------------------- | ------- |
+| `DEPLOW_APP_RUNTIME`          | OCI runtime name for user app containers    | `runsc` |
+| `DEPLOW_APP_RUNTIME_REQUIRED` | Fail deploy if the runtime is not installed | `true`  |
+| `DEPLOW_APP_MEMORY_MB`        | Memory limit for user apps                  | `512`   |
+| `DEPLOW_APP_CPUS`             | CPU limit for user apps                     | `1`     |
 
 Set `DEPLOW_APP_RUNTIME=runc` only as a temporary escape hatch. See [Security](/docs/concepts/security/).
 
