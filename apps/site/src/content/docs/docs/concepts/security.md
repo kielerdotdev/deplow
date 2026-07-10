@@ -7,14 +7,14 @@ Security is a first-class product feature in deplow — not an optional appendix
 
 ## What deplow hardens
 
-| Layer | Behavior |
-| --- | --- |
-| **User apps** | Run under **gVisor (`runsc`)** by default |
-| **Platform services** | Postgres, Redis, MinIO stay on ordinary **runc** |
-| **Builds** | Railpack / BuildKit / `docker build` use runc (not gVisor) |
-| **HostConfig** | CapDrop ALL, `no-new-privileges`, readonly rootfs (+ `/tmp` tmpfs), memory/CPU limits |
-| **Docker socket** | Available to the control plane only — **never** mounted into user apps |
-| **Secrets** | Project credentials encrypted at rest (AES-GCM) |
+| Layer                 | Behavior                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| **User apps**         | Run under **gVisor (`runsc`)** by default                                             |
+| **Platform services** | Postgres, Redis, MinIO stay on ordinary **runc**                                      |
+| **Builds**            | Railpack / BuildKit / `docker build` use runc (not gVisor)                            |
+| **HostConfig**        | CapDrop ALL, `no-new-privileges`, readonly rootfs (+ `/tmp` tmpfs), memory/CPU limits |
+| **Docker socket**     | Available to the control plane only — **never** mounted into user apps                |
+| **Secrets**           | Project credentials encrypted at rest (AES-GCM)                                       |
 
 ## Why gVisor
 

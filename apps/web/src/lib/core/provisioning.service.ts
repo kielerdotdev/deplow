@@ -6,6 +6,7 @@ import { RedisProvisioner } from "./infra/redis"
 import { StorageProvisioner } from "./infra/storage"
 import type { PlatformConfig } from "./platform-config"
 import { SecretsService } from "./secrets.service"
+import { productionSlot, slotResourceName } from "./slot"
 import type { ServerSpawner } from "./spawners/base"
 import { getServerSpawner } from "./spawners/factory"
 
@@ -50,7 +51,8 @@ export class ProvisioningService {
     const projectId = input.projectId ?? crypto.randomUUID()
     const slug = input.name
     // v1: always provision the production slot (see docs/data-plane.md)
-    const resourceName = slug
+    const slot = productionSlot(projectId, slug)
+    const resourceName = slotResourceName(slot)
 
     const dbCreds = await this.postgres.createDatabase(resourceName)
     const redisCreds = await this.redis.createNamespace(resourceName)
@@ -94,10 +96,11 @@ export class ProvisioningService {
   }
 
   async destroyProject(input: DestroyProjectInput): Promise<void> {
-    const slug = input.slug
+    const slot = productionSlot(input.projectId, input.slug)
+    const resourceName = slotResourceName(slot)
     if (input.credentials) {
-      await this.postgres.dropDatabase(slug).catch(() => undefined)
-      await this.redis.destroyNamespace(slug).catch(() => undefined)
+      await this.postgres.dropDatabase(resourceName).catch(() => undefined)
+      await this.redis.destroyNamespace(resourceName).catch(() => undefined)
       await this.storage
         .destroyBucket(
           input.credentials.storage.bucket,
@@ -105,8 +108,8 @@ export class ProvisioningService {
         )
         .catch(() => undefined)
     } else {
-      await this.postgres.dropDatabase(slug).catch(() => undefined)
-      await this.redis.destroyNamespace(slug).catch(() => undefined)
+      await this.postgres.dropDatabase(resourceName).catch(() => undefined)
+      await this.redis.destroyNamespace(resourceName).catch(() => undefined)
     }
   }
 }

@@ -23,16 +23,17 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
     expect(src).toContain("injectDeployEnv")
     expect(src).toContain("runProductionDeploy")
+    expect(src).toContain("projectDeployLock")
+    expect(src).toContain("summarizeDeployError")
     expect(src).toContain("dockerNodeExecutor.deployApp")
     expect(src).toContain("proxyService.upsertProductionRoute")
-    expect(src).toContain("gVisor runtime")
     expect(src).toContain('status: "queued"')
     expect(src).toContain('status: "building"')
     expect(src).toContain('status: "deploying"')
     expect(src).toContain('status: "running"')
   })
 
-  it("webhook route drives handleGitWebhook (signature + deploy entry)", () => {
+  it("webhook route drives handleGitWebhook (signature + shared deploy + body limit)", () => {
     const src = readFileSync(
       path.join(root, "routes/api/webhooks/git.$projectId.ts"),
       "utf8",
@@ -40,9 +41,9 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     expect(src).toContain("handleGitWebhook")
     expect(src).toContain("runProductionDeployFromGit")
     expect(src).toContain("gitService.syncRepo")
-    expect(src).toContain("buildService.buildFromSource")
-    expect(src).toContain("dockerNodeExecutor.deployApp")
-    expect(src).toContain("proxyService.upsertProductionRoute")
+    expect(src).toContain("runProductionDeploy")
+    expect(src).toContain("isWebhookBodyTooLarge")
+    expect(src).toContain("MAX_WEBHOOK_BODY_BYTES")
     expect(src).toContain("git_webhook")
   })
 

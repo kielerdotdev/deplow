@@ -8,25 +8,26 @@ import {
 import {
   BoxIcon,
   CopyIcon,
-  DatabaseBackupIcon,
   DatabaseIcon,
-  DownloadIcon,
   ExternalLinkIcon,
   GitBranchIcon,
   HardDriveIcon,
   MoreHorizontalIcon,
   RocketIcon,
-  RotateCcwIcon,
   ScrollTextIcon,
   Trash2Icon,
   WorkflowIcon,
 } from "lucide-react"
 
 import { ActionDialog } from "@/components/action-dialog"
+import { AppSheetBody, InfraSheetBody } from "@/components/project-app-sheet"
 import { AppShell } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
+import { DeploymentsPanel } from "@/components/project-deployments-panel"
 import { ProjectRail, type ProjectSection } from "@/components/project-rail"
 import { ProjectSettings } from "@/components/project-settings"
+import { BackupsPanel } from "@/components/project-backups-panel"
+import { SecretsPanel } from "@/components/project-secrets-panel"
 import { StackCard } from "@/components/stack-card"
 import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -35,7 +36,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -54,8 +54,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sheet,
@@ -64,14 +62,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
 import {
@@ -138,7 +128,7 @@ function ProjectDetailPage() {
     deployments.find((d) => d.id === selectedDeployId) ?? latest ?? null
   const appStatus = latest?.status ?? "ready"
   const appDetail = !latest
-    ? "Not deployed · gVisor when live"
+    ? "Not deployed · Deploy to go live under gVisor"
     : latest.status === "running"
       ? "Online · gVisor sandbox"
       : ["building", "deploying", "queued", "pending"].includes(latest.status)
@@ -416,6 +406,7 @@ function ProjectDetailPage() {
           <Button
             size="sm"
             disabled={pending || !canDeploy}
+            data-primary-action="deploy"
             onClick={() => {
               setStackTarget("app")
               void deploy(
@@ -508,7 +499,13 @@ function ProjectDetailPage() {
                     {copied === "url" ? "Copied" : "Copy"}
                   </Button>
                 </div>
-              ) : null}
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/80 px-4 py-3 text-sm text-muted-foreground">
+                  No public URL yet. Deploy the app (and set{" "}
+                  <code className="text-xs">DEPLOW_BASE_DOMAIN</code> for
+                  wildcard HTTPS via Caddy + cloudflared).
+                </div>
+              )}
 
               {project.git?.connected && repoLabel ? (
                 <button
@@ -849,676 +846,5 @@ function ProjectDetailPage() {
         </ScrollArea>
       </ActionDialog>
     </AppShell>
-  )
-}
-
-function relativeTime(iso: string) {
-  return formatDateTime(iso)
-}
-
-type DeployRow = {
-  id: string
-  status: string
-  nodeId: string
-  serviceName: string
-  buildStrategy?: string | null
-  image?: string | null
-  buildLogs?: string | null
-  errorMessage?: string | null
-  triggeredBy?: string | null
-  createdAt: string
-}
-
-function DeploymentsPanel({
-  deployments,
-  selectedId,
-  pending,
-  onSelect,
-  onViewLogs,
-  onRetry,
-  onOpenDeploy,
-}: {
-  deployments: DeployRow[]
-  selectedId: string | null
-  pending: boolean
-  onSelect: (id: string) => void
-  onViewLogs: (d: DeployRow) => void
-  onRetry: (id: string) => void
-  onOpenDeploy: () => void
-}) {
-  if (deployments.length === 0) {
-    return (
-      <Card>
-        <EmptyState
-          icon={RocketIcon}
-          title="No deployments yet"
-          description="Deploy source to go live. History will show up here."
-          action={
-            <Button onClick={onOpenDeploy}>
-              <RocketIcon data-icon="inline-start" />
-              Deploy
-            </Button>
-          }
-        />
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Deployments</CardTitle>
-        <CardDescription>Recent deploys for this project.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        {deployments.map((d) => (
-          <div
-            key={d.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => onSelect(d.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") onSelect(d.id)
-            }}
-            className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-3 transition-colors ${
-              selectedId === d.id
-                ? "border-primary/40 bg-accent/40"
-                : "border-border/80 hover:bg-muted/40"
-            }`}
-          >
-            <div className="flex min-w-0 flex-col gap-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={d.status} />
-                <span className="font-mono text-xs text-muted-foreground">
-                  {d.id.slice(0, 8)}
-                </span>
-                {d.triggeredBy ? (
-                  <span className="text-xs text-muted-foreground">
-                    via {d.triggeredBy}
-                  </span>
-                ) : null}
-              </div>
-              <p className="truncate font-mono text-xs text-muted-foreground">
-                {d.buildStrategy ? `${d.buildStrategy} · ` : ""}
-                {d.image || "—"}
-              </p>
-              {d.errorMessage ? (
-                <p className="text-xs text-destructive">
-                  {summarizeDeployError(d.errorMessage)}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {relativeTime(d.createdAt)}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onViewLogs(d)
-                }}
-              >
-                View logs
-              </Button>
-              {d.status === "failed" ? (
-                <Button
-                  size="sm"
-                  disabled={pending}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRetry(d.id)
-                  }}
-                >
-                  Retry
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
-
-function AppSheetBody({
-  gitConnected,
-  repoLabel,
-  gitBranch,
-  mode,
-  setMode,
-  showAdvanced,
-  setShowAdvanced,
-  sourcePath,
-  setSourcePath,
-  image,
-  setImage,
-  containerPort,
-  setContainerPort,
-  publishPort,
-  setPublishPort,
-  pending,
-  canDeploy,
-  latest,
-  selected,
-  deployments,
-  onDeploy,
-  onRetry,
-  onRollback,
-  onFetchLogs,
-  onSelectDeploy,
-  onConnectGit,
-  onViewDeployments,
-}: {
-  gitConnected: boolean
-  repoLabel: string | null
-  gitBranch: string
-  mode: "git" | "source" | "image"
-  setMode: (m: "git" | "source" | "image") => void
-  showAdvanced: boolean
-  setShowAdvanced: (fn: (v: boolean) => boolean) => void
-  sourcePath: string
-  setSourcePath: (v: string) => void
-  image: string
-  setImage: (v: string) => void
-  containerPort: number
-  setContainerPort: (v: number) => void
-  publishPort: number | ""
-  setPublishPort: (v: number | "") => void
-  pending: boolean
-  canDeploy: boolean
-  latest: DeployRow | undefined
-  selected: DeployRow | null
-  deployments: DeployRow[]
-  onDeploy: (force?: "git" | "source" | "image") => void
-  onRetry: (id: string) => void
-  onRollback: () => void
-  onFetchLogs: (d: DeployRow) => void
-  onSelectDeploy: (id: string) => void
-  onConnectGit: () => void
-  onViewDeployments: () => void
-}) {
-  const isNew = deployments.length === 0
-
-  // Brand-new project: guide to Git — don't dump path forms
-  if (!gitConnected && isNew && !showAdvanced) {
-    return (
-      <div className="flex flex-col gap-6">
-        <EmptyState
-          size="sm"
-          icon={GitBranchIcon}
-          title="Connect a repository to deploy"
-          description="Link GitHub or GitLab. Then Deploy clones the branch, builds with Railpack or your Dockerfile, and shows status here."
-          action={
-            <Button className="w-full" onClick={onConnectGit}>
-              <GitBranchIcon data-icon="inline-start" />
-              Connect repository
-            </Button>
-          }
-          secondaryAction={
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setMode("source")
-                setShowAdvanced(() => true)
-              }}
-            >
-              Use a local path instead
-            </Button>
-          }
-        />
-        <ol className="space-y-2 rounded-lg border border-border/80 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-          <li>
-            <span className="font-medium text-foreground">1. Settings</span> —
-            connect the repo under Source
-          </li>
-          <li>
-            <span className="font-medium text-foreground">2. Deploy</span> — one
-            click from this panel or the header
-          </li>
-          <li>
-            <span className="font-medium text-foreground">3. Status</span> —
-            live on the App card; full list under Deployments
-          </li>
-        </ol>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      <div className="flex flex-col gap-4">
-        {gitConnected && repoLabel ? (
-          <div className="rounded-lg border border-border/80 bg-muted/20 p-3">
-            <div className="flex items-center gap-2">
-              <GitBranchIcon className="size-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{repoLabel}</span>
-              <span className="text-xs text-muted-foreground">
-                · {gitBranch}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {isNew
-                ? "Hit Deploy to clone this branch and go live."
-                : "Redeploy from this branch anytime."}
-            </p>
-          </div>
-        ) : null}
-
-        {latest ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/80 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Latest deployment
-              </p>
-              <StatusBadge status={latest.status} />
-            </div>
-            <p className="font-mono text-xs text-muted-foreground">
-              {latest.id.slice(0, 8)}
-              {latest.buildStrategy ? ` · ${latest.buildStrategy}` : ""}
-              {" · "}
-              {relativeTime(latest.createdAt)}
-            </p>
-            {latest.status === "failed" && latest.errorMessage ? (
-              <p className="text-xs text-destructive">
-                {summarizeDeployError(latest.errorMessage)}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pending}
-                onClick={() => onFetchLogs(latest)}
-              >
-                <ScrollTextIcon data-icon="inline-start" />
-                Logs
-              </Button>
-              <Button variant="ghost" size="sm" onClick={onViewDeployments}>
-                All deployments
-              </Button>
-            </div>
-          </div>
-        ) : gitConnected ? (
-          <p className="text-xs text-muted-foreground">
-            No deployments yet — status will show here after the first deploy.
-            Full history lives under{" "}
-            <button
-              type="button"
-              className="font-medium text-foreground underline-offset-2 hover:underline"
-              onClick={onViewDeployments}
-            >
-              Deployments
-            </button>{" "}
-            in the left rail.
-          </p>
-        ) : null}
-
-        <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={pending || !canDeploy}
-            onClick={() =>
-              onDeploy(
-                gitConnected && (mode === "git" || !showAdvanced)
-                  ? "git"
-                  : mode,
-              )
-            }
-          >
-            <RocketIcon data-icon="inline-start" />
-            {pending ? "Deploying…" : isNew ? "Deploy now" : "Redeploy"}
-          </Button>
-          {latest?.status === "failed" ? (
-            <Button
-              variant="outline"
-              disabled={pending}
-              onClick={() => onRetry(latest.id)}
-            >
-              <RotateCcwIcon data-icon="inline-start" />
-              Retry
-            </Button>
-          ) : null}
-          {deployments.filter((d) => d.image).length >= 2 ? (
-            <Button variant="outline" disabled={pending} onClick={onRollback}>
-              <RotateCcwIcon data-icon="inline-start" />
-              Roll back
-            </Button>
-          ) : null}
-        </div>
-
-        <button
-          type="button"
-          className="text-left text-xs text-muted-foreground hover:text-foreground hover:underline"
-          onClick={() => setShowAdvanced((v) => !v)}
-        >
-          {showAdvanced ? "Hide advanced" : "Advanced: local path or image"}
-        </button>
-
-        {showAdvanced ? (
-          <div className="flex flex-col gap-3 rounded-lg border p-3">
-            {!gitConnected ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-fit"
-                onClick={onConnectGit}
-              >
-                <GitBranchIcon data-icon="inline-start" />
-                Prefer Git instead
-              </Button>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              {gitConnected ? (
-                <Button
-                  size="sm"
-                  variant={mode === "git" ? "default" : "outline"}
-                  onClick={() => setMode("git")}
-                >
-                  Git
-                </Button>
-              ) : null}
-              <Button
-                size="sm"
-                variant={mode === "source" ? "default" : "outline"}
-                onClick={() => setMode("source")}
-              >
-                Source path
-              </Button>
-              <Button
-                size="sm"
-                variant={mode === "image" ? "default" : "outline"}
-                onClick={() => setMode("image")}
-              >
-                Image
-              </Button>
-            </div>
-            {mode === "source" ? (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="source-path">Absolute source path</Label>
-                <Input
-                  id="source-path"
-                  value={sourcePath}
-                  onChange={(e) => setSourcePath(e.target.value)}
-                  placeholder="/path/to/app"
-                  className="font-mono"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Must be your app directory — not{" "}
-                  <code className="text-xs">/</code>.
-                </p>
-              </div>
-            ) : null}
-            {mode === "image" ? (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="image">Container image</Label>
-                <Input
-                  id="image"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  placeholder="ghcr.io/you/app:latest"
-                  className="font-mono"
-                />
-              </div>
-            ) : null}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="container-port">Container port</Label>
-                <Input
-                  id="container-port"
-                  type="number"
-                  value={containerPort}
-                  onChange={(e) => setContainerPort(Number(e.target.value))}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="host-port">Host port (optional)</Label>
-                <Input
-                  id="host-port"
-                  type="number"
-                  value={publishPort}
-                  onChange={(e) =>
-                    setPublishPort(
-                      e.target.value === "" ? "" : Number(e.target.value),
-                    )
-                  }
-                  placeholder="proxy-only"
-                />
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {selected && selected.id !== latest?.id ? (
-        <div className="flex flex-col gap-3 rounded-lg border p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-medium">
-                Selected {selected.id.slice(0, 8)}
-              </p>
-            </div>
-            <StatusBadge status={selected.status} />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pending}
-            onClick={() => onFetchLogs(selected)}
-          >
-            <ScrollTextIcon data-icon="inline-start" />
-            View logs
-          </Button>
-        </div>
-      ) : null}
-
-      {deployments.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Recent</h3>
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-              onClick={onViewDeployments}
-            >
-              View all
-            </button>
-          </div>
-          {deployments.slice(0, 5).map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              className="flex items-center justify-between gap-2 rounded-lg border border-border/80 px-3 py-2 text-left hover:bg-muted/40"
-              onClick={() => onSelectDeploy(d.id)}
-            >
-              <StatusBadge status={d.status} />
-              <span className="text-xs text-muted-foreground">
-                {relativeTime(d.createdAt)}
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </>
-  )
-}
-
-function InfraSheetBody({
-  name,
-  ready,
-  onOpenSecrets,
-}: {
-  name: string
-  ready: boolean
-  onOpenSecrets: () => void
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <StatusBadge status={ready ? "ready" : "pending"} />
-        <span className="text-sm capitalize">{name}</span>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        {ready
-          ? "Provisioned with this project. Connection material lives in secrets.yaml — containers get Docker-network URLs injected on deploy."
-          : "Still provisioning. Refresh in a moment."}
-      </p>
-      <Button variant="outline" size="sm" onClick={onOpenSecrets}>
-        <DownloadIcon data-icon="inline-start" />
-        Open secrets
-      </Button>
-    </div>
-  )
-}
-
-function SecretsPanel({
-  secretsYaml,
-  copied,
-  onCopy,
-  onDownload,
-}: {
-  secretsYaml?: string | null
-  copied: boolean
-  onCopy: () => void
-  onDownload: () => void
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>secrets.yaml</CardTitle>
-        <CardDescription>
-          Host-facing connection material. Containers receive rewritten Docker
-          DNS URLs on deploy.
-        </CardDescription>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onCopy}>
-            <CopyIcon data-icon="inline-start" />
-            {copied ? "Copied" : "Copy"}
-          </Button>
-          <Button size="sm" onClick={onDownload}>
-            <DownloadIcon data-icon="inline-start" />
-            Download
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-72 rounded-lg border bg-muted/40">
-          <pre className="p-4 font-mono text-xs leading-relaxed whitespace-pre">
-            {secretsYaml || "(no secrets)"}
-          </pre>
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  )
-}
-
-function BackupsPanel({
-  schedule,
-  backups,
-  pending,
-  onRun,
-}: {
-  schedule: {
-    intervalMs: number
-    scheduled: boolean
-    lastBackupAt?: string | null
-  }
-  backups: {
-    id: string
-    status: string
-    storageKey: string
-    sizeBytes?: number | null
-    errorMessage?: string | null
-  }[]
-  pending: boolean
-  onRun: () => void
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Postgres backups</CardTitle>
-        <CardDescription>
-          On-demand dumps and the in-process schedule (default daily).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="grid gap-3 rounded-lg border p-3 text-sm sm:grid-cols-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Interval</p>
-            <p className="font-medium">
-              every {Math.round(schedule.intervalMs / 3_600_000)}h
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Scheduler</p>
-            <p className="font-medium">
-              {schedule.scheduled ? "Active" : "Not running"}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Last backup</p>
-            <p className="font-medium">
-              {schedule.lastBackupAt
-                ? formatDateTime(schedule.lastBackupAt)
-                : "None yet"}
-            </p>
-          </div>
-        </div>
-
-        {backups.length === 0 ? (
-          <EmptyState
-            size="sm"
-            icon={DatabaseBackupIcon}
-            title="No backups yet"
-            description="Run a backup now, or wait for the daily schedule to create the first dump."
-            action={
-              <Button size="sm" disabled={pending} onClick={onRun}>
-                <DatabaseBackupIcon data-icon="inline-start" />
-                {pending ? "Backing up…" : "Run backup"}
-              </Button>
-            }
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Status</TableHead>
-                <TableHead>Storage key</TableHead>
-                <TableHead className="text-right">Size</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {backups.map((b) => (
-                <TableRow key={b.id}>
-                  <TableCell>
-                    <StatusBadge status={b.status} />
-                    {b.errorMessage ? (
-                      <p className="mt-1 text-xs text-destructive">
-                        {b.errorMessage}
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="max-w-[280px] truncate font-mono text-xs">
-                    {b.storageKey}
-                  </TableCell>
-                  <TableCell className="text-right text-xs text-muted-foreground">
-                    {b.sizeBytes ? `${b.sizeBytes} B` : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-      {backups.length > 0 ? (
-        <CardFooter>
-          <Button size="sm" disabled={pending} onClick={onRun}>
-            <DatabaseBackupIcon data-icon="inline-start" />
-            {pending ? "Running…" : "Run Postgres backup"}
-          </Button>
-        </CardFooter>
-      ) : null}
-    </Card>
   )
 }

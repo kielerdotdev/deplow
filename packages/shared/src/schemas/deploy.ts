@@ -17,6 +17,11 @@ export const createDeploymentInputSchema = z
     image: z.string().min(1).optional(),
     /** Absolute path to app source for Dockerfile/Railpack build */
     sourcePath: z.string().min(1).optional(),
+    /**
+     * When true, clone the project's connected git repo and deploy from that source.
+     * Mutually exclusive with a bare image-only deploy unless sourcePath is also set.
+     */
+    fromGit: z.boolean().optional().default(false),
     /** git_webhook | manual | retry | rollback */
     triggeredBy: z
       .enum(["manual", "git_webhook", "retry", "rollback"])
@@ -26,10 +31,10 @@ export const createDeploymentInputSchema = z
   })
   .superRefine((val, ctx) => {
     const image = val.image ?? val.options?.image
-    if (!image && !val.sourcePath) {
+    if (!image && !val.sourcePath && !val.fromGit) {
       ctx.addIssue({
         code: "custom",
-        message: "Provide image or sourcePath",
+        message: "Provide image, sourcePath, or fromGit",
         path: ["image"],
       })
     }

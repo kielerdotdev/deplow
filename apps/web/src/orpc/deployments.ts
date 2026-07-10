@@ -11,12 +11,19 @@ import {
   deployments,
   dockerNodeExecutor,
   ensureLocalNodeId,
+  gitService,
   nodes,
   platformConfig,
   projects,
   proxyService,
 } from "@/lib/services"
-import { injectDeployEnv, selectBuildStrategy } from "@/lib/core"
+import {
+  injectDeployEnv,
+  isExpectedDeployFailure,
+  projectDeployLock,
+  selectBuildStrategy,
+  summarizeDeployError,
+} from "@/lib/core"
 
 import { authedProcedure } from "./middleware"
 
@@ -54,6 +61,38 @@ async function assertProjectOwner(projectId: string, ownerId: string) {
 
 /** Shared production deploy pipeline used by create / retry / rollback / webhooks. */
 export async function runProductionDeploy(input: {
+  projectId: string
+  nodeId?: string | null
+  serviceName?: string
+  image?: string
+  sourcePath?: string
+  triggeredBy?: string
+  options?: {
+    env?: Record<string, string>
+    publishPort?: number
+    containerPort?: number
+    command?: string[]
+    entrypoint?: string[]
+    readOnlyRootfs?: boolean
+    image?: string
+  }
+}): Promise<DeploymentSummary> {
+  try {
+    return await projectDeployLock.runExclusive(input.projectId, () =>
+      runProductionDeployUnlocked(input),
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/another deploy is running/i.test(message)) {
+      throw new ORPCError("CONFLICT", {
+        message: summarizeDeployError(message),
+      })
+    }
+    throw error
+  }
+}
+
+async function runProductionDeployUnlocked(input: {
   projectId: string
   nodeId?: string | null
   serviceName?: string
@@ -216,22 +255,19 @@ export async function runProductionDeploy(input: {
     return toSummary(row!)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    const human = summarizeDeployError(message)
     await db
       .update(deployments)
       .set({
         status: "failed",
-        errorMessage: message,
+        errorMessage: human,
         buildLogs: buildLogs || message,
       })
       .where(eq(deployments.id, id))
-    if (
-      message.includes("gVisor runtime") ||
-      message.includes("is not installed") ||
-      message.includes("is not available")
-    ) {
-      throw new ORPCError("BAD_REQUEST", { message })
+    if (isExpectedDeployFailure(message)) {
+      throw new ORPCError("BAD_REQUEST", { message: human })
     }
-    throw new ORPCError("INTERNAL_SERVER_ERROR", { message })
+    throw new ORPCError("INTERNAL_SERVER_ERROR", { message: human })
   }
 }
 
@@ -264,14 +300,39 @@ export const get = authedProcedure
 export const create = authedProcedure
   .input(createDeploymentInputSchema)
   .handler(async ({ context, input }) => {
-    await assertProjectOwner(input.projectId, context.session!.user.id)
+    const project = await assertProjectOwner(
+      input.projectId,
+      context.session!.user.id,
+    )
+
+    let sourcePath = input.sourcePath
+    let triggeredBy = input.triggeredBy
+    let image = input.image
+
+    if (input.fromGit) {
+      if (!project.gitRepoUrl) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "Connect a Git repository first",
+        })
+      }
+      const branch = project.gitBranch || "main"
+      const clone = await gitService.syncRepo({
+        projectId: project.id,
+        repoUrl: project.gitRepoUrl,
+        branch,
+      })
+      sourcePath = clone.sourcePath
+      image = undefined
+      triggeredBy = triggeredBy === "manual" ? "manual" : triggeredBy
+    }
+
     return runProductionDeploy({
       projectId: input.projectId,
       nodeId: input.nodeId,
       serviceName: input.serviceName,
-      image: input.image,
-      sourcePath: input.sourcePath,
-      triggeredBy: input.triggeredBy,
+      image,
+      sourcePath,
+      triggeredBy,
       options: input.options,
     })
   })
