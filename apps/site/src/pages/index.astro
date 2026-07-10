@@ -1,0 +1,202 @@
+---
+import LandingLayout from '../layouts/LandingLayout.astro';
+import Logo from '../components/landing/Logo.astro';
+import HeroDiagram from '../components/landing/diagrams/HeroDiagram.astro';
+import StackDiagram from '../components/landing/diagrams/StackDiagram.astro';
+import StepIcons from '../components/landing/diagrams/StepIcons.astro';
+import FeatureIcons from '../components/landing/icons/FeatureIcons.astro';
+
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
+
+const features = [
+	{
+		kind: 'bundle' as const,
+		title: 'Full stack per project',
+		body: 'Postgres, redis, and an S3 bucket — provisioned and isolated when you create a project.',
+	},
+	{
+		kind: 'build' as const,
+		title: 'Railpack or Dockerfile',
+		body: 'Source builds with Railpack by default. Bring a Dockerfile or pull a prebuilt image.',
+	},
+	{
+		kind: 'backup' as const,
+		title: 'Scheduled backups',
+		body: 'pg_dump on a timer. Artifacts land in the platform backup bucket automatically.',
+	},
+	{
+		kind: 'sandbox' as const,
+		title: 'gVisor by default',
+		body: 'User apps run sandboxed. Platform services stay on ordinary runc — security over convenience.',
+	},
+];
+
+const steps = [
+	{
+		kind: 'create' as const,
+		n: '1',
+		title: 'Create',
+		body: 'Spin up postgres, redis, and a bucket. Credentials encrypted at rest.',
+	},
+	{
+		kind: 'build' as const,
+		n: '2',
+		title: 'Build',
+		body: 'Railpack, Dockerfile, or pull a prebuilt image. Same path every time.',
+	},
+	{
+		kind: 'run' as const,
+		n: '3',
+		title: 'Run',
+		body: 'Env vars injected. Container starts under gVisor on your host.',
+	},
+	{
+		kind: 'backup' as const,
+		n: '4',
+		title: 'Back up',
+		body: 'Scheduled pg_dump into the platform bucket. No extra cron to write.',
+	},
+];
+---
+
+<LandingLayout
+	title="deplow — self-hosted app + postgres + redis + s3"
+	description="Deploy to your own Docker host. One project gets postgres, redis, s3, secrets, builds, backups — user apps sandboxed with gVisor."
+>
+	<header class="nav">
+		<div class="nav-inner">
+			<a class="brand" href="/">
+				<Logo />
+				deplow
+			</a>
+			<nav class="nav-links">
+				<a href="#loop">The loop</a>
+				<a href="/docs/">Docs</a>
+				<a class="btn btn--ink" href={appUrl}>Dashboard →</a>
+			</nav>
+		</div>
+	</header>
+
+	<main>
+		<!-- HERO -->
+		<section class="hero wrap">
+			<p class="hero-eyebrow"><i></i> self-hosted · sandboxed · single host</p>
+			<h1>You have Docker.<br /><span>You want fewer tabs.</span></h1>
+			<p class="hero-lede">
+				<strong>deplow</strong> is a small control plane for one kind of project: an app plus postgres,
+				redis, s3, and secrets — on a machine you already control. User apps run under gVisor by default.
+			</p>
+			<div class="hero-actions">
+				<a class="btn btn--clay" href="/docs/getting-started/quick-start/">Start here</a>
+				<a class="btn btn--ghost" href="/docs/">Read docs</a>
+			</div>
+			<p class="hero-note">compose up · pnpm dev · open dashboard</p>
+
+			<div class="hero-diagram">
+				<HeroDiagram />
+			</div>
+		</section>
+
+		<!-- FEATURES -->
+		<section class="section wrap">
+			<div class="section-head section-head--center">
+				<p class="section-label">what you get</p>
+				<h2>One project. The whole bundle.</h2>
+				<p>Skip the hosted Postgres tab, the Redis tab, and the backup cron you meant to write.</p>
+			</div>
+			<div class="features">
+				{
+					features.map((f) => (
+						<article class="feature">
+							<FeatureIcons kind={f.kind} />
+							<h3>{f.title}</h3>
+							<p>{f.body}</p>
+						</article>
+					))
+				}
+			</div>
+			<div class="out">
+				<span class="out-label">not this release</span>
+				<div class="out-tags">
+					<span>kubernetes</span>
+					<span>multi-host</span>
+					<span>marketplace</span>
+					<span>custom domains / ssl</span>
+				</div>
+			</div>
+		</section>
+
+		<!-- LOOP -->
+		<section class="section wrap--wide" id="loop">
+			<div class="section-head section-head--center">
+				<p class="section-label">deploy cycle</p>
+				<h2>The loop does not change</h2>
+				<p>Same four beats for every project. No branching strategy matrix.</p>
+			</div>
+			<div class="steps">
+				{
+					steps.map((s) => (
+						<figure class="step">
+							<div class="step-art">
+								<StepIcons kind={s.kind} />
+							</div>
+							<figcaption class="step-body">
+								<div class="step-title">
+									<span class="step-n">{s.n}</span>
+									{s.title}
+								</div>
+								<p>{s.body}</p>
+							</figcaption>
+						</figure>
+					))
+				}
+			</div>
+		</section>
+
+		<!-- STACK -->
+		<section class="section wrap">
+			<div class="stack-grid">
+				<div class="stack-copy">
+					<p class="section-label">under the hood</p>
+					<h2>Layers you can explain in one breath</h2>
+					<p>
+						SQLite holds project metadata. Postgres, redis, and minio hold workload data. Docker runs
+						the host; <strong>user apps run under gVisor</strong> with hardened defaults.
+					</p>
+					<p>
+						No ssh nodes, no swarm, no kube operator. If you need those, this is not your tool — and
+						that is fine.
+					</p>
+				</div>
+				<div class="stack-diagram">
+					<StackDiagram />
+				</div>
+			</div>
+		</section>
+
+		<!-- CTA -->
+		<section class="wrap">
+			<div class="cta">
+				<div>
+					<h2>Ten-minute local setup</h2>
+					<p>Compose file for platform services ships in the repo. pnpm dev for the control plane.</p>
+				</div>
+				<div class="cta-actions">
+					<a class="btn btn--light" href="/docs/getting-started/quick-start/">Quick start</a>
+					<a class="btn btn--ghost-light" href={appUrl}>Open dashboard</a>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<footer class="footer wrap--wide">
+		<div class="footer-inner">
+			<span>deplow · self-hosted on your docker host</span>
+			<div class="footer-links">
+				<a href="/docs/">Docs</a>
+				<a href="/docs/reference/environment/">Env vars</a>
+				<a href={appUrl}>Dashboard</a>
+			</div>
+		</div>
+	</footer>
+</LandingLayout>

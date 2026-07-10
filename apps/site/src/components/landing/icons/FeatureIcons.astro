@@ -1,0 +1,48 @@
+---
+interface Props {
+	kind: 'bundle' | 'build' | 'backup' | 'sandbox';
+}
+
+const { kind } = Astro.props;
+---
+
+{
+	kind === 'bundle' && (
+		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<rect x="4" y="8" width="28" height="22" rx="5" stroke="currentColor" stroke-width="2" />
+			<circle cx="13" cy="19" r="4" stroke="currentColor" stroke-width="2" />
+			<rect x="20" y="15" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2" />
+		</svg>
+	)
+}
+{
+	kind === 'build' && (
+		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<path
+				d="M6 12h10l4 4h10v12H6z"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linejoin="round"
+			/>
+			<path d="M6 12h10l4 4H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+		</svg>
+	)
+}
+{
+	kind === 'backup' && (
+		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<ellipse cx="18" cy="11" rx="9" ry="3.5" stroke="currentColor" stroke-width="2" />
+			<path d="M9 11v12c0 2 4 3.5 9 3.5s9-1.5 9-3.5V11" stroke="currentColor" stroke-width="2" />
+			<ellipse cx="18" cy="23" rx="9" ry="3.5" stroke="currentColor" stroke-width="2" />
+		</svg>
+	)
+}
+{
+	kind === 'sandbox' && (
+		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<rect x="7" y="10" width="22" height="18" rx="4" stroke="currentColor" stroke-width="2" />
+			<path d="M14 10V8a4 4 0 018 0v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+			<circle cx="18" cy="19" r="2.5" fill="currentColor" />
+		</svg>
+	)
+}

@@ -1,0 +1,70 @@
+---
+title: Introduction
+description: What deplow is, what it provisions, and how it differs from generic PaaS panels.
+template: splash
+hero:
+  tagline: Self-hosted project runtime for Docker — sandboxed by default
+  image:
+    alt: deplow logo
+    file: ../../../assets/logo.svg
+  actions:
+    - text: Quick start
+      link: /docs/getting-started/quick-start/
+      icon: right-arrow
+    - text: Prerequisites
+      link: /docs/getting-started/prerequisites/
+      icon: document
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components"
+
+deplow is an **opinionated self-hosted project runtime**. Most apps you deploy need a **database**, **object storage** (S3 / R2-shaped), and a **runtime** — that is about it. deplow provisions that bundle so you do not spin up hosted Postgres, Redis, or S3 per project, or hand-roll backups.
+
+One project means **one app** plus **Postgres**, **Redis**, **S3**, and **encrypted secrets** — deployed with **Railpack or a Dockerfile** onto **local Docker**, with **user apps sandboxed under gVisor**.
+
+```text
+create project
+  → provision Postgres DB/user
+  → provision Redis ACL namespace
+  → provision MinIO bucket
+  → encrypt credentials + secrets.yaml
+  → deploy (prebuilt image | Dockerfile | Railpack) under gVisor
+  → scheduled Postgres backups → platform S3
+```
+
+## What you get
+
+<CardGrid stagger>
+  <Card title="Provisioned infra" icon="rocket">
+    Postgres database, Redis namespace, and MinIO bucket per project — created
+    automatically on a shared platform.
+  </Card>
+  <Card title="Build paths" icon="set-up">
+    Prebuilt image, Dockerfile build, or Railpack from source. Compose deploys
+    are not supported.
+  </Card>
+  <Card title="Secure by default" icon="approve-check">
+    User apps run under gVisor with hardened container defaults. Secrets encrypted
+    at rest. Docker socket never mounted into project containers.
+  </Card>
+  <Card title="Backups" icon="document">
+    On-demand and scheduled `pg_dump` to the platform backup bucket — no separate
+    backup product to wire up.
+  </Card>
+</CardGrid>
+
+## Explicitly out of scope
+
+deplow is not Dokploy or Coolify. The following are **not** supported in this version:
+
+- MySQL, MongoDB, or databases beyond Postgres
+- Docker Compose as a first-class deploy path
+- Nixpacks, Paketo, or Heroku buildpacks
+- Custom domains, SSL, or reverse-proxy automation
+- Multi-server orchestration
+- Teams, RBAC, notifications, or a public API
+
+**v1** includes a platform proxy + cloudflared wildcard URLs and git **webhooks**. **Preview deployments** are planned for later — see repo `docs/sequencing.md`.
+
+Project principles live under `docs/` (`philosophy.md`, `security.md`, `data-plane.md`).

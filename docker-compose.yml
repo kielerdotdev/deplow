@@ -1,0 +1,73 @@
+# Central platform services for local / self-hosted deplow.
+# Host ports chosen to avoid common collisions on shared machines.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: deplow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deplow
+      POSTGRES_PASSWORD: deplow
+      POSTGRES_DB: postgres
+    ports:
+      - "55432:5432"
+    volumes:
+      - deplow_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deplow -d postgres"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: deplow-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "deplow", "--appendonly", "yes"]
+    ports:
+      - "56379:6379"
+    volumes:
+      - deplow_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "deplow", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    container_name: deplow-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: deplow
+      MINIO_ROOT_PASSWORD: deplowsecret
+    ports:
+      - "59000:9000"
+      - "59001:9001"
+    volumes:
+      - deplow_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # Sidekick so healthchecks / bucket bootstrap can use mc
+  minio-init:
+    image: minio/mc:latest
+    container_name: deplow-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 deplow deplowsecret; do sleep 1; done;
+      mc mb -p local/deplow-backups || true;
+      exit 0;
+      "
+
+volumes:
+  deplow_pg_data:
+  deplow_redis_data:
+  deplow_minio_data:

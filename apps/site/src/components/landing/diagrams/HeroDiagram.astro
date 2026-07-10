@@ -1,0 +1,71 @@
+<svg viewBox="0 0 720 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="App connected to postgres, redis, and object storage on one docker host">
+	<rect width="720" height="320" fill="#fffcf7"></rect>
+
+	<!-- stage -->
+	<rect x="48" y="28" width="624" height="264" rx="14" fill="#e3ede5"></rect>
+
+	<!-- services: 3 equal pills, evenly spaced, centers at 216 / 360 / 504 -->
+	<rect x="156" y="48" width="120" height="36" rx="18" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
+	<text x="180" y="71" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
+		>postgres</text
+	>
+
+	<rect x="300" y="48" width="120" height="36" rx="18" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
+	<circle cx="324" cy="66" r="4" fill="#c45438"></circle>
+	<text x="338" y="71" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
+		>redis</text
+	>
+
+	<rect x="444" y="48" width="120" height="36" rx="18" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
+	<text x="482" y="71" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
+		>minio</text
+	>
+
+	<!-- drop lines into host -->
+	<path
+		d="M216 84v28M360 84v28M504 84v28"
+		stroke="#1b2030"
+		stroke-width="1.5"
+		stroke-dasharray="3 4"
+		stroke-linecap="round"
+		opacity="0.28"></path>
+
+	<!-- host -->
+	<rect x="96" y="112" width="528" height="148" rx="12" fill="#fffcf7" stroke="#1b2030" stroke-width="2"></rect>
+	<rect x="116" y="132" width="488" height="108" rx="8" fill="#f5f0e7" stroke="#1b2030" stroke-width="1.5"></rect>
+
+	<!-- label + leds -->
+	<rect x="132" y="144" width="104" height="22" rx="5" fill="#fffcf7" stroke="#1b2030" stroke-width="1.5"></rect>
+	<text x="144" y="159" fill="#4f6b55" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500"
+		>docker host</text
+	>
+	<circle cx="548" cy="155" r="4.5" fill="#4f6b55"></circle>
+	<circle cx="564" cy="155" r="4.5" fill="#c45438"></circle>
+	<circle cx="580" cy="155" r="4.5" fill="#1b2030" opacity="0.15"></circle>
+
+	<!-- 4 equal containers: w=88, gap=20, total=4*88+3*20=412, start x=(720-412)/2 wait — inside hatch: x=132..604 → center row
+	     usable width 456 starting at 132: start = 132 + (456-412)/2 = 154 -->
+	<rect x="154" y="178" width="88" height="48" rx="7" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
+	<circle cx="170" cy="194" r="3.5" fill="#4f6b55"></circle>
+	<text x="182" y="208" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
+		>app</text
+	>
+
+	<rect x="262" y="178" width="88" height="48" rx="7" fill="#fffcf7" stroke="#c45438" stroke-width="1.75"></rect>
+	<circle cx="278" cy="194" r="3.5" fill="#c45438"></circle>
+	<text x="290" y="208" fill="#c45438" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
+		>worker</text
+	>
+
+	<rect x="370" y="178" width="88" height="48" rx="7" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
+	<circle cx="386" cy="194" r="3.5" fill="#4f6b55"></circle>
+	<text x="398" y="208" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
+		>web</text
+	>
+
+	<rect x="478" y="178" width="88" height="48" rx="7" fill="#e3ede5" stroke="#4f6b55" stroke-width="1.75"></rect>
+	<circle cx="494" cy="194" r="3.5" fill="#4f6b55"></circle>
+	<text x="506" y="208" fill="#4f6b55" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
+		>cron</text
+	>
+</svg>
