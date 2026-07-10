@@ -1,5 +1,6 @@
 {
 	auto_https off
+	# admin used by `caddy reload` from the control plane after route changes
 	admin 0.0.0.0:2019
 }
 :80 {

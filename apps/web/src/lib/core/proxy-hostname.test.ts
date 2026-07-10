@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   PREVIEW_HOSTNAME_PREFIX,
@@ -51,9 +51,11 @@ describe("ProxyService route files", () => {
 
   it("writes a Caddy host matcher for production slug and never data-plane ports", async () => {
     dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    const onChange = vi.fn<() => Promise<void>>(async () => undefined)
     const proxy = new ProxyService({
       routesDir: dir,
       baseDomain: "apps.example.com",
+      onChange,
     })
     const route = await proxy.upsertProductionRoute({
       projectId: "proj-abc",
@@ -63,6 +65,7 @@ describe("ProxyService route files", () => {
     expect(route.hostname).toBe("demo.apps.example.com")
     expect(route.publicUrl).toBe("https://demo.apps.example.com")
     expect(route.upstream).toBe("http://deplow-deadbeef-app:80")
+    expect(onChange).toHaveBeenCalledTimes(1)
 
     const files = proxy.listRoutes()
     expect(files).toHaveLength(1)
@@ -75,11 +78,13 @@ describe("ProxyService route files", () => {
     expect(content).not.toContain("redis")
   })
 
-  it("removes route files on destroy", async () => {
+  it("removes route files on destroy and invokes onChange (caddy reload)", async () => {
     dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    const onChange = vi.fn<() => Promise<void>>(async () => undefined)
     const proxy = new ProxyService({
       routesDir: dir,
       baseDomain: "apps.example.com",
+      onChange,
     })
     await proxy.upsertProductionRoute({
       projectId: "p1",
@@ -88,5 +93,6 @@ describe("ProxyService route files", () => {
     })
     await proxy.removeProjectRoute("p1")
     expect(proxy.listRoutes()).toHaveLength(0)
+    expect(onChange).toHaveBeenCalledTimes(2)
   })
 })
