@@ -60,7 +60,12 @@ export type ProjectSettingsProps = {
   copied: "url" | "secrets" | "webhook" | null
   onCopyUrl: (url: string) => void
   onCopyWebhook: (url: string) => void
-  onConnect: () => void
+  /** Prefer selection payload so connect never races empty parent state */
+  onConnect: (selection?: {
+    provider: "github" | "gitlab"
+    repoUrl: string
+    branch: string
+  }) => void
   onDisconnect: () => void
   onDeploy: () => void
 }
@@ -299,6 +304,15 @@ function ConnectSourceForm({
     }
   }
 
+  function handleConnect() {
+    if (!selection?.cloneUrl) return
+    onConnect({
+      provider: selection.provider,
+      repoUrl: selection.cloneUrl,
+      branch: selection.branch || "main",
+    })
+  }
+
   return (
     <div className="space-y-4">
       <SettingsHint>
@@ -312,7 +326,7 @@ function ConnectSourceForm({
       />
       <Button
         disabled={pending || !selection?.cloneUrl}
-        onClick={onConnect}
+        onClick={handleConnect}
         className="w-full sm:w-auto"
       >
         {pending

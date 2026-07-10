@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { client } from "@/lib/orpc"
 import { cn } from "@/lib/utils"
@@ -396,16 +397,13 @@ export function RepoSelector({
 
       {selected ? (
         <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="repo-branch"
-            className="flex items-center gap-1.5 text-sm font-medium leading-none"
-          >
+          <Label htmlFor="repo-branch" className="flex items-center gap-1.5">
             <GitBranchIcon className="size-3.5" />
             Production branch
             {branchesLoading ? (
               <Loader2Icon className="size-3 animate-spin text-muted-foreground" />
             ) : null}
-          </label>
+          </Label>
           {branches.length > 1 ? (
             <select
               id="repo-branch"

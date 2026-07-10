@@ -138,9 +138,9 @@ function ProjectDetailPage() {
     deployments.find((d) => d.id === selectedDeployId) ?? latest ?? null
   const appStatus = latest?.status ?? "ready"
   const appDetail = !latest
-    ? "Not deployed"
+    ? "Not deployed · gVisor when live"
     : latest.status === "running"
-      ? "Online"
+      ? "Online · gVisor sandbox"
       : ["building", "deploying", "queued", "pending"].includes(latest.status)
         ? latest.status
         : latest.status === "failed"
@@ -339,15 +339,29 @@ function ProjectDetailPage() {
     URL.revokeObjectURL(url)
   }
 
-  async function connectGit() {
+  async function connectGit(selection?: {
+    provider: "github" | "gitlab"
+    repoUrl: string
+    branch: string
+  }) {
+    const provider = selection?.provider ?? gitProvider
+    const repoUrl = (selection?.repoUrl ?? gitRepoUrl).trim()
+    const branch = (selection?.branch ?? gitBranch).trim() || "main"
+    if (!repoUrl) {
+      setError("Select a repository first")
+      return
+    }
     setPending(true)
     setError(null)
     try {
+      setGitProvider(provider)
+      setGitRepoUrl(repoUrl)
+      setGitBranch(branch)
       const result = await client.projects.connectGit({
         projectId: project.id,
-        provider: gitProvider,
-        repoUrl: gitRepoUrl.trim(),
-        branch: gitBranch.trim() || "main",
+        provider,
+        repoUrl,
+        branch,
       })
       setWebhookSecretShown(result.webhookSecret)
       await refresh()
@@ -682,7 +696,7 @@ function ProjectDetailPage() {
               copied={copied}
               onCopyUrl={(url) => void copyText(url, "url")}
               onCopyWebhook={(url) => void copyText(url, "webhook")}
-              onConnect={() => void connectGit()}
+              onConnect={(sel) => void connectGit(sel)}
               onDisconnect={() => void disconnectGit()}
               onDeploy={() => {
                 setMode("git")
