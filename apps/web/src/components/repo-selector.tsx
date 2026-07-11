@@ -11,7 +11,6 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { client } from "@/lib/orpc"
 import { cn } from "@/lib/utils"
@@ -21,6 +20,10 @@ export type RepoSelectorValue = {
   cloneUrl: string
   fullName: string
   branch: string
+  authMethod?: "github_app" | "oauth" | "pat" | "platform"
+  installationId?: string
+  /** Advanced PAT — only when user pasted one */
+  accessToken?: string
 }
 
 type RemoteRepo = {
@@ -36,12 +39,24 @@ type RemoteRepo = {
   updatedAt: string | null
 }
 
+type ConnectionStatus = {
+  githubAppConfigured: boolean
+  gitlabOAuthConfigured: boolean
+  installUrl: string | null
+  links: Array<{
+    provider: "github" | "gitlab"
+    login: string | null
+    avatarUrl: string | null
+    githubInstallationId: string | null
+    connected: boolean
+  }>
+}
+
 const TOKEN_KEY = "deplow.git.pat"
 
 function loadStoredToken(provider: "github" | "gitlab"): string {
   try {
-    const raw = sessionStorage.getItem(`${TOKEN_KEY}.${provider}`)
-    return raw ?? ""
+    return sessionStorage.getItem(`${TOKEN_KEY}.${provider}`) ?? ""
   } catch {
     return ""
   }
@@ -59,14 +74,13 @@ function storeToken(provider: "github" | "gitlab", token: string) {
 type RepoSelectorProps = {
   provider: "github" | "gitlab"
   onProviderChange: (p: "github" | "gitlab") => void
-  /** Called when user picks a repo + branch ready to connect */
   onChange: (value: RepoSelectorValue | null) => void
   className?: string
 }
 
 /**
- * Searchable GitHub/GitLab repository picker (PAT-backed).
- * Looks like a real source selector — not a raw clone URL field.
+ * Railway-style source picker: Connect provider → search repos.
+ * PAT is Advanced only.
  */
 export function RepoSelector({
   provider,
@@ -74,28 +88,50 @@ export function RepoSelector({
   onChange,
   className,
 }: RepoSelectorProps) {
+  const [status, setStatus] = useState<ConnectionStatus | null>(null)
+  const [statusLoading, setStatusLoading] = useState(true)
   const [token, setToken] = useState("")
-  const [tokenReady, setTokenReady] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [query, setQuery] = useState("")
   const [repos, setRepos] = useState<RemoteRepo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [truncated, setTruncated] = useState(false)
-  const [usedPlatformToken, setUsedPlatformToken] = useState(false)
+  const [authSource, setAuthSource] = useState<string | null>(null)
+  const [installationId, setInstallationId] = useState<string | undefined>()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [branch, setBranch] = useState("main")
   const [branches, setBranches] = useState<string[]>([])
   const [branchesLoading, setBranchesLoading] = useState(false)
   const [showPaste, setShowPaste] = useState(false)
   const [pasteUrl, setPasteUrl] = useState("")
+  const [oauthPending, setOauthPending] = useState(false)
+
+  const link = status?.links.find((l) => l.provider === provider)
+
+  const refreshStatus = useCallback(async () => {
+    setStatusLoading(true)
+    try {
+      const s = await client.git.connectionStatus()
+      setStatus(s)
+    } catch {
+      setStatus(null)
+    } finally {
+      setStatusLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshStatus()
+  }, [refreshStatus])
 
   useEffect(() => {
     setToken(loadStoredToken(provider))
-    setTokenReady(true)
     setRepos([])
     setSelectedId(null)
     setBranches([])
     setError(null)
+    setAuthSource(null)
     onChange(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset on provider switch only
   }, [provider])
@@ -111,36 +147,46 @@ export function RepoSelector({
         onChange(null)
         return
       }
+      const method =
+        authSource === "github_app"
+          ? ("github_app" as const)
+          : authSource === "oauth"
+            ? ("oauth" as const)
+            : authSource === "platform"
+              ? ("platform" as const)
+              : token.trim()
+                ? ("pat" as const)
+                : undefined
       onChange({
         provider,
         cloneUrl: repo.cloneUrl,
         fullName: repo.fullName,
         branch: branchName,
+        authMethod: method,
+        installationId,
+        accessToken: token.trim() || undefined,
       })
     },
-    [onChange, provider],
+    [authSource, installationId, onChange, provider, token],
   )
 
-  async function loadRepos(opts?: { query?: string }) {
+  async function loadRepos() {
     setLoading(true)
     setError(null)
     try {
-      const q = opts?.query ?? query
       const result = await client.projects.listGitRepos({
         provider,
         token: token.trim() || undefined,
-        query: q.trim() || undefined,
+        query: query.trim() || undefined,
+        installationId,
       })
-      setRepos(result.repos)
+      setRepos(result.repos as RemoteRepo[])
       setTruncated(result.truncated)
-      setUsedPlatformToken(result.usedPlatformToken)
+      setAuthSource(result.authSource ?? null)
+      if (result.installationId) setInstallationId(result.installationId)
       if (token.trim()) storeToken(provider, token.trim())
-      // keep selection if still present
-      if (selectedId && !result.repos.some((r) => r.id === selectedId)) {
-        setSelectedId(null)
-        setBranches([])
-        onChange(null)
-      }
+      setSelectedId(null)
+      onChange(null)
     } catch (e) {
       setRepos([])
       setError(e instanceof Error ? e.message : String(e))
@@ -149,11 +195,18 @@ export function RepoSelector({
     }
   }
 
+  // Auto-load when linked or platform/PAT available
+  useEffect(() => {
+    if (statusLoading) return
+    if (link || token.trim()) {
+      void loadRepos()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusLoading, provider, link?.login])
+
   async function selectRepo(repo: RemoteRepo) {
     setSelectedId(repo.id)
     setBranch(repo.defaultBranch || "main")
-    setBranches([repo.defaultBranch || "main"])
-    emit(repo, repo.defaultBranch || "main")
     setBranchesLoading(true)
     try {
       const result = await client.projects.listGitBranches({
@@ -161,77 +214,78 @@ export function RepoSelector({
         fullName: repo.fullName,
         token: token.trim() || undefined,
       })
-      if (result.branches.length > 0) {
-        setBranches(result.branches)
-        const next = result.branches.includes(repo.defaultBranch)
-          ? repo.defaultBranch
-          : result.branches[0]!
-        setBranch(next)
-        emit(repo, next)
-      }
+      setBranches(result.branches)
+      const b = result.branches.includes(repo.defaultBranch)
+        ? repo.defaultBranch
+        : (result.branches[0] ?? "main")
+      setBranch(b)
+      emit(repo, b)
     } catch {
-      // keep default branch
+      setBranches([repo.defaultBranch || "main"])
+      emit(repo, repo.defaultBranch || "main")
     } finally {
       setBranchesLoading(false)
     }
   }
 
-  // Auto-load when platform token may exist or stored PAT present
-  useEffect(() => {
-    if (!tokenReady) return
-    void loadRepos()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenReady, provider])
+  async function startOAuth() {
+    setOauthPending(true)
+    setError(null)
+    try {
+      const { url } = await client.git.startOAuth({
+        provider,
+        returnTo: window.location.pathname + window.location.search,
+      })
+      window.location.href = url
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setOauthPending(false)
+    }
+  }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return repos
-    return repos.filter(
-      (r) =>
-        r.fullName.toLowerCase().includes(q) ||
-        (r.description?.toLowerCase().includes(q) ?? false),
-    )
-  }, [repos, query])
-
-  async function applyPaste() {
+  async function applyPasteUrl() {
     setError(null)
     try {
       const { repoUrl } = await client.projects.normalizeGitRepoUrl({
         provider,
         input: pasteUrl.trim(),
       })
-      const fake: RemoteRepo = {
-        id: `paste:${repoUrl}`,
-        fullName: pasteUrl.trim().replace(/\.git$/, ""),
-        name: pasteUrl.trim(),
-        owner: "",
+      const fullName =
+        repoUrl
+          .replace(/\.git$/, "")
+          .split("/")
+          .slice(-2)
+          .join("/") || pasteUrl
+      const synthetic: RemoteRepo = {
+        id: "paste",
+        fullName,
+        name: fullName.split("/")[1] ?? fullName,
+        owner: fullName.split("/")[0] ?? "",
         description: null,
         private: false,
-        defaultBranch: branch || "main",
+        defaultBranch: "main",
         cloneUrl: repoUrl,
-        htmlUrl: repoUrl,
+        htmlUrl: repoUrl.replace(/\.git$/, ""),
         updatedAt: null,
       }
-      setSelectedId(fake.id)
-      setRepos((prev) => {
-        if (prev.some((r) => r.id === fake.id)) return prev
-        return [fake, ...prev]
-      })
-      onChange({
-        provider,
-        cloneUrl: repoUrl,
-        fullName: fake.fullName,
-        branch: branch || "main",
-      })
+      setRepos([synthetic])
+      setSelectedId("paste")
+      setBranch("main")
+      emit(synthetic, "main")
       setShowPaste(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
   }
 
+  const configured =
+    provider === "github"
+      ? status?.githubAppConfigured
+      : status?.gitlabOAuthConfigured
+
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex gap-2">
+    <div className={cn("space-y-4", className)}>
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           size="sm"
@@ -250,216 +304,266 @@ export function RepoSelector({
         </Button>
       </div>
 
-      <div className="flex flex-col gap-1.5 rounded-lg border border-border/80 bg-muted/15 p-3">
-        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <KeyRoundIcon className="size-3.5" />
-          Personal access token
-          {usedPlatformToken ? (
-            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
-              using server token
-            </span>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Input
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder={
-              provider === "github"
-                ? "ghp_… (repo scope)"
-                : "glpat-… (read_api)"
-            }
-            className="min-w-[12rem] flex-1 font-mono text-xs"
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={loading}
-            onClick={() => void loadRepos()}
-          >
-            {loading ? (
-              <Loader2Icon className="size-3.5 animate-spin" />
-            ) : (
-              <RefreshCwIcon className="size-3.5" />
-            )}
-            Load repos
-          </Button>
-        </div>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Token stays in this browser session only (or set{" "}
-          <code className="rounded bg-muted px-1 font-mono">
-            DEPLOW_{provider === "github" ? "GITHUB" : "GITLAB"}_TOKEN
-          </code>{" "}
-          on the server). Needed to list private repos.
+      {statusLoading ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2Icon className="size-3.5 animate-spin" />
+          Checking git connection…
         </p>
-      </div>
-
-      <div className="relative">
-        <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              void loadRepos({ query })
-            }
-          }}
-          placeholder="Search repositories…"
-          className="pl-8"
-          aria-label="Search repositories"
-        />
-      </div>
-
-      {error ? (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="overflow-hidden rounded-xl border border-border/80 bg-card">
-        <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-          <p className="text-xs font-medium text-muted-foreground">
-            {loading
-              ? "Loading…"
-              : filtered.length === 0
-                ? "No repositories"
-                : `${filtered.length} repositor${filtered.length === 1 ? "y" : "ies"}`}
-            {truncated ? " · partial list" : ""}
-          </p>
-        </div>
-        <ScrollArea className="h-56">
-          {filtered.length === 0 && !loading ? (
-            <div className="px-3 py-8 text-center text-xs text-muted-foreground">
-              {token || usedPlatformToken
-                ? "No matches. Try another search or paste a URL below."
-                : "Add a PAT and load your repositories."}
-            </div>
-          ) : (
-            <ul className="divide-y divide-border/50 p-1">
-              {filtered.map((repo) => {
-                const active = repo.id === selectedId
-                return (
-                  <li key={repo.id}>
-                    <button
-                      type="button"
-                      onClick={() => void selectRepo(repo)}
-                      className={cn(
-                        "flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors",
-                        active
-                          ? "bg-primary/15 ring-1 ring-primary/30"
-                          : "hover:bg-muted/50",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-                          active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border",
-                        )}
-                      >
-                        {active ? <CheckIcon className="size-2.5" /> : null}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="truncate text-sm font-medium">
-                            {repo.fullName}
-                          </span>
-                          {repo.private ? (
-                            <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                              <LockIcon className="size-2.5" />
-                              Private
-                            </span>
-                          ) : null}
-                        </div>
-                        {repo.description ? (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                            {repo.description}
-                          </p>
-                        ) : null}
-                        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                          default · {repo.defaultBranch}
-                        </p>
-                      </div>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </ScrollArea>
-      </div>
-
-      {selected ? (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="repo-branch" className="flex items-center gap-1.5">
-            <GitBranchIcon className="size-3.5" />
-            Production branch
-            {branchesLoading ? (
-              <Loader2Icon className="size-3 animate-spin text-muted-foreground" />
+      ) : link ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+          <span>
+            Connected as <strong>@{link.login ?? "user"}</strong>
+            {link.githubInstallationId ? (
+              <span className="text-muted-foreground"> · App installed</span>
             ) : null}
-          </Label>
-          {branches.length > 1 ? (
-            <select
-              id="repo-branch"
-              value={branch}
-              onChange={(e) => {
-                const b = e.target.value
-                setBranch(b)
-                emit(selected, b)
-              }}
-              className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {branches.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <Input
-              id="repo-branch"
-              value={branch}
-              onChange={(e) => {
-                setBranch(e.target.value)
-                emit(selected, e.target.value)
-              }}
-              placeholder="main"
-            />
-          )}
-        </div>
-      ) : null}
-
-      <div>
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-          onClick={() => setShowPaste((v) => !v)}
-        >
-          {showPaste ? "Hide URL paste" : "Or paste a clone URL / owner/repo"}
-        </button>
-        {showPaste ? (
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Input
-              value={pasteUrl}
-              onChange={(e) => setPasteUrl(e.target.value)}
-              placeholder="acme/api or https://github.com/acme/api.git"
-              className="min-w-[12rem] flex-1 font-mono text-xs"
-            />
+          </span>
+          <div className="flex gap-2">
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={!pasteUrl.trim()}
-              onClick={() => void applyPaste()}
+              onClick={() => void loadRepos()}
+              disabled={loading}
             >
-              Use URL
+              <RefreshCwIcon data-icon="inline-start" />
+              Refresh
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => void startOAuth()}
+              disabled={oauthPending}
+            >
+              Switch account
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2 rounded-lg border border-dashed p-4">
+          <p className="text-sm text-muted-foreground">
+            Connect once — then pick a repo. We register the webhook and clone
+            with short-lived credentials.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => void startOAuth()}
+              disabled={oauthPending || configured === false}
+            >
+              {oauthPending ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : null}
+              {provider === "github" ? "Connect GitHub" : "Connect GitLab"}
+            </Button>
+            {provider === "github" && status && !status.githubAppConfigured ? (
+              <Button
+                type="button"
+                variant="outline"
+                render={<a href="/integrations" />}
+              >
+                Set up GitHub App
+              </Button>
+            ) : null}
+            {provider === "gitlab" && status && !status.gitlabOAuthConfigured ? (
+              <Button
+                type="button"
+                variant="outline"
+                render={<a href="/integrations" />}
+              >
+                Configure GitLab OAuth
+              </Button>
+            ) : null}
+          </div>
+          {configured === false ? (
+            <p className="text-xs text-muted-foreground">
+              {provider === "github"
+                ? "GitHub App is not configured on this server yet."
+                : "GitLab OAuth is not configured on this server yet."}{" "}
+              You can still use a PAT under Advanced.
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      {(link || token.trim() || showAdvanced) && (
+        <>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pl-8"
+                placeholder="Search repositories…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void loadRepos()
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => void loadRepos()}
+            >
+              {loading ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                "Load"
+              )}
+            </Button>
+          </div>
+
+          {error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : null}
+
+          {repos.length > 0 ? (
+            <ScrollArea className="h-48 rounded-lg border">
+              <ul className="divide-y p-1">
+                {repos.map((repo) => {
+                  const active = repo.id === selectedId
+                  return (
+                    <li key={repo.id}>
+                      <button
+                        type="button"
+                        className={cn(
+                          "flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent",
+                          active && "bg-accent",
+                        )}
+                        onClick={() => void selectRepo(repo)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 font-medium">
+                            {repo.private ? (
+                              <LockIcon className="size-3 text-muted-foreground" />
+                            ) : null}
+                            <span className="truncate">{repo.fullName}</span>
+                            {active ? (
+                              <CheckIcon className="size-3.5 text-primary" />
+                            ) : null}
+                          </div>
+                          {repo.description ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {repo.description}
+                            </p>
+                          ) : null}
+                        </div>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </ScrollArea>
+          ) : !loading && (link || token.trim()) ? (
+            <p className="text-sm text-muted-foreground">
+              No repositories loaded yet. Click Load or refresh after granting
+              App access.
+            </p>
+          ) : null}
+
+          {truncated ? (
+            <p className="text-xs text-muted-foreground">
+              Results truncated — refine your search.
+            </p>
+          ) : null}
+
+          {selected ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <GitBranchIcon className="size-3.5 text-muted-foreground" />
+              <label className="text-sm text-muted-foreground" htmlFor="branch">
+                Branch
+              </label>
+              {branchesLoading ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : branches.length > 0 ? (
+                <select
+                  id="branch"
+                  className="h-8 rounded-md border bg-background px-2 text-sm"
+                  value={branch}
+                  onChange={(e) => {
+                    setBranch(e.target.value)
+                    emit(selected, e.target.value)
+                  }}
+                >
+                  {branches.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  className="h-8 w-40"
+                  value={branch}
+                  onChange={(e) => {
+                    setBranch(e.target.value)
+                    emit(selected, e.target.value)
+                  }}
+                />
+              )}
+            </div>
+          ) : null}
+        </>
+      )}
+
+      <div className="space-y-2 border-t pt-3">
+        <button
+          type="button"
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          {showAdvanced ? "Hide advanced" : "Advanced: PAT or paste git URL"}
+        </button>
+        {showAdvanced ? (
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-medium">
+                <KeyRoundIcon className="size-3" />
+                Personal access token
+              </label>
+              <Input
+                type="password"
+                autoComplete="off"
+                placeholder={
+                  provider === "github" ? "ghp_… or github_pat_…" : "glpat-…"
+                }
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Escape hatch when OAuth is unavailable. Prefer Connect{" "}
+                {provider === "github" ? "GitHub" : "GitLab"}.
+              </p>
+            </div>
+            <div>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                onClick={() => setShowPaste((v) => !v)}
+              >
+                Paste repository URL
+              </button>
+              {showPaste ? (
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    placeholder="acme/api or https://github.com/acme/api.git"
+                    value={pasteUrl}
+                    onChange={(e) => setPasteUrl(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void applyPasteUrl()}
+                  >
+                    Use
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>

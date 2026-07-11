@@ -1,6 +1,6 @@
 # deplow
 
-Opinionated self-hosted project runtime: **one project = app + Postgres + Redis + S3 + secrets**, built with **Railpack or Dockerfile**, run on **local Docker under gVisor**, with **public URL via Caddy + cloudflared**, **git push-to-deploy**, and **scheduled Postgres backups**.
+Opinionated self-hosted project runtime: **one project = multiple services + linked Postgres, Redis, and S3**, built with **Railpack or Dockerfile**, run on **local Docker under gVisor**, with **public URLs via Caddy + cloudflared**, per-service **git push-to-deploy**, and scheduled Postgres backups.
 
 Most apps only need a database, object storage, and a runtime. deplow provisions that bundle on a host you control — no spinning up hosted Postgres/Redis/S3 per project, and no hand-rolled backup cron.
 
@@ -9,10 +9,11 @@ Most apps only need a database, object storage, and a runtime. deplow provisions
 ```
 create project
   → pin to local Docker node
-  → provision production-slot Postgres DB/user + Redis ACL + MinIO bucket
-  → encrypt credentials + secrets.yaml
-  → deploy (source / Dockerfile / Railpack / image) under gVisor
-  → proxy Host {slug}.{baseDomain} → app container
+  → link a Postgres DB/user + Redis ACL + MinIO bucket
+  → create a default primary web service
+  → add more web services or workers as needed
+  → deploy each service independently under gVisor
+  → proxy web services; workers remain private
   → scheduled Postgres backups → platform S3
 ```
 
@@ -99,7 +100,9 @@ Route files live under `infra/caddy/routes/` (written on deploy/stop/destroy). S
 
 ## Git push-to-deploy
 
-Connect a GitHub or GitLab repo on the project page. Webhooks are signature-verified (`X-Hub-Signature-256` / `X-Gitlab-Token`). Push to the configured production branch clones, builds (Railpack/Dockerfile), deploys the production slot, and updates the proxy. Manual UI deploys still work.
+**Git (preferred):** Dashboard → **Integrations** → create/configure **GitHub App** (manifest) or **GitLab OAuth**, then **Connect** on a project. We auto-register the push webhook and clone private repos with short-lived installation/OAuth tokens. PAT paste remains under **Advanced** only. See [docs/git-oauth.md](./docs/git-oauth.md).
+
+Webhooks are signature-verified (`X-Hub-Signature-256` / `X-Gitlab-Token`). Push to the configured production branch clones, builds (Railpack/Dockerfile), deploys the production slot, and updates the proxy. Manual UI deploys still work.
 
 Webhook endpoint: `POST /api/webhooks/git/{projectId}`.
 
@@ -124,6 +127,9 @@ Webhook endpoint: `POST /api/webhooks/git/{projectId}`.
 | `CLOUDFLARE_TUNNEL_TOKEN`           | cloudflared tunnel token            | empty                                  |
 | `BUILDKIT_HOST`                     | For Railpack                        | `docker-container://buildkit`          |
 | `RAILPACK_BIN`                      | Railpack executable                 | `railpack`                             |
+| `DEPLOW_PUBLIC_URL`                 | Control plane public URL            | OAuth callbacks + webhook base         |
+| `DEPLOW_GITHUB_APP_*`               | GitHub App credentials (or UI)      | see Integrations / `docs/git-oauth.md` |
+| `DEPLOW_GITLAB_OAUTH_*`             | GitLab OAuth Application            | see Integrations / `docs/git-oauth.md` |
 
 Full template: [`.env.example`](./.env.example).
 
@@ -133,7 +139,7 @@ Full template: [`.env.example`](./.env.example).
 2. **Prebuilt image** — advanced path; pull/run registry image with project env injected
 3. **Git webhook** — push to production branch → clone → build → deploy
 
-Injected env on every deploy: `DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (Docker-network hosts, not laptop localhost).
+Every service receives project-linked `DATABASE_URL`, `REDIS_URL`, and `S3_*` variables plus its service-specific environment. Web services receive a URL; workers run without proxy routes or published ports.
 
 User app containers run under **gVisor** with hardened defaults (dropped caps, no-new-privileges, readonly rootfs, resource limits). Platform services (Postgres/Redis/MinIO/Caddy) stay on runc. Compose deploys, SSH/Hetzner multi-host, preview deploys, and other DBs are **out of scope**.
 

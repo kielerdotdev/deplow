@@ -26,17 +26,17 @@ We do **not** yet claim: multi-tenant hostile SaaS isolation, formal certificati
 
 ## Non-negotiable defaults
 
-| Rule | Detail |
-| --- | --- |
-| **User apps → gVisor (`runsc`)** | Default OCI runtime for deployed user containers |
-| **Platform → runc** | Postgres, Redis, MinIO, control plane stay on default runc |
-| **Builds → runc** | Railpack / BuildKit / `docker build` are not forced under gVisor |
-| **No Docker socket in user apps** | Never mount `/var/run/docker.sock` into project containers |
-| **No host network for user apps** | Join the platform network for DNS; no `NetworkMode: host` |
-| **Hardened HostConfig** | CapDrop ALL, no-new-privileges, readonly rootfs (+ `/tmp` tmpfs), memory/CPU limits |
-| **Secrets encrypted at rest** | Project credentials via AES-GCM (`DEPLOW_SECRETS_KEY` / auth secret) |
-| **userns-remap recommended** | Container root ≠ host root when configured on the daemon |
-| **Data plane not public by default** | Postgres / Redis are for the app + private operator access — not internet listeners as a product feature |
+| Rule                                       | Detail                                                                                                     |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **User apps → gVisor (`runsc`)**           | Default OCI runtime for deployed user containers                                                           |
+| **Platform → runc**                        | Postgres, Redis, MinIO, control plane stay on default runc                                                 |
+| **Builds → runc**                          | Railpack / BuildKit / `docker build` are not forced under gVisor                                           |
+| **No Docker socket in user apps**          | Never mount `/var/run/docker.sock` into project containers                                                 |
+| **No host network for user apps**          | Join the platform network for DNS; no `NetworkMode: host`                                                  |
+| **Hardened HostConfig**                    | CapDrop ALL, no-new-privileges, readonly rootfs (+ `/tmp` tmpfs), memory/CPU limits                        |
+| **Secrets encrypted at rest**              | Project credentials via AES-GCM (`DEPLOW_SECRETS_KEY` / auth secret)                                       |
+| **userns-remap recommended**               | Container root ≠ host root when configured on the daemon                                                   |
+| **Data plane not public by default**       | Postgres / Redis are for the app + private operator access — not internet listeners as a product feature   |
 | **Proxy is platform; apps stay sandboxed** | Local reverse proxy is trusted platform infra; user apps remain gVisor-isolated — [access.md](./access.md) |
 
 Full HostConfig and install steps: [secure-runtime.md](./secure-runtime.md).

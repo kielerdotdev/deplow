@@ -30,39 +30,39 @@ deplow already owns the hard product version of this (bundled Postgres + Redis +
 
 ### Vercel — fewest decisions
 
-| Pattern | Steal? | Notes |
-| --- | --- | --- |
-| Framework-defined / zero-config build | Partial | We use Railpack + Dockerfile detection, not framework lock-in |
-| One next action after create | **Yes** | Project page should scream Deploy |
-| Clear status vocabulary (queued → building → ready / error) | **Yes** | Status dots + relative time |
-| Instant rollback (point at previous immutable deploy) | **Yes (P1)** | Feasible without domains: re-run / retag last good image |
-| Preview URLs / Drop / edge | **No** | Out of scope |
+| Pattern                                                     | Steal?       | Notes                                                         |
+| ----------------------------------------------------------- | ------------ | ------------------------------------------------------------- |
+| Framework-defined / zero-config build                       | Partial      | We use Railpack + Dockerfile detection, not framework lock-in |
+| One next action after create                                | **Yes**      | Project page should scream Deploy                             |
+| Clear status vocabulary (queued → building → ready / error) | **Yes**      | Status dots + relative time                                   |
+| Instant rollback (point at previous immutable deploy)       | **Yes (P1)** | Feasible without domains: re-run / retag last good image      |
+| Preview URLs / Drop / edge                                  | **No**       | Out of scope                                                  |
 
 ### Railway — closest model (Railway-shaped DX)
 
-| Pattern | Steal? | Notes |
-| --- | --- | --- |
-| Project = app + data plane in one mental model | **Yes** | We go further: fixed bundle, not à-la-carte services |
-| Railpack default; Dockerfile if present | **Yes** | Already product law — UI must not ask “which builder?” |
-| Auto-inject credentials | **Yes** | Keep auto-inject (we are not multi-DB). Railway moved to explicit `${{Service.VAR}}` for multi-service; our opinionation is an advantage |
-| Live build + deploy logs | **Yes** | Deploy as a living object |
-| Canvas graph of many services | **No (for now)** | Fixed stack → **stack summary tiles** beat a freeform graph |
-| `railway up -y` / Cmd+K / healthcheck rollback | Later | CLI/palette out of scope; healthcheck rollback is P2 |
+| Pattern                                        | Steal?           | Notes                                                                                                                                    |
+| ---------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Project = app + data plane in one mental model | **Yes**          | We go further: fixed bundle, not à-la-carte services                                                                                     |
+| Railpack default; Dockerfile if present        | **Yes**          | Already product law — UI must not ask “which builder?”                                                                                   |
+| Auto-inject credentials                        | **Yes**          | Keep auto-inject (we are not multi-DB). Railway moved to explicit `${{Service.VAR}}` for multi-service; our opinionation is an advantage |
+| Live build + deploy logs                       | **Yes**          | Deploy as a living object                                                                                                                |
+| Canvas graph of many services                  | **No (for now)** | Fixed stack → **stack summary tiles** beat a freeform graph                                                                              |
+| `railway up -y` / Cmd+K / healthcheck rollback | Later            | CLI/palette out of scope; healthcheck rollback is P2                                                                                     |
 
 ### Render — predictable, not magical
 
-| Pattern | Steal? | Notes |
-| --- | --- | --- |
+| Pattern                               | Steal?                   | Notes                                           |
+| ------------------------------------- | ------------------------ | ----------------------------------------------- |
 | `fromDatabase` / Blueprint env wiring | As **platform behavior** | User should never write YAML for `DATABASE_URL` |
-| `generateValue` for secrets | Already covered | We provision + encrypt |
-| Per-service plan / type sprawl | **No** | Wrong shape |
+| `generateValue` for secrets           | Already covered          | We provision + encrypt                          |
+| Per-service plan / type sprawl        | **No**                   | Wrong shape                                     |
 
 ### Fly.io — power-user CLI
 
-| Pattern | Steal? | Notes |
-| --- | --- | --- |
-| `fly.toml` + region/size decisions up front | **No** | Loses the “weekend MVP” race |
-| Excellent CLI | Later | Out of scope for current goal |
+| Pattern                                     | Steal? | Notes                         |
+| ------------------------------------------- | ------ | ----------------------------- |
+| `fly.toml` + region/size decisions up front | **No** | Loses the “weekend MVP” race  |
+| Excellent CLI                               | Later  | Out of scope for current goal |
 
 ### Coolify / Dokploy — anti-patterns
 
@@ -97,13 +97,13 @@ These make create → deploy → logs feel like Railway, without new product sur
 
 After create, land on a project page that shows the stack as **ready** tiles:
 
-| Tile | Content |
-| --- | --- |
-| App | Not deployed / Running / Failed + Deploy CTA |
-| Postgres | Ready |
-| Redis | Ready |
-| S3 | Ready |
-| Backups | Schedule + last backup status |
+| Tile     | Content                                      |
+| -------- | -------------------------------------------- |
+| App      | Not deployed / Running / Failed + Deploy CTA |
+| Postgres | Ready                                        |
+| Redis    | Ready                                        |
+| S3       | Ready                                        |
+| Backups  | Schedule + last backup status                |
 
 - **Primary CTA:** Deploy
 - **Secondary:** Download `secrets.yaml`
@@ -153,12 +153,12 @@ Schedule + last success/failure already in product — surface them on the stack
 
 ### P2 — Polish (after P0/P1)
 
-| Item | Notes | Scope check |
-| --- | --- | --- |
-| Command palette (Cmd+K) | Jump to project / deploy / destroy | OK if thin |
-| Healthcheck path → auto rollback | Like Railway | Optional; needs health endpoint convention |
-| Relative timestamps on status | “Building · 12s” | Cosmetic |
-| Staged changes + single Deploy | Railway canvas pattern | Only if we add multi-field edits that shouldn’t apply live |
+| Item                             | Notes                              | Scope check                                                |
+| -------------------------------- | ---------------------------------- | ---------------------------------------------------------- |
+| Command palette (Cmd+K)          | Jump to project / deploy / destroy | OK if thin                                                 |
+| Healthcheck path → auto rollback | Like Railway                       | Optional; needs health endpoint convention                 |
+| Relative timestamps on status    | “Building · 12s”                   | Cosmetic                                                   |
+| Staged changes + single Deploy   | Railway canvas pattern             | Only if we add multi-field edits that shouldn’t apply live |
 
 ### Explicitly not on this roadmap
 
@@ -192,31 +192,36 @@ If a screen fails these, it is Coolify-shaped. Fix it.
 
 ## Ranked steal list
 
-| Priority | Pattern | From | Fit |
-| --- | --- | --- | --- |
-| P0 | Create → provisioned stack → single Deploy CTA | Railway | Exact |
-| P0 | Builder auto-detect (Dockerfile \| Railpack) | Railway | Exact |
-| P0 | Auto env injection + secrets download | Railway / Heroku | Exact |
-| P0 | Live deploy status + logs | All | Exact |
-| P1 | Default backups visible on project | Render / Railway | Exact |
-| P1 | Redeploy / retry failed deploy | Vercel / Railway | Exact |
-| P1 | Previous deployment rollback (image) | Vercel | Feasible without domains |
-| P2 | Cmd+K | Railway | Nice later |
-| P2 | Healthcheck → auto rollback | Railway | Later |
-| Later | Wildcard proxy + cloudflared | Dokploy | **v1** — [access.md](./access.md) |
-| Later | Git webhooks | Vercel/Railway | **v1** |
-| Later | PR/branch previews | Vercel | **v2** — [sequencing.md](./sequencing.md) |
-| — | Templates, multi-DB canvas | — | Out of scope |
+| Priority | Pattern                                        | From             | Fit                                       |
+| -------- | ---------------------------------------------- | ---------------- | ----------------------------------------- |
+| P0       | Create → provisioned stack → single Deploy CTA | Railway          | Exact                                     |
+| P0       | Builder auto-detect (Dockerfile \| Railpack)   | Railway          | Exact                                     |
+| P0       | Auto env injection + secrets download          | Railway / Heroku | Exact                                     |
+| P0       | Live deploy status + logs                      | All              | Exact                                     |
+| P1       | Default backups visible on project             | Render / Railway | Exact                                     |
+| P1       | Redeploy / retry failed deploy                 | Vercel / Railway | Exact                                     |
+| P1       | Previous deployment rollback (image)           | Vercel           | Feasible without domains                  |
+| P2       | Cmd+K                                          | Railway          | Nice later                                |
+| P2       | Healthcheck → auto rollback                    | Railway          | Later                                     |
+| Later    | Wildcard proxy + cloudflared                   | Dokploy          | **v1** — [access.md](./access.md)         |
+| Later    | Git webhooks                                   | Vercel/Railway   | **v1**                                    |
+| Later    | PR/branch previews                             | Vercel           | **v2** — [sequencing.md](./sequencing.md) |
+| —        | Templates, multi-DB canvas                     | —                | Out of scope                              |
 
 ---
 
 ## Suggested implementation order
 
-1. **P0.1** — Project page stack summary + Deploy as primary CTA
-2. **P0.2** — Simplify deploy form (source default, detect builder, hide node/ports)
-3. **P0.3** — Deployment detail with live status + logs
-4. **P0.4** — Elevate secrets download
-5. **P1.1–P1.3** — Retry, rollback, backup status on summary
+1. ~~**P0.1** — Project page stack summary + Deploy as primary CTA~~ **done**
+2. ~~**P0.2** — Simplify deploy form (source default, detect builder, hide node/ports)~~ **done**
+3. ~~**P0.3** — Deployment detail with live status + logs~~ **done** (async queue + poll)
+4. ~~**P0.4** — Elevate secrets download~~ **done**
+5. ~~**P1.1–P1.3** — Retry, rollback, backup status on summary~~ **done**
 6. **P2** only if the happy path already feels boringly reliable
 
-When blocked, prefer the smallest change that preserves the opinionated path over adding configuration knobs.
+### Shipped notes (2026-07-11)
+
+- Overview: mental-model copy, living deploy banner, failed+retry strip, secrets strip, 5 stack tiles (App / Postgres / Redis / S3 / Backups)
+- Header: Deploy primary + Secrets secondary + Roll back in menu
+- `runProductionDeploy` returns `queued` immediately; `executeProductionDeploy` runs in-process; UI polls ~1.5s and streams build logs in the ActionDialog
+- E2E polls `deployments/get` until `running`

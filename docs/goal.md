@@ -147,6 +147,15 @@ Per [`access.md`](./access.md):
 4. UI: connection status, last delivery, failed delivery reason
 5. Manual deploy still works
 
+### G6 — Git OAuth (GitHub App + GitLab OAuth)
+
+Follow [`git-oauth.md`](./git-oauth.md):
+
+1. Happy path: **Connect GitHub/GitLab** (no PAT paste) → pick repo → auto webhook → private clone
+2. GitHub App (manifest or env) + installation tokens; GitLab OAuth Application
+3. PAT remains Advanced only
+4. Email/password login unchanged
+
 ### G4 — World-class UX
 
 Implement [`ux-roadmap.md`](./ux-roadmap.md) **P0 + P1** (P2 optional):

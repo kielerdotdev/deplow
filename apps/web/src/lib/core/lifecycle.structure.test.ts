@@ -9,13 +9,15 @@ import { describe, expect, it } from "vitest"
 describe("lifecycle structure (create → deploy → proxy → destroy)", () => {
   const root = path.resolve(import.meta.dirname, "../..")
 
-  it("project create pins nodeId and production credentials", () => {
+  it("project create pins nodeId and provisions linked resources", () => {
     const src = readFileSync(path.join(root, "orpc/projects.ts"), "utf8")
     expect(src).toContain("ensureLocalNodeId")
     expect(src).toContain("nodeId")
     expect(src).toContain("assertProductionSlug")
-    expect(src).toContain("provisioningService.createProject")
-    expect(src).toContain("proxyService.removeProjectRoute")
+    expect(src).toContain("resourceLinkService.provision")
+    expect(src).toContain("proxyService.removeServiceRoute")
+    expect(src).toContain("resourceLinks")
+    expect(src).toContain("services")
     expect(src).toContain("removeProjectContainers")
   })
 
@@ -23,13 +25,14 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
     expect(src).toContain("injectDeployEnv")
     expect(src).toContain("runProductionDeploy")
+    expect(src).toContain("executeDeploy")
     expect(src).toContain("dockerNodeExecutor.deployApp")
-    expect(src).toContain("proxyService.upsertProductionRoute")
-    expect(src).toContain("gVisor runtime")
+    expect(src).toContain("proxyService.upsertServiceRoute")
     expect(src).toContain('status: "queued"')
     expect(src).toContain('status: "building"')
     expect(src).toContain('status: "deploying"')
     expect(src).toContain('status: "running"')
+    expect(src).toContain("void executeDeploy")
   })
 
   it("webhook route drives handleGitWebhook (signature + deploy entry)", () => {
@@ -39,10 +42,7 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     )
     expect(src).toContain("handleGitWebhook")
     expect(src).toContain("runProductionDeployFromGit")
-    expect(src).toContain("gitService.syncRepo")
-    expect(src).toContain("buildService.buildFromSource")
-    expect(src).toContain("dockerNodeExecutor.deployApp")
-    expect(src).toContain("proxyService.upsertProductionRoute")
+    expect(src).toContain("runServiceDeploy")
     expect(src).toContain("git_webhook")
   })
 
@@ -56,7 +56,7 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
   it("deployments.stop removes proxy route", () => {
     const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
     expect(src).toContain("stopApp")
-    expect(src).toContain("proxyService.removeProjectRoute")
+    expect(src).toContain("proxyService.removeServiceRoute")
   })
 
   it("DockerNodeExecutor uses buildUserAppHostConfig for user apps", () => {

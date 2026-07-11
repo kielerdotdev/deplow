@@ -10,11 +10,15 @@ export interface GitWebhookProject {
   id: string
   slug: string
   nodeId: string | null
+  ownerId?: string | null
   gitProvider: string | null
   gitRepoUrl: string | null
   gitBranch: string | null
   gitWebhookSecretEncrypted: string | null
   credentialsEncrypted: string | null
+  gitAuthMethod?: string | null
+  gitInstallationId?: string | null
+  gitAccessTokenEncrypted?: string | null
 }
 
 export interface GitWebhookHandlerDeps {

@@ -6,14 +6,14 @@ Stop treating every good idea as equal. **Build v1. Design so v2/v3 don’t requ
 
 Single Docker host. One shared Postgres / Redis / MinIO on that host. Many projects share them (logical tenancy).
 
-| Must | Notes |
-| --- | --- |
-| Project bundle | Postgres DB + Redis namespace + S3 bucket + secrets + backups |
-| Build / run | Railpack, Dockerfile, or image; gVisor for user apps |
-| **Proxy** | `{slug}.{baseDomain}` → app container |
-| **Edge: cloudflared** | Wildcard DNS once → tunnel → proxy. Primary v1 edge |
-| **Git webhooks** | Push → build → deploy main track |
-| Ops | Logs, stop, destroy, on-demand + scheduled backups |
+| Must                  | Notes                                                         |
+| --------------------- | ------------------------------------------------------------- |
+| Project bundle        | Postgres DB + Redis namespace + S3 bucket + secrets + backups |
+| Build / run           | Railpack, Dockerfile, or image; gVisor for user apps          |
+| **Proxy**             | `{slug}.{baseDomain}` → app container                         |
+| **Edge: cloudflared** | Wildcard DNS once → tunnel → proxy. Primary v1 edge           |
+| **Git webhooks**      | Push → build → deploy main track                              |
+| Ops                   | Logs, stop, destroy, on-demand + scheduled backups            |
 
 **Not v1:** PR/branch **preview deployments**, Tailscale/Netbird edges, multi-node, custom domains beyond the platform wildcard.
 
@@ -21,16 +21,16 @@ Single Docker host. One shared Postgres / Redis / MinIO on that host. Many proje
 
 ## v2 — next product slice
 
-| Item | Depends on |
-| --- | --- |
-| Preview deployments | Proxy hostname scheme + **data-plane slots** (see [data-plane.md](./data-plane.md)) |
-| More edges (Tailscale Serve, Netbird, direct TLS) | Same proxy; new adapters |
-| Custom domains (optional) | Proxy; not required for wildcard happy path |
+| Item                                              | Depends on                                                                          |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Preview deployments                               | Proxy hostname scheme + **data-plane slots** (see [data-plane.md](./data-plane.md)) |
+| More edges (Tailscale Serve, Netbird, direct TLS) | Same proxy; new adapters                                                            |
+| Custom domains (optional)                         | Proxy; not required for wildcard happy path                                         |
 
 ## v3 — capacity
 
-| Item | Model |
-| --- | --- |
+| Item       | Model                                                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Multi-node | **Project is atomic to one node.** Each node has its own shared Postgres/Redis/MinIO. Many projects per node. Never app-on-A / DB-on-B. |
 
 ## Rules for contributors

@@ -6,8 +6,6 @@ import { RedisProvisioner } from "./infra/redis"
 import { StorageProvisioner } from "./infra/storage"
 import type { PlatformConfig } from "./platform-config"
 import { SecretsService } from "./secrets.service"
-import type { ServerSpawner } from "./spawners/base"
-import { getServerSpawner } from "./spawners/factory"
 
 export interface CreateProjectResult {
   projectId: string
@@ -37,7 +35,6 @@ export class ProvisioningService {
   constructor(
     private readonly config: PlatformConfig,
     private readonly secretsService = new SecretsService(),
-    private readonly spawners: Record<string, ServerSpawner> = {},
   ) {
     this.postgres = new PostgresProvisioner(config)
     this.redis = new RedisProvisioner(config)
@@ -69,10 +66,6 @@ export class ProvisioningService {
       this.config.secretsEncryptionKey,
     )
 
-    const spawnedServerId = input.spawnBuildServer
-      ? await this.spawnBuildServer(slug, projectId)
-      : undefined
-
     return {
       projectId,
       name: input.name,
@@ -80,7 +73,7 @@ export class ProvisioningService {
       secrets,
       credentials,
       credentialsEncrypted,
-      spawnedServerId,
+      spawnedServerId: undefined,
     }
   }
 
@@ -101,27 +94,16 @@ export class ProvisioningService {
       )
     }
   }
-
-  private async spawnBuildServer(
-    slug: string,
-    projectId: string,
-  ): Promise<string | undefined> {
-    const spawner = getServerSpawner(this.spawners, "docker")
-    const server = await spawner.spawn({
-      name: `${slug}-build`,
-      serverType: "docker-alpine",
-      ttlMinutes: 30,
-      labels: { projectId, slug },
-    })
-    return server.id
-  }
 }
 
 /**
  * Best-effort resource teardown — logs the error but never throws,
  * so a failure in one resource doesn't prevent cleanup of others.
  */
-async function safeDrop(promise: Promise<unknown>, label: string): Promise<void> {
+async function safeDrop(
+  promise: Promise<unknown>,
+  label: string,
+): Promise<void> {
   try {
     await promise
   } catch (error) {

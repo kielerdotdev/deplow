@@ -11,11 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NodesRouteImport } from './routes/nodes'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiWebhooksGitProjectIdRouteImport } from './routes/api/webhooks/git.$projectId'
+import { Route as ApiGitOauthGitlabCallbackRouteImport } from './routes/api/git/oauth/gitlab/callback'
+import { Route as ApiGitOauthGithubCallbackRouteImport } from './routes/api/git/oauth/github/callback'
+import { Route as ApiGitGithubAppManifestCallbackRouteImport } from './routes/api/git/github/app-manifest/callback'
 
 const NodesRoute = NodesRouteImport.update({
   id: '/nodes',
@@ -25,6 +29,11 @@ const NodesRoute = NodesRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -52,73 +61,119 @@ const ApiWebhooksGitProjectIdRoute = ApiWebhooksGitProjectIdRouteImport.update({
   path: '/api/webhooks/git/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGitOauthGitlabCallbackRoute =
+  ApiGitOauthGitlabCallbackRouteImport.update({
+    id: '/api/git/oauth/gitlab/callback',
+    path: '/api/git/oauth/gitlab/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGitOauthGithubCallbackRoute =
+  ApiGitOauthGithubCallbackRouteImport.update({
+    id: '/api/git/oauth/github/callback',
+    path: '/api/git/oauth/github/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGitGithubAppManifestCallbackRoute =
+  ApiGitGithubAppManifestCallbackRouteImport.update({
+    id: '/api/git/github/app-manifest/callback',
+    path: '/api/git/github/app-manifest/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/webhooks/git/$projectId': typeof ApiWebhooksGitProjectIdRoute
+  '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
+  '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
+  '/api/git/oauth/gitlab/callback': typeof ApiGitOauthGitlabCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/webhooks/git/$projectId': typeof ApiWebhooksGitProjectIdRoute
+  '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
+  '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
+  '/api/git/oauth/gitlab/callback': typeof ApiGitOauthGitlabCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/webhooks/git/$projectId': typeof ApiWebhooksGitProjectIdRoute
+  '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
+  '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
+  '/api/git/oauth/gitlab/callback': typeof ApiGitOauthGitlabCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/integrations'
     | '/login'
     | '/nodes'
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/rpc/$'
     | '/api/webhooks/git/$projectId'
+    | '/api/git/github/app-manifest/callback'
+    | '/api/git/oauth/github/callback'
+    | '/api/git/oauth/gitlab/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/integrations'
     | '/login'
     | '/nodes'
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/rpc/$'
     | '/api/webhooks/git/$projectId'
+    | '/api/git/github/app-manifest/callback'
+    | '/api/git/oauth/github/callback'
+    | '/api/git/oauth/gitlab/callback'
   id:
     | '__root__'
     | '/'
+    | '/integrations'
     | '/login'
     | '/nodes'
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/rpc/$'
     | '/api/webhooks/git/$projectId'
+    | '/api/git/github/app-manifest/callback'
+    | '/api/git/oauth/github/callback'
+    | '/api/git/oauth/gitlab/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  IntegrationsRoute: typeof IntegrationsRoute
   LoginRoute: typeof LoginRoute
   NodesRoute: typeof NodesRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
   ApiWebhooksGitProjectIdRoute: typeof ApiWebhooksGitProjectIdRoute
+  ApiGitGithubAppManifestCallbackRoute: typeof ApiGitGithubAppManifestCallbackRoute
+  ApiGitOauthGithubCallbackRoute: typeof ApiGitOauthGithubCallbackRoute
+  ApiGitOauthGitlabCallbackRoute: typeof ApiGitOauthGitlabCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -135,6 +190,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -172,17 +234,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksGitProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/git/oauth/gitlab/callback': {
+      id: '/api/git/oauth/gitlab/callback'
+      path: '/api/git/oauth/gitlab/callback'
+      fullPath: '/api/git/oauth/gitlab/callback'
+      preLoaderRoute: typeof ApiGitOauthGitlabCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/git/oauth/github/callback': {
+      id: '/api/git/oauth/github/callback'
+      path: '/api/git/oauth/github/callback'
+      fullPath: '/api/git/oauth/github/callback'
+      preLoaderRoute: typeof ApiGitOauthGithubCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/git/github/app-manifest/callback': {
+      id: '/api/git/github/app-manifest/callback'
+      path: '/api/git/github/app-manifest/callback'
+      fullPath: '/api/git/github/app-manifest/callback'
+      preLoaderRoute: typeof ApiGitGithubAppManifestCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  IntegrationsRoute: IntegrationsRoute,
   LoginRoute: LoginRoute,
   NodesRoute: NodesRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
   ApiWebhooksGitProjectIdRoute: ApiWebhooksGitProjectIdRoute,
+  ApiGitGithubAppManifestCallbackRoute: ApiGitGithubAppManifestCallbackRoute,
+  ApiGitOauthGithubCallbackRoute: ApiGitOauthGithubCallbackRoute,
+  ApiGitOauthGitlabCallbackRoute: ApiGitOauthGitlabCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

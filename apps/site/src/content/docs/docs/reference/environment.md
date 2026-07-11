@@ -17,14 +17,27 @@ description: Control plane and platform configuration reference.
 
 ## Secure runtime (user apps)
 
-| Variable                      | Purpose                                      | Default  |
-| ----------------------------- | -------------------------------------------- | -------- |
-| `DEPLOW_APP_RUNTIME`          | OCI runtime name for user app containers     | `runsc`  |
-| `DEPLOW_APP_RUNTIME_REQUIRED` | Fail deploy if the runtime is not installed  | `true`   |
-| `DEPLOW_APP_MEMORY_MB`        | Memory limit for user apps                   | `512`    |
-| `DEPLOW_APP_CPUS`             | CPU limit for user apps                      | `1`      |
+| Variable                      | Purpose                                     | Default |
+| ----------------------------- | ------------------------------------------- | ------- |
+| `DEPLOW_APP_RUNTIME`          | OCI runtime name for user app containers    | `runsc` |
+| `DEPLOW_APP_RUNTIME_REQUIRED` | Fail deploy if the runtime is not installed | `true`  |
+| `DEPLOW_APP_MEMORY_MB`        | Memory limit for user apps                  | `512`   |
+| `DEPLOW_APP_CPUS`             | CPU limit for user apps                     | `1`     |
 
 Set `DEPLOW_APP_RUNTIME=runc` only as a temporary escape hatch. See [Security](/docs/concepts/security/).
+
+## Git OAuth / App
+
+Prefer configuring via **Dashboard → Integrations**. Env vars are the fallback.
+
+| Variable | Purpose |
+| -------- | ------- |
+| `DEPLOW_PUBLIC_URL` | Public control plane URL (OAuth callbacks + webhooks) |
+| `DEPLOW_GITHUB_APP_ID` / `_CLIENT_ID` / `_CLIENT_SECRET` / `_PRIVATE_KEY` / `_SLUG` | GitHub App (or create via Integrations) |
+| `DEPLOW_GITLAB_OAUTH_CLIENT_ID` / `_CLIENT_SECRET` / `_BASE_URL` | GitLab OAuth Application |
+| `DEPLOW_GITHUB_TOKEN` / `DEPLOW_GITLAB_TOKEN` | Advanced platform PAT fallbacks |
+
+See [Git connect](/docs/guides/git/).
 
 ## Platform Postgres
 
