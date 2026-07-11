@@ -7,6 +7,8 @@ import {
   eq,
   nodes,
   projects,
+  resourceLinks,
+  services,
 } from "@deplow/db"
 import type { ProjectCredentials } from "@deplow/shared"
 
@@ -20,14 +22,12 @@ import {
   GitService,
   ProxyService,
   ProvisioningService,
+  ResourceLinkService,
   createCaddyReloadOnChange,
-  createServerSpawners,
-  decryptString,
   loadPlatformConfig,
 } from "@/lib/core"
 
 const config = loadPlatformConfig()
-const spawners = createServerSpawners(config)
 
 const backupStore: BackupStore = {
   async createRunning(projectId, storageKey) {
@@ -87,11 +87,9 @@ const backupStore: BackupStore = {
 
 export const platformConfig = config
 
-export const provisioningService = new ProvisioningService(
-  config,
-  undefined,
-  spawners,
-)
+export const provisioningService = new ProvisioningService(config, undefined)
+
+export const resourceLinkService = new ResourceLinkService(config)
 
 export const backupService = new BackupService(config, backupStore)
 
@@ -123,12 +121,14 @@ export const proxyService = new ProxyService({
 
 export const gitService = new GitService(config.gitCloneRoot)
 
-export function decryptProjectCredentials(
-  encrypted: string | null | undefined,
-): ProjectCredentials | null {
-  if (!encrypted) return null
-  const json = decryptString(encrypted, config.secretsEncryptionKey)
-  return JSON.parse(json) as ProjectCredentials
+export async function getProjectCredentials(
+  projectId: string,
+): Promise<ProjectCredentials | null> {
+  const links = await db
+    .select()
+    .from(resourceLinks)
+    .where(eq(resourceLinks.projectId, projectId))
+  return resourceLinkService.assemble(links)
 }
 
 export function scheduleProjectBackups(
@@ -139,12 +139,7 @@ export function scheduleProjectBackups(
     projectId,
     intervalMs,
     getCredentials: async () => {
-      const [row] = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, projectId))
-      if (!row) return null
-      return decryptProjectCredentials(row.credentialsEncrypted)
+      return getProjectCredentials(projectId)
     },
   })
 }
@@ -193,4 +188,15 @@ if (typeof process !== "undefined" && process.env.VITEST !== "true") {
   })
 }
 
-export { db, projects, nodes, deployments, backups, eq, and, desc }
+export {
+  db,
+  projects,
+  services,
+  resourceLinks,
+  nodes,
+  deployments,
+  backups,
+  eq,
+  and,
+  desc,
+}

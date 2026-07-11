@@ -4,19 +4,15 @@ import { deployOptionsSchema } from "./node"
 
 export const createDeploymentInputSchema = z
   .object({
-    projectId: z.string().min(1),
-    /** Optional — defaults to the project's pinned node / local Docker */
+    serviceId: z.string().min(1),
+    /** Optional — defaults to the parent project's pinned node */
     nodeId: z.string().min(1).optional(),
-    serviceName: z
-      .string()
-      .min(1)
-      .max(64)
-      .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/)
-      .default("app"),
     /** Prebuilt image (optional if sourcePath set) — advanced path */
     image: z.string().min(1).optional(),
     /** Absolute path to app source for Dockerfile/Railpack build */
     sourcePath: z.string().min(1).optional(),
+    /** Clone the service's connected Git repo and deploy (happy path) */
+    fromGit: z.boolean().optional(),
     /** git_webhook | manual | retry | rollback */
     triggeredBy: z
       .enum(["manual", "git_webhook", "retry", "rollback"])
@@ -25,11 +21,12 @@ export const createDeploymentInputSchema = z
     options: deployOptionsSchema.optional(),
   })
   .superRefine((val, ctx) => {
+    if (val.fromGit) return
     const image = val.image ?? val.options?.image
     if (!image && !val.sourcePath) {
       ctx.addIssue({
         code: "custom",
-        message: "Provide image or sourcePath",
+        message: "Provide image, sourcePath, or fromGit",
         path: ["image"],
       })
     }
@@ -59,6 +56,7 @@ export type DeploymentStatus = z.infer<typeof deploymentStatusSchema>
 
 export const deploymentSummarySchema = z.object({
   id: z.string(),
+  serviceId: z.string(),
   projectId: z.string(),
   nodeId: z.string(),
   serviceName: z.string(),
@@ -83,8 +81,7 @@ export const retryDeploymentInputSchema = z.object({
 export type RetryDeploymentInput = z.infer<typeof retryDeploymentInputSchema>
 
 export const rollbackDeploymentInputSchema = z.object({
-  /** Deployment to roll back *from* — uses previous running image */
-  projectId: z.string().min(1),
+  serviceId: z.string().min(1),
   /** Optional explicit prior deployment id */
   deploymentId: z.string().min(1).optional(),
 })

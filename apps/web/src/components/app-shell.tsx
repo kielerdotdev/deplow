@@ -2,9 +2,9 @@ import { Link, useRouterState } from "@tanstack/react-router"
 import {
   BoxIcon,
   ChevronsUpDownIcon,
-  ContainerIcon,
   LayoutDashboardIcon,
   LogOutIcon,
+  PlugIcon,
   ServerIcon,
 } from "lucide-react"
 
@@ -25,7 +25,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -55,6 +54,12 @@ const navItems = [
     match: (path: string) => path === "/" || path.startsWith("/projects"),
   },
   {
+    title: "Integrations",
+    to: "/integrations" as const,
+    icon: PlugIcon,
+    match: (path: string) => path.startsWith("/integrations"),
+  },
+  {
     title: "Nodes",
     to: "/nodes" as const,
     icon: ServerIcon,
@@ -79,7 +84,7 @@ export function AppShell({
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <Sidebar collapsible="icon">
+        <Sidebar collapsible="icon" className="border-r border-sidebar-border">
           <SidebarHeader>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -104,7 +109,6 @@ export function AppShell({
 
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Platform</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {navItems.map((item) => (
@@ -178,16 +182,15 @@ export function AppShell({
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset>
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarInset className="min-w-0 overflow-x-hidden">
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/80 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-1 h-4" />
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <ContainerIcon className="size-4 shrink-0 text-muted-foreground" />
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <div className="min-w-0">
                 {title ? (
                   <>
-                    <h1 className="truncate text-sm font-semibold leading-none">
+                    <h1 className="truncate text-lg font-semibold leading-tight tracking-tight">
                       {title}
                     </h1>
                     {description ? (
@@ -207,7 +210,7 @@ export function AppShell({
               <div className="flex shrink-0 items-center gap-2">{actions}</div>
             ) : null}
           </header>
-          <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+          <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-x-hidden p-4 md:p-6">
             {children}
           </div>
         </SidebarInset>

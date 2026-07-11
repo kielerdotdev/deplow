@@ -19,6 +19,7 @@ export { DockerSpawner } from "./spawners/docker"
 export { SecretsService } from "./secrets.service"
 export type { SecretsInput } from "./secrets.service"
 export { ProvisioningService } from "./provisioning.service"
+export { ResourceLinkService } from "./resource-link.service"
 export type {
   CreateProjectResult,
   DestroyProjectInput,
@@ -83,10 +84,69 @@ export {
 } from "./webhook-signature"
 export type { GitProvider } from "./webhook-signature"
 export { GitService } from "./git.service"
-export type { GitConnectResult, GitCloneResult } from "./git.service"
+export type {
+  GitConnectResult,
+  GitCloneResult,
+  GitSyncAuth,
+} from "./git.service"
 export {
   listRemoteRepos,
   listRemoteBranches,
   normalizeRepoUrl,
 } from "./git-remote"
 export type { RemoteRepo, ListReposResult } from "./git-remote"
+export {
+  gitAuthConfigEnv,
+  hostFromRepoUrl,
+  defaultGitUsername,
+  authenticatedCloneUrl,
+  redactSecrets,
+} from "./git-clone-auth"
+export type { GitCloneAuth } from "./git-clone-auth"
+export {
+  resolveProjectCloneAuth,
+  resolveUserListToken,
+} from "./git-credentials"
+export type {
+  ProjectGitAuthRow,
+  GitProviderLinkRow,
+  ResolveGitAuthDeps,
+} from "./git-credentials"
+export {
+  createGitHubAppJwt,
+  getInstallationAccessToken,
+  listInstallationRepos,
+  listUserInstallations,
+  exchangeGitHubOAuthCode,
+  fetchGitHubUser,
+  createRepoWebhook,
+  deleteRepoWebhook,
+  githubOAuthAuthorizeUrl,
+  githubAppInstallUrl,
+  githubAppDeleteSettingsUrl,
+  getAuthenticatedGitHubApp,
+  listAppInstallations,
+  uninstallAllGitHubAppInstallations,
+  buildGitHubAppManifest,
+  completeGitHubAppManifest,
+  isPublicInternetUrl,
+  randomOAuthState,
+  githubOAuthCallbackUrls,
+  GITHUB_OAUTH_CALLBACK_PATH,
+} from "./github-app"
+export type { GitHubAppConfig } from "./github-app"
+export {
+  gitlabOAuthAuthorizeUrl,
+  exchangeGitLabOAuthCode,
+  refreshGitLabToken,
+  fetchGitLabUser,
+  createGitLabProjectHook,
+  deleteGitLabProjectHook,
+} from "./gitlab-oauth"
+export type { GitLabOAuthConfig } from "./gitlab-oauth"
+export {
+  githubAppConfigFromEnv,
+  gitlabOAuthConfigFromEnv,
+  parseRepoFullName,
+  safeReturnTo,
+} from "./git-integrations"

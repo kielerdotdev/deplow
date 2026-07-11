@@ -1,160 +1,294 @@
 ---
 import LandingLayout from '../layouts/LandingLayout.astro';
 import Logo from '../components/landing/Logo.astro';
-import HeroDiagram from '../components/landing/diagrams/HeroDiagram.astro';
+import DashboardMockup from '../components/landing/diagrams/DashboardMockup.astro';
 import StackDiagram from '../components/landing/diagrams/StackDiagram.astro';
+import SandboxDiagram from '../components/landing/diagrams/SandboxDiagram.astro';
 import StepIcons from '../components/landing/diagrams/StepIcons.astro';
 import FeatureIcons from '../components/landing/icons/FeatureIcons.astro';
 
 const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
+const installCmd = 'docker compose up && pnpm dev';
 
 const features = [
 	{
 		kind: 'bundle' as const,
 		title: 'Full stack per project',
-		body: 'Postgres, redis, and an S3 bucket — provisioned and isolated when you create a project.',
-	},
-	{
-		kind: 'build' as const,
-		title: 'Railpack or Dockerfile',
-		body: 'Source builds with Railpack by default. Bring a Dockerfile or pull a prebuilt image.',
-	},
-	{
-		kind: 'backup' as const,
-		title: 'Scheduled backups',
-		body: 'pg_dump on a timer. Artifacts land in the platform backup bucket automatically.',
+		body: 'Postgres, redis, and an S3 bucket are provisioned and isolated the moment you create a project. No separate billing tabs.',
+		span: 'hero' as const,
 	},
 	{
 		kind: 'sandbox' as const,
 		title: 'gVisor by default',
-		body: 'User apps run sandboxed. Platform services stay on ordinary runc — security over convenience.',
+		body: 'User apps run sandboxed under gVisor. Platform services stay on ordinary runc — security where it matters.',
+		span: 'normal' as const,
+		cls: 'sandbox-card' as const,
+	},
+	{
+		kind: 'build' as const,
+		title: 'Railpack or Dockerfile',
+		body: 'Source builds with Railpack by default. Bring a Dockerfile or pull a prebuilt image. Same path every time.',
+		span: 'normal' as const,
+	},
+	{
+		kind: 'git' as const,
+		title: 'Git push to deploy',
+		body: 'Connect a repo, push to a branch, and the loop runs itself. No CI yaml to author.',
+		span: 'normal' as const,
+	},
+	{
+		kind: 'backup' as const,
+		title: 'Scheduled backups',
+		body: 'pg_dump on a timer. Artifacts land in the platform backup bucket automatically. No cron to write.',
+		span: 'normal' as const,
+	},
+	{
+		kind: 'secrets' as const,
+		title: 'Secrets, encrypted',
+		body: 'Env vars injected at runtime and encrypted at rest. Never written into images or logs.',
+		span: 'normal' as const,
+	},
+	{
+		kind: 'ssl' as const,
+		title: 'Routes & TLS',
+		body: 'Caddy fronts the host. Let’s Encrypt hands out certs for your domains so you stop caring about renewal.',
+		span: 'wide' as const,
+	},
+	{
+		kind: 'api' as const,
+		title: 'API & CLI',
+		body: 'Every action in the dashboard is available over an oRPC API and a typed CLI. Automate the loop, not the UI.',
+		span: 'normal' as const,
 	},
 ];
 
 const steps = [
+	{ kind: 'create' as const, n: '1', title: 'Create', body: 'Spin up postgres, redis, and a bucket. Credentials encrypted at rest.' },
+	{ kind: 'build' as const, n: '2', title: 'Build', body: 'Railpack, Dockerfile, or pull a prebuilt image. Same path every time.' },
+	{ kind: 'run' as const, n: '3', title: 'Run', body: 'Env vars injected. Container starts under gVisor on your host.' },
+	{ kind: 'backup' as const, n: '4', title: 'Back up', body: 'Scheduled pg_dump into the platform bucket. No extra cron to write.' },
+];
+
+const stackItems = [
+	'SQLite holds project metadata',
+	'Postgres, redis, minio hold workload data',
+	'Docker runs the host; user apps run under gVisor',
+	'No ssh nodes, no swarm, no kube operator',
+];
+
+const sandboxChecks = [
+	{ strong: 'gVisor, not runc.', rest: 'User apps get a forged kernel — syscalls like ptrace and /proc poking are blocked at the boundary.' },
+	{ strong: 'Platform services stay privileged.', rest: 'Postgres, redis, and the control plane run on runc. Trusted, fast, no perf tax where you don’t need it.' },
+	{ strong: 'Per-project isolation.', rest: 'Docker networks and volumes separate every project’s data plane. One noisy neighbour can’t read another’s rows.' },
+	{ strong: 'Secrets never touch images.', rest: 'Env vars are injected at runtime and encrypted at rest. <b>Zero</b> plaintext leakage into build logs.' },
+];
+
+const competitors = [
+	{ name: 'Heroku', blurb: 'deplow runs in your cloud, one host, with a real sandbox — no dyno dynasty to outgrow.' },
+	{ name: 'Vercel', blurb: 'Bring your backend, not just your frontend. <b>Full-stack</b> per project, not per preview.' },
+	{ name: 'Render', blurb: 'One host, one bill. gVisor isolation where Render charges you per service for it.' },
+	{ name: 'Railway', blurb: 'Self-hosted and self-owned. <b>No usage grid</b>, no surprise dollar graph at 3am.' },
+	{ name: 'Dokploy', blurb: 'A control plane with a sandbox-first runtime. deplow ships gVisor by default, full stop.' },
+	{ name: 'Coolify', blurb: 'Faster local setup, a smaller surface, and the loop you can explain in one breath.' },
+	{ name: 'Dokku', blurb: 'Same single-host honesty. deplow adds a typed API, scheduled backups, and a real UI.' },
+	{ name: 'Porter', blurb: 'For when you’ve outgrown hand-tuned kube — <b>drift back</b> to one host without losing the platform.' },
+];
+
+const faqs = [
 	{
-		kind: 'create' as const,
-		n: '1',
-		title: 'Create',
-		body: 'Spin up postgres, redis, and a bucket. Credentials encrypted at rest.',
+		q: 'What exactly is deplow?',
+		a: 'A small <strong>self-hosted control plane</strong> for one kind of project: an app plus postgres, redis, s3, and secrets — on a single Docker host you already run. User apps run under gVisor by default; platform services stay on ordinary runc.',
 	},
 	{
-		kind: 'build' as const,
-		n: '2',
-		title: 'Build',
-		body: 'Railpack, Dockerfile, or pull a prebuilt image. Same path every time.',
+		q: 'Why only one host?',
+		a: 'Focusing on one host keeps the install simple, the mental model small, and the bill predictable. If you need multi-host, kubernetes, or a marketplace, deplow is not your tool — and that’s fine.',
 	},
 	{
-		kind: 'run' as const,
-		n: '3',
-		title: 'Run',
-		body: 'Env vars injected. Container starts under gVisor on your host.',
+		q: 'What does “gVisor by default” actually get me?',
+		a: 'User-submitted code runs inside a <strong>gVisor sandbox</strong> — a userspace kernel that intercepts syscalls. That blocks ptrace, /proc poking, and most sandbox escapes before they reach your host. Platform services run on runc because you control them.',
 	},
 	{
-		kind: 'backup' as const,
-		n: '4',
-		title: 'Back up',
-		body: 'Scheduled pg_dump into the platform bucket. No extra cron to write.',
+		q: 'How do I deploy from Git?',
+		a: 'Connect a repository, pick a branch, and push. The loop runs build → run → back up. No CI yaml to author, no matrix of branching strategies.',
+	},
+	{
+		q: 'Where do backups go?',
+		a: 'A scheduled <code>pg_dump</code> writes artifacts into the platform’s minio bucket automatically. Point it at any S3-compatible destination if you’d rather keep them elsewhere.',
+	},
+	{
+		q: 'Can I bring my own Docker image?',
+		a: 'Yes. Builds default to Railpack, but you can ship a Dockerfile or pull a prebuilt image. The same deploy loop runs either way.',
+	},
+	{
+		q: 'Is there a managed / cloud option?',
+		a: 'Not this release. deplow is self-hosted and open. Compose file for platform services ships in the repo; <code>pnpm dev</code> boots the control plane.',
 	},
 ];
 ---
 
 <LandingLayout
-	title="deplow — self-hosted app + postgres + redis + s3"
-	description="Deploy to your own Docker host. One project gets postgres, redis, s3, secrets, builds, backups — user apps sandboxed with gVisor."
+	title="deplow — self-hosted PaaS with gVisor by default"
+	description="A small self-hosted control plane: one project gets postgres, redis, s3, secrets, builds, and backups — on a single Docker host you already run. User apps run under gVisor by default."
 >
 	<header class="nav">
 		<div class="nav-inner">
 			<a class="brand" href="/">
 				<Logo />
-				deplow
+				<span>deplow</span>
 			</a>
 			<nav class="nav-links">
+				<a href="#features">Features</a>
 				<a href="#loop">The loop</a>
+				<a href="#security">Security</a>
 				<a href="/docs/">Docs</a>
-				<a class="btn btn--ink" href={appUrl}>Dashboard →</a>
+				<a class="gh-star" href="https://github.com/deplow/deplow" rel="noopener">
+					<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+					<b>Star</b>
+				</a>
+				<a class="btn btn--accent" href={appUrl}>Dashboard →</a>
 			</nav>
 		</div>
 	</header>
 
 	<main>
 		<!-- HERO -->
-		<section class="hero wrap">
-			<p class="hero-eyebrow"><i></i> self-hosted · sandboxed · single host</p>
-			<h1>You have Docker.<br /><span>You want fewer tabs.</span></h1>
-			<p class="hero-lede">
-				<strong>deplow</strong> is a small control plane for one kind of project: an app plus postgres,
-				redis, s3, and secrets — on a machine you already control. User apps run under gVisor by default.
-			</p>
-			<div class="hero-actions">
-				<a class="btn btn--clay" href="/docs/getting-started/quick-start/">Start here</a>
-				<a class="btn btn--ghost" href="/docs/">Read docs</a>
+		<section class="hero">
+			<div class="hero-grid">
+				<div class="hero-copy" data-reveal>
+					<p class="eyebrow"><i></i> self-hosted · gVisor · single host</p>
+					<h1>One host.<br /><span class="grad-text">Sandboxed apps.</span><br />Fewer tabs.</h1>
+					<p class="hero-lede">
+						<strong>deplow</strong> is a small control plane for one kind of project: an app plus postgres,
+						redis, s3, and secrets — on the Docker host you already run. <strong>User apps run under gVisor</strong>
+						by default; platform services stay on ordinary runc.
+					</p>
+					<div class="hero-actions">
+						<a class="btn btn--accent btn--lg" href="/docs/getting-started/quick-start/">Start here</a>
+						<a class="btn btn--ghost btn--lg" href="/docs/">Read docs</a>
+					</div>
+					<div class="install">
+						<span class="prompt">$</span>
+						<code>{installCmd}</code>
+						<button
+							class="copy"
+							type="button"
+							aria-label="Copy install command"
+							data-copy={installCmd}
+						>
+							<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="4" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="3" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5" opacity="0.4"/></svg>
+						</button>
+					</div>
+					<div class="trust">
+						<div class="avatars">
+							<span>D</span><span>K</span><span>R</span><span>S</span>
+						</div>
+						<span><b>Open source</b> · gVisor by default · 10 min to first deploy</span>
+					</div>
+					<ul class="chips">
+						<li>postgres</li>
+						<li>redis</li>
+						<li>minio</li>
+						<li>caddy</li>
+						<li>gVisor</li>
+						<li>cloudflared</li>
+						<li>railpack</li>
+					</ul>
+				</div>
+				<div class="hero-visual" data-reveal>
+					<div class="window">
+						<div class="window-bar">
+							<span class="dot dot--clay"></span>
+							<span class="dot dot--sage"></span>
+							<span class="dot dot--muted"></span>
+							<span class="window-title">deplow — acme-shop / production</span>
+						</div>
+						<div class="window-body">
+							<DashboardMockup />
+						</div>
+					</div>
+				</div>
 			</div>
-			<p class="hero-note">compose up · pnpm dev · open dashboard</p>
+		</section>
 
-			<div class="hero-diagram">
-				<HeroDiagram />
+		<!-- STATS -->
+		<section class="stats container" data-reveal>
+			<div class="stat"><b>1</b><span>host</span></div>
+			<div class="stat"><b>4</b><span>beats per loop</span></div>
+			<div class="stat"><b>0</b><span>kube operators</span></div>
+			<div class="stat"><b>10m</b><span>to first deploy</span></div>
+		</section>
+
+		<!-- LOGOS / RUNS-ON -->
+		<section class="section container">
+			<div class="logos" data-reveal>
+				<p class="logos-label">Everything deplow ships with</p>
+				<div class="logos-list">
+					<span>SQLite</span>
+					<span>Postgres</span>
+					<span>Redis</span>
+					<span>MinIO</span>
+					<span>Docker</span>
+					<span>gVisor</span>
+					<span>Caddy</span>
+					<span>Railpack</span>
+				</div>
 			</div>
 		</section>
 
 		<!-- FEATURES -->
-		<section class="section wrap">
-			<div class="section-head section-head--center">
+		<section class="section container" id="features" data-reveal>
+			<div class="section-head">
 				<p class="section-label">what you get</p>
 				<h2>One project. The whole bundle.</h2>
-				<p>Skip the hosted Postgres tab, the Redis tab, and the backup cron you meant to write.</p>
+				<p>Skip the hosted Postgres tab, the Redis tab, and the backup cron you meant to write. Every project gets the same bundle on the same host.</p>
 			</div>
-			<div class="features">
+			<div class="bento">
 				{
 					features.map((f) => (
-						<article class="feature">
-							<FeatureIcons kind={f.kind} />
+						<article class={`bento-card bento-card--${f.span}${f.cls ? ' ' + f.cls : ''}`}>
+							<div class="bento-icon">
+								<FeatureIcons kind={f.kind} />
+							</div>
 							<h3>{f.title}</h3>
 							<p>{f.body}</p>
 						</article>
 					))
 				}
 			</div>
-			<div class="out">
-				<span class="out-label">not this release</span>
-				<div class="out-tags">
-					<span>kubernetes</span>
-					<span>multi-host</span>
-					<span>marketplace</span>
-					<span>custom domains / ssl</span>
+		</section>
+
+		<!-- LIFECYCLE -->
+		<section class="section container" id="loop" data-reveal>
+			<div class="section-head section-head--center">
+				<p class="section-label">deploy cycle</p>
+				<h2>The loop does not change</h2>
+				<p>Same four beats for every project. No branching strategy matrix, no per-language playbook.</p>
+			</div>
+			<div class="lifecycle">
+				<div class="lifecycle-line"></div>
+				<div class="lifecycle-steps">
+					{
+						steps.map((s) => (
+							<div class="lc-step">
+								<div class="lc-node">
+									<span class="lc-n">{s.n}</span>
+								</div>
+								<div class="lc-card">
+									<div class="lc-icon">
+										<StepIcons kind={s.kind} />
+									</div>
+									<h3>{s.title}</h3>
+									<p>{s.body}</p>
+								</div>
+							</div>
+						))
+					}
 				</div>
 			</div>
 		</section>
 
-		<!-- LOOP -->
-		<section class="section wrap--wide" id="loop">
-			<div class="section-head section-head--center">
-				<p class="section-label">deploy cycle</p>
-				<h2>The loop does not change</h2>
-				<p>Same four beats for every project. No branching strategy matrix.</p>
-			</div>
-			<div class="steps">
-				{
-					steps.map((s) => (
-						<figure class="step">
-							<div class="step-art">
-								<StepIcons kind={s.kind} />
-							</div>
-							<figcaption class="step-body">
-								<div class="step-title">
-									<span class="step-n">{s.n}</span>
-									{s.title}
-								</div>
-								<p>{s.body}</p>
-							</figcaption>
-						</figure>
-					))
-				}
-			</div>
-		</section>
-
 		<!-- STACK -->
-		<section class="section wrap">
+		<section class="section container" data-reveal>
 			<div class="stack-grid">
 				<div class="stack-copy">
 					<p class="section-label">under the hood</p>
@@ -167,36 +301,196 @@ const steps = [
 						No ssh nodes, no swarm, no kube operator. If you need those, this is not your tool — and
 						that is fine.
 					</p>
+					<ul class="stack-list">
+						{
+							stackItems.map((s) => (
+								<li>
+									<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.75" opacity="0.35"/><path d="M6.5 10.5l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									{s}
+								</li>
+							))
+						}
+					</ul>
 				</div>
-				<div class="stack-diagram">
-					<StackDiagram />
+				<div class="stack-visual">
+					<div class="window">
+						<div class="window-bar">
+							<span class="dot dot--clay"></span>
+							<span class="dot dot--sage"></span>
+							<span class="dot dot--muted"></span>
+							<span class="window-title">stack</span>
+						</div>
+						<div class="window-body">
+							<StackDiagram />
+						</div>
+					</div>
 				</div>
 			</div>
 		</section>
 
-		<!-- CTA -->
-		<section class="wrap">
-			<div class="cta">
-				<div>
-					<h2>Ten-minute local setup</h2>
-					<p>Compose file for platform services ships in the repo. pnpm dev for the control plane.</p>
+		<!-- SANDBOX / SECURITY -->
+		<section class="sandbox" id="security">
+			<div class="sandbox-grid" data-reveal>
+				<div class="sandbox-visual">
+					<div class="window">
+						<div class="window-bar">
+							<span class="dot dot--clay"></span>
+							<span class="dot dot--sage"></span>
+							<span class="dot dot--muted"></span>
+							<span class="window-title">runtime isolation</span>
+						</div>
+						<div class="window-body">
+							<SandboxDiagram />
+						</div>
+					</div>
 				</div>
+				<div class="sandbox-copy">
+					<p class="section-label">security first</p>
+					<h2 class="section-head" style="margin-bottom: .25rem">Sandboxed by default,<br />not as an upsell.</h2>
+					<p style="color: var(--muted); font-size: 1rem; max-width: 30rem;">
+						Every other PaaS hands you runc with a wink. deplow puts <strong style="color:var(--sage)">user code behind gVisor</strong>
+						from the first deploy — the same isolation Google uses inside Cloud Run.
+					</p>
+					<ul class="sandbox-checks">
+						{
+							sandboxChecks.map((c) => (
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="6" stroke="currentColor" stroke-width="1.75" opacity="0.35"/><path d="M8 12.5l2.5 2.5L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									<span set:html={`<strong>${c.strong}</strong> ${c.rest}`} />
+								</li>
+							))
+						}
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		<!-- COMPARE -->
+		<section class="section container" data-reveal>
+			<div class="section-head section-head--center">
+				<p class="section-label">compare</p>
+				<h2>How deplow stacks up</h2>
+				<p>Honest about what it isn’t — so you can pick what it is without a tab audit.</p>
+			</div>
+			<div class="compare">
+				{
+					competitors.map((c) => (
+						<div class="compare-card">
+							<span class="vs">vs</span>
+							<h4>{c.name}</h4>
+							<p set:html={c.blurb} />
+						</div>
+					))
+				}
+			</div>
+		</section>
+
+		<!-- FAQ -->
+		<section class="section container" data-reveal>
+			<div class="section-head section-head--center">
+				<p class="section-label">questions</p>
+				<h2>Before you ask</h2>
+			</div>
+			<div class="faq">
+				{
+					faqs.map((f) => (
+						<details class="faq-item">
+							<summary class="faq-q">
+								<span>{f.q}</span>
+								<svg class="faq-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+							</summary>
+							<div class="faq-a" set:html={f.a} />
+						</details>
+					))
+				}
+			</div>
+		</section>
+
+		<!-- CTA -->
+		<section class="section container" data-reveal>
+			<div class="cta">
+				<h2>Ten-minute local setup.<br />One host to rule them all.</h2>
+				<p>Compose file for platform services ships in the repo. `pnpm dev` boots the control plane. Your first deploy is a git push away.</p>
 				<div class="cta-actions">
-					<a class="btn btn--light" href="/docs/getting-started/quick-start/">Quick start</a>
-					<a class="btn btn--ghost-light" href={appUrl}>Open dashboard</a>
+					<a class="btn btn--accent btn--lg" href="/docs/getting-started/quick-start/">Quick start</a>
+					<a class="btn btn--ghost btn--lg" href={appUrl}>Open dashboard →</a>
 				</div>
 			</div>
 		</section>
 	</main>
 
-	<footer class="footer wrap--wide">
-		<div class="footer-inner">
-			<span>deplow · self-hosted on your docker host</span>
-			<div class="footer-links">
-				<a href="/docs/">Docs</a>
-				<a href="/docs/reference/environment/">Env vars</a>
-				<a href={appUrl}>Dashboard</a>
+	<footer class="footer">
+		<div class="footer-grid">
+			<div class="footer-brand">
+				<a class="brand" href="/" style="gap: 10px;">
+					<Logo size={28} />
+					<span>deplow</span>
+				</a>
+				<p>A small self-hosted control plane: one project gets postgres, redis, s3, secrets, builds, and backups — on a single Docker host you already run.</p>
+				<p style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--faint);">self-hosted · gVisor by default · open source</p>
+			</div>
+			<div class="footer-col">
+				<h4>Product</h4>
+				<ul>
+					<li><a href="#features">Features</a></li>
+					<li><a href="#loop">The loop</a></li>
+					<li><a href="#security">Security</a></li>
+					<li><a href={appUrl}>Dashboard</a></li>
+				</ul>
+			</div>
+			<div class="footer-col">
+				<h4>Docs</h4>
+				<ul>
+					<li><a href="/docs/getting-started/quick-start/">Quick start</a></li>
+					<li><a href="/docs/concepts/architecture/">Architecture</a></li>
+					<li><a href="/docs/concepts/deploy-modes/">Deploy modes</a></li>
+					<li><a href="/docs/reference/environment/">Env vars</a></li>
+				</ul>
+			</div>
+			<div class="footer-col">
+				<h4>Community</h4>
+				<ul>
+					<li><a href="https://github.com/deplow/deplow" rel="noopener">GitHub</a></li>
+					<li><a href="/docs/">Changelog</a></li>
+					<li><a href="/docs/concepts/security/">Security</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="footer-bottom">
+			<span>© 2026 deplow · MIT licensed</span>
+			<div class="social">
+				<a href="https://github.com/deplow/deplow" rel="noopener" aria-label="GitHub">
+					<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+				</a>
+				<a href="/docs/" aria-label="Docs">
+					<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5a2 2 0 012-2h7v18H6a2 2 0 01-2-2V5z" stroke="currentColor" stroke-width="1.75"/><path d="M13 3h5a2 2 0 012 2v14a2 2 0 01-2 2h-5" stroke="currentColor" stroke-width="1.75"/><path d="M7 7h4M7 11h4M7 15h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+				</a>
 			</div>
 		</div>
 	</footer>
+
+	<script>
+		const copyBtn = document.querySelector<HTMLButtonElement>('[data-copy]');
+		if (copyBtn) {
+			copyBtn.addEventListener('click', async () => {
+				const text = copyBtn.getAttribute('data-copy') ?? '';
+				try {
+					await navigator.clipboard.writeText(text);
+					const svg = copyBtn.querySelector('svg');
+					if (svg) {
+						svg.innerHTML =
+							'<path d="M5 8.5l4 4 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>';
+					}
+					setTimeout(() => {
+						if (svg) {
+							svg.innerHTML =
+								'<rect x="4" y="4" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="3" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>';
+						}
+					}, 1400);
+				} catch {
+					// noop
+				}
+			});
+		}
+	</script>
 </LandingLayout>

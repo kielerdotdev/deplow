@@ -213,15 +213,15 @@ Set `DEPLOW_APP_RUNTIME=runsc-kvm` when available.
 
 ## Acceptance criteria
 
-- [ ] `DEPLOW_APP_RUNTIME` defaults to `runsc` and is applied on user `deployApp`
-- [ ] User app containers get CapDrop ALL, no-new-privileges, ReadonlyRootfs (+ tmpfs), memory/CPU limits
-- [ ] Missing `runsc` → clear deploy error when required
-- [ ] Platform compose services still use default runc (no compose `runtime: runsc`)
-- [ ] Build pipeline does not force `runsc`
-- [ ] README + user docs document Docker + gVisor + userns-remap + env vars
-- [ ] `docker.sock` is never mounted into user apps
-- [ ] `pnpm check` / `pnpm test` pass
-- [ ] No Kata/Firecracker/rootless default work landed
+- [x] `DEPLOW_APP_RUNTIME` defaults to `runsc` and is applied on user `deployApp`
+- [x] User app containers get CapDrop ALL, no-new-privileges, ReadonlyRootfs (+ tmpfs), memory/CPU limits
+- [x] Missing `runsc` → clear deploy error when required
+- [x] Platform compose services still use default runc (no compose `runtime: runsc`)
+- [x] Build pipeline does not force `runsc`
+- [x] README + user docs document Docker + gVisor + userns-remap + env vars
+- [x] `docker.sock` is never mounted into user apps
+- [x] `pnpm check` / `pnpm test` pass
+- [x] No Kata/Firecracker/rootless default work landed
 
 ## Manual verify (on a machine with Docker + gVisor)
 

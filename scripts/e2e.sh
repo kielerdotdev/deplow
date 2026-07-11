@@ -35,6 +35,31 @@ json_field() {
   node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const j=JSON.parse(d); const v=j.json; const path=process.argv[1].split('.'); let cur=v; for (const p of path){ if(cur==null){console.log(''); process.exit(0)}; cur=cur[p]; } console.log(cur??'');});" "$1"
 }
 
+# Poll until deployment reaches a terminal status (async create returns queued).
+wait_for_deploy() {
+  local deploy_id="$1"
+  local log_file="$2"
+  local i status
+  for i in $(seq 1 90); do
+    DEPLOY=$(rpc "deployments/get" "{\"json\":{\"id\":\"$deploy_id\"}}")
+    status=$(echo "$DEPLOY" | json_field "status")
+    echo "poll=$i status=$status" | tee -a "$log_file"
+    case "$status" in
+      running|failed|stopped)
+        echo "$DEPLOY" | tee -a "$log_file"
+        if [ "$status" != "running" ]; then
+          echo "ERROR: deploy ended as $status" | tee -a "$log_file"
+          exit 1
+        fi
+        return 0
+        ;;
+    esac
+    sleep 1
+  done
+  echo "ERROR: deploy timed out" | tee -a "$log_file"
+  exit 1
+}
+
 echo "==> Health" | tee "$SCRATCH/provision.log"
 HEALTH=$(rpc "health")
 echo "$HEALTH" | tee -a "$SCRATCH/provision.log"
@@ -95,9 +120,13 @@ echo "$SCHED" | grep -q '"scheduled":true\|"scheduled": true'
 echo "==> Deploy prebuilt image" | tee "$SCRATCH/deploy-image.log"
 DEPLOY=$(rpc "deployments/create" "{\"json\":{\"projectId\":\"$PROJECT_ID\",\"nodeId\":\"$NODE_ID\",\"serviceName\":\"web\",\"image\":\"hashicorp/http-echo:1.0\",\"options\":{\"image\":\"hashicorp/http-echo:1.0\",\"publishPort\":18080,\"containerPort\":5678,\"env\":{\"ECHO_TEXT\":\"deplow-e2e\"}}}}")
 echo "$DEPLOY" | tee -a "$SCRATCH/deploy-image.log"
-echo "$DEPLOY" | grep -q 'running'
+DEPLOY_ID=$(echo "$DEPLOY" | json_field "id")
+test -n "$DEPLOY_ID"
+echo "$DEPLOY" | grep -qE 'queued|building|deploying|running'
+wait_for_deploy "$DEPLOY_ID" "$SCRATCH/deploy-image.log"
 # env injection is applied in code; assert container has labels/env via docker inspect
 CID=$(echo "$DEPLOY" | json_field "containerId")
+test -n "$CID"
 docker inspect "$CID" --format '{{range .Config.Env}}{{println .}}{{end}}' \
   | tee -a "$SCRATCH/deploy-image.log" | grep -q 'DATABASE_URL='
 docker inspect "$CID" --format '{{range .Config.Env}}{{println .}}{{end}}' \
@@ -140,14 +169,18 @@ if [ -n "${DEPLOY_SOURCE_DOCKERFILE:-}" ] && [ -d "$DEPLOY_SOURCE_DOCKERFILE" ];
   echo "==> Deploy Dockerfile source $DEPLOY_SOURCE_DOCKERFILE" | tee "$SCRATCH/deploy-dockerfile.log"
   DFD=$(rpc "deployments/create" "{\"json\":{\"projectId\":\"$PROJECT_ID\",\"nodeId\":\"$NODE_ID\",\"serviceName\":\"dfweb\",\"sourcePath\":\"$DEPLOY_SOURCE_DOCKERFILE\",\"options\":{\"publishPort\":18081,\"containerPort\":80}}}")
   echo "$DFD" | tee -a "$SCRATCH/deploy-dockerfile.log"
-  echo "$DFD" | grep -q 'dockerfile\|running\|buildStrategy'
+  DFD_ID=$(echo "$DFD" | json_field "id")
+  echo "$DFD" | grep -qE 'dockerfile|railpack|queued|building|deploying|running|buildStrategy'
+  wait_for_deploy "$DFD_ID" "$SCRATCH/deploy-dockerfile.log"
 fi
 
 if [ -n "${DEPLOY_SOURCE_RAILPACK:-}" ] && [ -d "$DEPLOY_SOURCE_RAILPACK" ]; then
   echo "==> Deploy Railpack source $DEPLOY_SOURCE_RAILPACK" | tee "$SCRATCH/deploy-railpack.log"
   RPD=$(rpc "deployments/create" "{\"json\":{\"projectId\":\"$PROJECT_ID\",\"nodeId\":\"$NODE_ID\",\"serviceName\":\"rpweb\",\"sourcePath\":\"$DEPLOY_SOURCE_RAILPACK\",\"options\":{\"publishPort\":18082,\"containerPort\":3000}}}")
   echo "$RPD" | tee -a "$SCRATCH/deploy-railpack.log"
-  echo "$RPD" | grep -q 'railpack\|running\|buildStrategy'
+  RPD_ID=$(echo "$RPD" | json_field "id")
+  echo "$RPD" | grep -qE 'railpack|queued|building|deploying|running|buildStrategy'
+  wait_for_deploy "$RPD_ID" "$SCRATCH/deploy-railpack.log"
 fi
 
 echo "==> List projects" | tee -a "$SCRATCH/provision.log"

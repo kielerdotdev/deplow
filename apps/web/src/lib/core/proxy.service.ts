@@ -69,6 +69,35 @@ export class ProxyService {
     })
   }
 
+  publicUrlForService(
+    projectSlug: string,
+    serviceName: string,
+    isPrimary: boolean,
+  ): string | null {
+    const slug = isPrimary ? projectSlug : `${projectSlug}-${serviceName}`
+    return this.publicUrlForSlug(slug)
+  }
+
+  async upsertServiceRoute(input: {
+    serviceId: string
+    projectSlug: string
+    serviceName: string
+    isPrimary: boolean
+    upstream: string
+  }): Promise<ProxyRoute> {
+    return this.upsertProductionRoute({
+      projectId: input.serviceId,
+      slug: input.isPrimary
+        ? input.projectSlug
+        : `${input.projectSlug}-${input.serviceName}`,
+      upstream: input.upstream,
+    })
+  }
+
+  async removeServiceRoute(serviceId: string): Promise<void> {
+    return this.removeProjectRoute(serviceId)
+  }
+
   hostnameForSlug(slug: string): string | null {
     if (!this.baseDomain) return null
     return productionHostname(slug, this.baseDomain)

@@ -2,7 +2,7 @@
 
 deplow exists for one boring truth:
 
-**Most apps you deploy need a database, object storage (S3 / R2-shaped), and a JS (or container) runtime — and that is about it.**
+**Most projects need several processes sharing a database, cache, and object storage — and that is about it.**
 
 You should not have to:
 
@@ -18,11 +18,11 @@ deplow is the opposite of that sprawl: **one project gets the whole bundle on a 
 
 ```text
 one project =
-  one app
-  + Postgres
-  + Redis
-  + S3 (MinIO)
-  + encrypted secrets
+  multiple independently deployable services
+  + linked Postgres
+  + linked Redis
+  + linked S3 (MinIO)
+  + encrypted project resources and service env
   + scheduled Postgres backups
 ```
 
@@ -32,9 +32,9 @@ That is the product. Everything else is noise until this loop is excellent.
 
 ## Principles (non-negotiable)
 
-### 1. Project-first, not service-à-la-carte
+### 1. Project resources, independent services
 
-You do not pick “add Redis later.” Creating a project provisions Postgres, Redis, and S3 together. Isolation is per project (DB/user, Redis ACL/namespace, bucket + keys).
+Creating a project links Postgres, Redis, and S3 once. Every web service and worker in that project receives those resource credentials, while retaining an independent source, deployment history, lifecycle, and runtime configuration.
 
 ### 2. Shared platform, isolated tenants — not instance multi-tenancy
 

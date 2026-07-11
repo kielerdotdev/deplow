@@ -3,7 +3,7 @@ title: Introduction
 description: What deplow is, what it provisions, and how it differs from generic PaaS panels.
 template: splash
 hero:
-  tagline: Self-hosted project runtime for Docker — sandboxed by default
+  tagline: Self-hosted project runtime — gVisor-sandboxed user apps by default
   image:
     alt: deplow logo
     file: ../../../assets/logo.svg
@@ -45,12 +45,12 @@ create project
     are not supported.
   </Card>
   <Card title="Secure by default" icon="approve-check">
-    User apps run under gVisor with hardened container defaults. Secrets encrypted
-    at rest. Docker socket never mounted into project containers.
+    User apps run under gVisor with hardened container defaults. Secrets
+    encrypted at rest. Docker socket never mounted into project containers.
   </Card>
   <Card title="Backups" icon="document">
-    On-demand and scheduled `pg_dump` to the platform backup bucket — no separate
-    backup product to wire up.
+    On-demand and scheduled `pg_dump` to the platform backup bucket — no
+    separate backup product to wire up.
   </Card>
 </CardGrid>
 

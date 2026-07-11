@@ -23,27 +23,27 @@ describe("UI shell structure", () => {
     expect(src).not.toContain("ContainerIcon")
   })
 
-  it("project detail uses stack cards, rail, sheet, Deploy CTA", () => {
+  it("project detail exposes services and linked resources", () => {
     const src = readFileSync(
       path.join(root, "routes/projects/$projectId.tsx"),
       "utf8",
     )
-    expect(src).toContain("ProjectRail")
-    expect(src).toContain("StackCard")
-    expect(src).toContain("ProjectSettings")
-    expect(src).toContain("SheetContent")
     expect(src).toContain("ActionDialog")
     expect(src).toContain("EmptyState")
-    expect(src).toContain("Public URL")
-    expect(src).toContain("secrets.yaml")
-    expect(src).toContain("Download")
+    expect(src).toContain("Add service")
+    expect(src).toContain("Linked resources")
+    expect(src).toContain("Worker")
+    expect(src).toContain("serviceId")
     expect(src).toContain("fromGit")
-    expect(src).toContain("summarizeDeployError")
-    expect(src).toContain("Retry")
-    expect(src).toContain("Image")
-    expect(src).toContain('mode === "git"')
-    expect(src).toContain("Destroy project")
-    expect(src).toContain('section === "settings"')
+    expect(src).toContain("Project secrets")
+    expect(src).toContain("Postgres backups")
+  })
+
+  it("async deploys return queued and execute in background", () => {
+    const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
+    expect(src).toContain("executeDeploy")
+    expect(src).toContain('status: "queued"')
+    expect(src).toContain("void executeDeploy")
   })
 
   it("project settings steals Railway source + networking patterns", () => {
@@ -73,8 +73,9 @@ describe("UI shell structure", () => {
     expect(src).toContain("listGitBranches")
     expect(src).toContain("Search repositories")
     expect(src).toContain("Personal access token")
-    expect(src).toContain("Load repos")
-    expect(src).toContain("Production branch")
+    expect(src).toContain("Connect GitHub")
+    expect(src).toContain("startOAuth")
+    expect(src).toContain("Advanced")
   })
 
   it("project rail exposes Settings instead of bare Git", () => {
@@ -87,12 +88,12 @@ describe("UI shell structure", () => {
     expect(src).not.toContain('id: "git"')
   })
 
-  it("home create is name + optional git without service checkboxes", () => {
+  it("home create asks only for a project name", () => {
     const src = readFileSync(path.join(root, "routes/index.tsx"), "utf8")
     expect(src).toContain("Create project")
     expect(src).toContain("ActionDialog")
     expect(src).toContain("EmptyState")
-    expect(src).toContain("gitRepoUrl")
+    expect(src).not.toContain("gitRepoUrl")
     expect(src).not.toContain("spawnBuildServer")
     expect(src).not.toContain("Checkbox")
     expect(src).toContain("publicUrl")

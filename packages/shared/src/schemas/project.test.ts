@@ -5,8 +5,7 @@ import { createProjectInputSchema } from "./project"
 describe("createProjectInputSchema", () => {
   it("accepts a valid project name", () => {
     const result = createProjectInputSchema.parse({ name: "my-app" })
-    expect(result.name).toBe("my-app")
-    expect(result.spawnBuildServer).toBe(false)
+    expect(result).toEqual({ name: "my-app" })
   })
 
   it("rejects empty names", () => {

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import Database from "better-sqlite3"
 import { drizzle } from "drizzle-orm/better-sqlite3"
 
+import { ensureGitOAuthSchema, ensureServicesSchema } from "./ensure-schema"
 import * as schema from "./schema"
 
 /** Package root (`packages/db`) — keeps migrate + web on the same SQLite file. */
@@ -29,6 +30,9 @@ function openSqlite(filePath: string) {
   const sqlite = new Database(absolute)
   sqlite.pragma("journal_mode = WAL")
   sqlite.pragma("foreign_keys = ON")
+  // Always apply essential DDL so missing migrate never breaks the app
+  ensureGitOAuthSchema(sqlite)
+  ensureServicesSchema(sqlite)
   return sqlite
 }
 

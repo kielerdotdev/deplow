@@ -18,6 +18,8 @@ export interface DockerNodeRecord {
 
 export type DockerDeployOptions = DeployOptions & {
   projectId?: string
+  serviceId?: string
+  serviceType?: "web" | "worker"
   command?: string[]
   entrypoint?: string[]
   secureRuntime?: boolean
@@ -57,7 +59,11 @@ export class DockerNodeExecutor implements NodeExecutor {
     return `deplow-${nodeId.slice(0, 8)}-${serviceName}`.toLowerCase()
   }
 
-  proxyUpstream(nodeId: string, serviceName: string, containerPort = 80): string {
+  proxyUpstream(
+    nodeId: string,
+    serviceName: string,
+    containerPort = 80,
+  ): string {
     return `${this.containerName(nodeId, serviceName)}:${containerPort}`
   }
 
@@ -70,7 +76,8 @@ export class DockerNodeExecutor implements NodeExecutor {
 
     const serviceName = options.serviceName ?? "app"
     const name = this.containerName(nodeId, serviceName)
-    const useSecure = options.secureRuntime !== false && !options.command?.length
+    const useSecure =
+      options.secureRuntime !== false && !options.command?.length
 
     if (useSecure) {
       await this.assertRuntimeAvailable()
@@ -89,9 +96,18 @@ export class DockerNodeExecutor implements NodeExecutor {
     await this.ensureImageAvailable(options.image)
 
     const containerPort = options.containerPort ?? 80
-    const { exposed, portBindings } = buildPortMappings(containerPort, options.publishPort)
+    const { exposed, portBindings } = buildPortMappings(
+      containerPort,
+      options.publishPort,
+    )
     const env = Object.entries(options.env ?? {}).map(([k, v]) => `${k}=${v}`)
-    const labels = buildLabels(nodeId, serviceName, options, useSecure, this.runtimeLimits.runtime)
+    const labels = buildLabels(
+      nodeId,
+      serviceName,
+      options,
+      useSecure,
+      this.runtimeLimits.runtime,
+    )
     const hostConfig = useSecure
       ? buildUserAppHostConfig({
           runtime: this.runtimeLimits,
@@ -340,6 +356,12 @@ function buildLabels(
   }
   if (options.projectId) {
     labels["deplow.projectId"] = options.projectId
+  }
+  if (options.serviceId) {
+    labels["deplow.serviceId"] = options.serviceId
+  }
+  if (options.serviceType) {
+    labels["deplow.type"] = options.serviceType
   }
   return labels
 }

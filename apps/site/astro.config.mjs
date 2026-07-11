@@ -69,6 +69,7 @@ export default defineConfig({
           label: "Guides",
           items: [
             { label: "Deploy an app", slug: "docs/guides/deploy" },
+            { label: "Git connect", slug: "docs/guides/git" },
             { label: "Backups", slug: "docs/guides/backups" },
             { label: "Secrets & env", slug: "docs/guides/secrets" },
           ],
