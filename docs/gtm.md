@@ -2,7 +2,7 @@
 
 Canonical gate for a **public v1 launch**. Competitive context: Coolify/Dokploy win breadth; deplow wins an opinionated Railway-shaped loop with gVisor. Do **not** gate launch on feature parity with them.
 
-Related: [sequencing.md](./sequencing.md) · [product.md](./product.md) · [access.md](./access.md) · [goal.md](./goal.md)
+Related: [sequencing.md](./sequencing.md) · [product.md](./product.md) · [access.md](./access.md)
 
 ## Positioning (locked)
 

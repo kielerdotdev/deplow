@@ -12,7 +12,6 @@ dist-ssr
 .wrangler
 .output
 .vinxi
-.turbo
 __unconfig*
 todos.json
 coverage
@@ -23,19 +22,21 @@ coverage
 packages/db/data/
 tmp/
 infra/caddy/routes/*.caddy
+!infra/caddy/routes/.gitkeep
 
 # typescript
 *.tsbuildinfo
-
-# local sqlite data
-data/
-packages/db/data/
-
-# generated per-project Caddy routes (runtime)
-infra/caddy/routes/*.caddy
-!infra/caddy/routes/.gitkeep
 
 # locks from other package managers (pnpm only)
 package-lock.json
 bun.lock
 yarn.lock
+
+# local agent / planning (not product)
+.agents/
+plans/
+advisor-plans/
+skills-lock.json
+.cta.json
+apps/web/data/
+**/git-clones/

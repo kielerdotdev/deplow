@@ -3,7 +3,7 @@
 You are implementing deplow’s **default secure runtime**. Follow this document exactly.
 
 - Stance / priorities: [`security.md`](./security.md)
-- Product scope: [`product.md`](./product.md) and [`goal.md`](./goal.md)
+- Product scope: [`product.md`](./product.md) and [`sequencing.md`](./sequencing.md)
 - This doc only covers **how user apps run**.
 
 ## Decision (non-negotiable)
@@ -250,6 +250,6 @@ docker exec <container> dmesg 2>/dev/null | head
 - Perfect RO-rootfs compatibility for every image — default secure; opt-out later
 - Making gVisor work for Postgres
 - Rewriting the executor to containerd/CRI
-- Changing product scope in [`product.md`](./product.md) / [`goal.md`](./goal.md) (domains, multi-server, etc.)
+- Changing product scope in [`product.md`](./product.md) / [`sequencing.md`](./sequencing.md) (domains, multi-server, etc.)
 
 When blocked on an image that cannot run under gVisor, document `DEPLOW_APP_RUNTIME=runc` as temporary escape hatch — do not weaken global defaults.

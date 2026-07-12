@@ -4,19 +4,18 @@ Canonical project documentation. **These files dictate product, marketing, and i
 
 ## Reading order
 
-| Doc                                      | Role                                                                                                        |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [philosophy.md](./philosophy.md)         | **Why deplow exists** — the problem we solve and the principles we will not dilute                          |
-| [sequencing.md](./sequencing.md)         | **v1 / v2 / v3** — what to build now vs later                                                               |
-| [gtm.md](./gtm.md)                       | **Public launch bar** — happy path gate vs Coolify/Dokploy; domain + notify decisions                       |
-| [product.md](./product.md)               | **What we ship** — one project shape, in/out of scope                                                       |
-| [data-plane.md](./data-plane.md)         | **DB/Redis/S3 linking** — design for previews + multi-node without building them yet                        |
-| [security.md](./security.md)             | **Security stance** — non-negotiable priorities; marketing must not contradict this                         |
-| [access.md](./access.md)                 | **Proxy + cloudflared (v1)** — wildcard URLs; data plane stays private                                      |
-| [secure-runtime.md](./secure-runtime.md) | **How user apps run** — gVisor + hardened Docker implementation spec                                        |
-| [goal.md](./goal.md)                     | **Agent GOAL (v1)** — implement proxy, cloudflared, webhooks, gVisor, world-class UX                        |
-| [checklist.md](./checklist.md)           | Progress against the goal                                                                                   |
-| [ux-roadmap.md](./ux-roadmap.md)         | **Control-plane UX roadmap** — “just works” patterns from Vercel/Railway/Render/Fly; what to implement next |
+| Doc                                      | Role                                                                 |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| [philosophy.md](./philosophy.md)         | **Why deplow exists** — problem and principles                       |
+| [sequencing.md](./sequencing.md)         | **v1 / v2 / v3** — what to build now vs later                        |
+| [gtm.md](./gtm.md)                       | **Public launch bar** — happy path vs Coolify/Dokploy                |
+| [product.md](./product.md)               | **What we ship** — one project shape, in/out of scope                |
+| [data-plane.md](./data-plane.md)         | **DB/Redis/S3 linking** — design notes                               |
+| [security.md](./security.md)             | **Security stance** — non-negotiables                                |
+| [access.md](./access.md)                 | **Proxy + cloudflared (v1)** — wildcard URLs                         |
+| [secure-runtime.md](./secure-runtime.md) | **How user apps run** — gVisor + hardened Docker                     |
+| [git-oauth.md](./git-oauth.md)           | GitHub App / GitLab OAuth                                            |
+| [mcp.md](./mcp.md)                       | MCP server for agents                                                |
 
 ## Surfaces that must stay aligned
 

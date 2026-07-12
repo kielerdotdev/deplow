@@ -2,7 +2,7 @@
 
 You are implementing **first-class git identity** for deplow. Follow this document.
 
-- Product: [`goal.md`](./goal.md) **G6**, [`ux-roadmap.md`](./ux-roadmap.md)
+- Product: [`sequencing.md`](./sequencing.md) · [`product.md`](./product.md)
 - Stance: PAT is **Advanced** only; happy path is Connect provider → pick repo → auto webhook → private clone
 
 ## Mission
