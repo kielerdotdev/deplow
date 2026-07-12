@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # One-shot VPS install / update for deplow.
 #
-#   curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | sudo bash
+#   curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
 #
 # That is the whole install. Docker, gVisor, MinIO, secrets, public URL, pull, start.
 #
 # Update later:
-#   curl -sSL …/install.sh | sudo bash -s update
+#   curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash -s update
 #
 # Optional env:
 #   DEPLOW_HOME              install dir (default /opt/deplow)
@@ -28,7 +28,7 @@ set -euo pipefail
 DEPLOW_HOME="${DEPLOW_HOME:-/opt/deplow}"
 DEPLOW_VERSION="${DEPLOW_VERSION:-latest}"
 DEPLOW_IMAGE="${DEPLOW_IMAGE:-ghcr.io/kielerdotdev/deplow:${DEPLOW_VERSION}}"
-DEPLOW_ASSET_BASE="${DEPLOW_ASSET_BASE:-https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy}"
+DEPLOW_ASSET_BASE="${DEPLOW_ASSET_BASE:-https://github.com/kielerdotdev/deplow/releases/download/install}"
 DEPLOW_WEB_PORT="${DEPLOW_WEB_PORT:-3000}"
 DEPLOW_BUNDLE_MINIO="${DEPLOW_BUNDLE_MINIO:-1}"
 DEPLOW_APP_RUNTIME="${DEPLOW_APP_RUNTIME:-runsc}"
