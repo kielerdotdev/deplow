@@ -52,6 +52,20 @@ services:
 
   web:
     image: ${DEPLOW_IMAGE:-ghcr.io/kielerdotdev/deplow:latest}
+    working_dir: /app/apps/web
+    command:
+      [
+        "pnpm",
+        "exec",
+        "srvx",
+        "--prod",
+        "--port",
+        "3000",
+        "--static",
+        "../client",
+        "--entry",
+        "dist/server/server.js",
+      ]
     container_name: deplow-web
     restart: unless-stopped
     ports:

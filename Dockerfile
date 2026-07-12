@@ -20,7 +20,8 @@ FROM deps AS build
 COPY apps/web apps/web
 COPY packages/db packages/db
 COPY packages/shared packages/shared
-RUN pnpm --filter @deplow/web build
+COPY scripts/sync-ssr-css.mjs scripts/sync-ssr-css.mjs
+RUN pnpm --filter @deplow/web build && node scripts/sync-ssr-css.mjs
 
 FROM base AS runner
 ARG DOCKER_CLI_VERSION=27.5.1
