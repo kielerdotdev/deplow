@@ -45,8 +45,8 @@ export function normalizeProductionStartCommand(
 
 /**
  * Ensure frameworks that need a compile step get a build command.
- * Railpack sometimes omits build for older Next apps; without it, `next start`
- * fails with "Could not find a production build in .next".
+ * Railpack often reports install-only commands (e.g. `npm ci`) as "build";
+ * without a real compile, `next start` fails looking for `.next`.
  */
 export function resolveProductionBuildCommand(
   buildCommand: string | null | undefined,
@@ -54,24 +54,51 @@ export function resolveProductionBuildCommand(
   startCommand?: string | null,
 ): string | null {
   const raw = buildCommand?.trim() || null
-  if (raw) return raw
-  if (!sourcePath) return null
+  if (!sourcePath) return raw
 
   const scripts = readPackageScripts(sourcePath)
-  const leaf = resolveLeafCommand(startCommand?.trim() || scripts.start || "", scripts)
+  const leaf = resolveLeafCommand(
+    startCommand?.trim() || scripts.start || "",
+    scripts,
+  )
   const needsCompile =
     looksLikeNext(leaf, scripts) ||
     looksLikeAstro(leaf, scripts) ||
     looksLikeVite(leaf, scripts) ||
     Boolean(scripts.build?.trim())
 
-  if (!needsCompile) return null
-  if (scripts.build?.trim()) return packageManagerRun(sourcePath, "build")
+  const inferred = (() => {
+    if (!needsCompile) return null
+    if (scripts.build?.trim()) return packageManagerRun(sourcePath, "build")
+    if (looksLikeNext(leaf, scripts)) return "next build"
+    if (looksLikeAstro(leaf, scripts)) return "astro build"
+    if (looksLikeVite(leaf, scripts)) return "vite build"
+    return null
+  })()
 
-  if (looksLikeNext(leaf, scripts)) return "next build"
-  if (looksLikeAstro(leaf, scripts)) return "astro build"
-  if (looksLikeVite(leaf, scripts)) return "vite build"
-  return null
+  if (raw && !isInstallOnlyBuildCommand(raw)) return raw
+  if (inferred) return inferred
+  return raw
+}
+
+function isCompileBuildCommand(command: string): boolean {
+  const c = command.toLowerCase()
+  return (
+    /\b(next|astro|vite|nuxt|remix)\s+build\b/.test(c) ||
+    /\b(?:npm|pnpm|yarn|bun)(?:\s+run)?\s+build\b/.test(c)
+  )
+}
+
+/** Railpack sometimes surfaces install/cache prep as the build command. */
+function isInstallOnlyBuildCommand(command: string): boolean {
+  if (isCompileBuildCommand(command)) return false
+  const c = command.toLowerCase()
+  return (
+    /\bnpm\s+(ci|install)\b/.test(c) ||
+    /\byarn(?:\s+install)?(?:\s|$)/.test(c) ||
+    /\bpnpm\s+i(nstall)?\b/.test(c) ||
+    /\bbun\s+install\b/.test(c)
+  )
 }
 
 function packageManagerRun(sourcePath: string, script: string): string {

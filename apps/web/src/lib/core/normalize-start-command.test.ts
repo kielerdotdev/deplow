@@ -124,6 +124,17 @@ CMD ["next", "dev"]
       expect(resolveProductionBuildCommand("custom build", dir)).toBe(
         "custom build",
       )
+      // Railpack often reports install-only as the "build" step
+      expect(
+        resolveProductionBuildCommand(
+          "mkdir -p /app/node_modules/.cache && npm ci",
+          dir,
+          "npm run start",
+        ),
+      ).toBe("npm run build")
+      expect(
+        resolveProductionBuildCommand("npm run build", dir, "npm run start"),
+      ).toBe("npm run build")
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
