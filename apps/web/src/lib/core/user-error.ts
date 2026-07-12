@@ -81,8 +81,21 @@ export function summarizeDeployError(
     if (re.test(text)) return message
   }
 
-  // Prefer the first non-empty line of multi-line build dumps
-  const firstLine = text.split(/\r?\n/).find((l) => l.trim()) ?? text
+  // Prefer marked error lines from build dumps over leading noise
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  const marked = lines.find((l) => l.includes("❌") || l.includes("⚠️"))
+  const firstLine = (
+    marked
+      ?.replace(/^❌\s*/, "")
+      .replace(/^⚠️\s*/, "")
+      .trim() ||
+    lines.find((l) => /^(Error\b|error:)/i.test(l)) ||
+    lines[0] ||
+    text
+  ).trim()
   const max = options?.maxLength ?? 220
   if (firstLine.length <= max) return firstLine
   return `${firstLine.slice(0, max - 1)}…`
