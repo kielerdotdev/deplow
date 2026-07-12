@@ -16,34 +16,90 @@ describe("UI shell structure", () => {
     )
     expect(src).toContain("SidebarProvider")
     expect(src).toContain("SidebarMenuButton")
-    expect(src).toContain('title: "Projects"')
+    expect(src).toContain('title: "Home"')
+    expect(src).toContain('title: "Team"')
     expect(src).toContain('title: "Nodes"')
+    expect(src).toContain("System")
+    expect(src).toContain("instanceAdmin")
+    expect(src).toContain("OrgSwitcher")
     expect(src).toContain("Sign out")
-    expect(src).toContain("text-lg font-semibold")
+    expect(src).toContain("CommandProvider")
+    expect(src).toContain("CommandPalette")
+    expect(src).toContain("CommandPaletteTrigger")
     expect(src).not.toContain("ContainerIcon")
   })
 
-  it("project detail exposes services and linked resources", () => {
+  it("command palette is dual-mode Ctrl+P / Ctrl+K", () => {
+    const src = readFileSync(
+      path.join(root, "components/command-palette.tsx"),
+      "utf8",
+    )
+    expect(src).toContain('openPalette("goto")')
+    expect(src).toContain('openPalette("action")')
+    expect(src).toContain('key === "p"')
+    expect(src).toContain('key === "k"')
+    expect(src).toContain("CommandDialog")
+    expect(src).toContain("pushRecentCommand")
+  })
+
+  it("project detail syncs section to search params", () => {
     const src = readFileSync(
       path.join(root, "routes/projects/$projectId.tsx"),
       "utf8",
     )
+    expect(src).toContain("validateSearch")
+    expect(src).toContain("parseProjectSection")
+    expect(src).toContain("CommandAction")
     expect(src).toContain("ActionDialog")
     expect(src).toContain("EmptyState")
     expect(src).toContain("Add service")
-    expect(src).toContain("Linked resources")
-    expect(src).toContain("Worker")
+    expect(src).toContain("Data services")
+    expect(src).toContain("AddServiceDialog")
     expect(src).toContain("serviceId")
     expect(src).toContain("fromGit")
-    expect(src).toContain("Project secrets")
-    expect(src).toContain("Postgres backups")
+    expect(src).toContain("ProjectRail")
+    expect(src).not.toContain("BackupsPanel")
+    expect(src).not.toContain("DatabasePanel")
+    expect(src).toContain("/projects/$projectId/services/$serviceId")
   })
 
-  it("async deploys return queued and execute in background", () => {
+  it("service detail is non-nested so it replaces the project page", () => {
+    const src = readFileSync(
+      path.join(root, "routes/projects/$projectId_/services/$serviceId.tsx"),
+      "utf8",
+    )
+    expect(src).toContain('"/projects/$projectId_/services/$serviceId"')
+    expect(src).toContain("useLogStream")
+    expect(src).toContain("LogViewer")
+    expect(src).not.toContain(">Refresh<")
+    const tree = readFileSync(path.join(root, "routeTree.gen.ts"), "utf8")
+    expect(tree).toContain(
+      "id: '/projects/$projectId_/services/$serviceId'",
+    )
+    expect(tree).toMatch(
+      /ProjectsProjectIdServicesServiceIdRoute[\s\S]*?getParentRoute: \(\) => rootRouteImport/,
+    )
+  })
+
+  it("add service dialog detects source and creates with deploy", () => {
+    const src = readFileSync(
+      path.join(root, "components/add-service-dialog.tsx"),
+      "utf8",
+    )
+    expect(src).toContain("RepoSelector")
+    expect(src).toContain("analyzeSource")
+    expect(src).toContain("createAndDeploy")
+    expect(src).toContain("Create and deploy")
+    expect(src).toContain("Worker")
+    expect(src).toContain("Advanced settings")
+    expect(src).toContain("Checking health")
+  })
+
+  it("async deploys enqueue through the queue layer", () => {
     const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
-    expect(src).toContain("executeDeploy")
+    expect(src).toContain("enqueueDeploy")
     expect(src).toContain('status: "queued"')
-    expect(src).toContain("void executeDeploy")
+    expect(src).toContain("processDeployJob")
   })
 
   it("project settings steals Railway source + networking patterns", () => {
@@ -64,38 +120,50 @@ describe("UI shell structure", () => {
     expect(src).toContain("RepoSelector")
   })
 
-  it("repo selector is a searchable list not a raw URL field", () => {
+  it("repo selector is a searchable combobox", () => {
     const src = readFileSync(
       path.join(root, "components/repo-selector.tsx"),
       "utf8",
     )
     expect(src).toContain("listGitRepos")
     expect(src).toContain("listGitBranches")
-    expect(src).toContain("Search repositories")
+    expect(src).toContain("Select a repository…")
+    expect(src).toContain("Search repositories…")
     expect(src).toContain("Personal access token")
     expect(src).toContain("Connect GitHub")
+    expect(src).toContain("Connect GitLab")
+    expect(src).toContain("Use Git URL or access token")
     expect(src).toContain("startOAuth")
-    expect(src).toContain("Advanced")
+    expect(src).toContain("disconnectProvider")
+    expect(src).toContain("sm:basis-[70%]")
+    expect(src).toContain("sm:basis-[30%]")
+    expect(src).toContain('role="combobox"')
+    expect(src).not.toContain("Advanced source options")
+    expect(src).not.toContain(">Load<")
   })
 
-  it("project rail exposes Settings instead of bare Git", () => {
+  it("project rail keeps data admin on services, not project tabs", () => {
     const src = readFileSync(
       path.join(root, "components/project-rail.tsx"),
       "utf8",
     )
     expect(src).toContain('id: "settings"')
     expect(src).toContain("Settings2Icon")
+    expect(src).not.toContain('id: "database"')
+    expect(src).not.toContain('id: "backups"')
     expect(src).not.toContain('id: "git"')
   })
 
-  it("home create asks only for a project name", () => {
+  it("home is an account overview with projects card", () => {
     const src = readFileSync(path.join(root, "routes/index.tsx"), "utf8")
-    expect(src).toContain("Create project")
+    expect(src).toContain("New project")
     expect(src).toContain("ActionDialog")
-    expect(src).toContain("EmptyState")
+    expect(src).toContain("DashboardCard")
+    expect(src).toContain("accountHome")
     expect(src).not.toContain("gitRepoUrl")
     expect(src).not.toContain("spawnBuildServer")
     expect(src).not.toContain("Checkbox")
+    expect(src).not.toContain("StatTile")
     expect(src).toContain("publicUrl")
   })
 
@@ -104,6 +172,52 @@ describe("UI shell structure", () => {
     expect(src).toContain("ActionDialog")
     expect(src).toContain("EmptyState")
     expect(src).toContain("ensureLocal")
+    expect(src).not.toContain("Hello")
+  })
+
+  it("domains page edits platform ingress settings", () => {
+    const src = readFileSync(path.join(root, "routes/domains.tsx"), "utf8")
+    expect(src).toContain("ingressUpdate")
+    expect(src).toContain("base-domain")
+    expect(src).toContain("Auto-assign subdomains")
+  })
+
+  it("app shell nav includes Team, Settings, and System gates", () => {
+    const src = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
+    expect(src).toContain('to: "/organization"')
+    expect(src).toContain("Team")
+    expect(src).toContain('to: "/domains"')
+    expect(src).toContain("Domains")
+    expect(src).toContain('to: "/settings"')
+    expect(src).toContain("Settings")
+    expect(src).toContain("instanceAdmin")
+  })
+
+  it("shell content uses shared content enter animation", () => {
+    const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
+    const css = readFileSync(path.join(root, "styles.css"), "utf8")
+    expect(shell).toContain("animate-content-in")
+    expect(css).toContain("animate-content-in")
+    expect(css).toContain("prefers-reduced-motion")
+  })
+
+  it("domains and nodes loaders require instance admin", () => {
+    const domains = readFileSync(path.join(root, "routes/domains.tsx"), "utf8")
+    expect(domains).toContain("instanceAdmin")
+    expect(domains).toContain('redirect({ to: "/" })')
+    const nodes = readFileSync(path.join(root, "routes/nodes.tsx"), "utf8")
+    expect(nodes).toContain("instanceAdmin")
+    expect(nodes).toContain('redirect({ to: "/" })')
+  })
+
+  it("organizations router exposes invite and setActive", () => {
+    const src = readFileSync(path.join(root, "orpc/organizations.ts"), "utf8")
+    expect(src).toContain("export const invite")
+    expect(src).toContain("export const acceptInvite")
+    expect(src).toContain("export const setActive")
+    const router = readFileSync(path.join(root, "orpc/router.ts"), "utf8")
+    expect(router).toContain("organizations:")
+    expect(router).toContain("acceptInvite")
   })
 
   it("login uses Card + Input + Label primitives", () => {
@@ -113,9 +227,10 @@ describe("UI shell structure", () => {
     expect(src).toContain('from "@/components/ui/label"')
   })
 
-  it("root document defaults to dark theme without TanStack Devtools", () => {
+  it("root document defaults to light theme without TanStack Devtools", () => {
     const src = readFileSync(path.join(root, "routes/__root.tsx"), "utf8")
-    expect(src).toContain('className="dark"')
+    expect(src).toContain('<html lang="en">')
+    expect(src).not.toContain('className="dark"')
     expect(src).not.toContain("TanStackDevtools")
   })
 })
