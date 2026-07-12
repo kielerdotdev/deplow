@@ -65,8 +65,11 @@ ENV NODE_ENV=production \
 WORKDIR /app
 COPY --from=build /app /app
 COPY scripts/docker-entrypoint.sh /usr/local/bin/deplow-entrypoint
+# Deploy assets for install.sh to extract (works even when the git repo is private)
+COPY deploy/docker-compose.yml deploy/Caddyfile deploy/.env.example /opt/deplow-assets/
 RUN chmod +x /usr/local/bin/deplow-entrypoint \
-  && mkdir -p /data /data/git-clones /etc/caddy/routes
+  && mkdir -p /data /data/git-clones /etc/caddy/routes \
+  && cp /opt/deplow-assets/.env.example /opt/deplow-assets/env.example
 
 EXPOSE 3000
 VOLUME ["/data"]
