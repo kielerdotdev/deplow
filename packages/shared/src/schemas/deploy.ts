@@ -24,6 +24,7 @@ export const createDeploymentInputSchema = z
     options: deployOptionsSchema.optional(),
   })
   .superRefine((val, ctx) => {
+    if (val.fromGit) return
     const image = val.image ?? val.options?.image
     if (!image && !val.sourcePath && !val.fromGit) {
       ctx.addIssue({
@@ -60,6 +61,7 @@ export type DeploymentStatus = z.infer<typeof deploymentStatusSchema>
 
 export const deploymentSummarySchema = z.object({
   id: z.string(),
+  serviceId: z.string(),
   projectId: z.string(),
   nodeId: z.string(),
   operationId: z.string().nullable().optional(),

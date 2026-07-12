@@ -65,11 +65,7 @@ export async function reloadCaddyProxy(
     return lastReload
   }
 
-  const message = (
-    result.stderr ||
-    result.stdout ||
-    `exit ${result.code}`
-  ).trim()
+  const message = (result.stderr || result.stdout || `exit ${result.code}`).trim()
   // Do not throw — deploy should succeed even if proxy is offline in local dev
   console.warn(`[deplow] caddy reload failed (${container}): ${message}`)
   lastReload = { ok: false, message, at }

@@ -1,6 +1,6 @@
 ---
 interface Props {
-	kind: 'bundle' | 'build' | 'backup' | 'sandbox';
+	kind: 'bundle' | 'build' | 'backup' | 'sandbox' | 'git' | 'ssl' | 'secrets' | 'api';
 }
 
 const { kind } = Astro.props;
@@ -8,7 +8,7 @@ const { kind } = Astro.props;
 
 {
 	kind === 'bundle' && (
-		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
 			<rect x="4" y="8" width="28" height="22" rx="5" stroke="currentColor" stroke-width="2" />
 			<circle cx="13" cy="19" r="4" stroke="currentColor" stroke-width="2" />
 			<rect x="20" y="15" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2" />
@@ -17,20 +17,15 @@ const { kind } = Astro.props;
 }
 {
 	kind === 'build' && (
-		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-			<path
-				d="M6 12h10l4 4h10v12H6z"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linejoin="round"
-			/>
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<path d="M6 12h10l4 4h10v12H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
 			<path d="M6 12h10l4 4H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
 		</svg>
 	)
 }
 {
 	kind === 'backup' && (
-		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
 			<ellipse cx="18" cy="11" rx="9" ry="3.5" stroke="currentColor" stroke-width="2" />
 			<path d="M9 11v12c0 2 4 3.5 9 3.5s9-1.5 9-3.5V11" stroke="currentColor" stroke-width="2" />
 			<ellipse cx="18" cy="23" rx="9" ry="3.5" stroke="currentColor" stroke-width="2" />
@@ -39,10 +34,48 @@ const { kind } = Astro.props;
 }
 {
 	kind === 'sandbox' && (
-		<svg class="feature-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
 			<rect x="7" y="10" width="22" height="18" rx="4" stroke="currentColor" stroke-width="2" />
 			<path d="M14 10V8a4 4 0 018 0v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
 			<circle cx="18" cy="19" r="2.5" fill="currentColor" />
+		</svg>
+	)
+}
+{
+	kind === 'git' && (
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<circle cx="11" cy="9" r="3.5" stroke="currentColor" stroke-width="2" />
+			<circle cx="11" cy="27" r="3.5" stroke="currentColor" stroke-width="2" />
+			<circle cx="25" cy="18" r="3.5" stroke="currentColor" stroke-width="2" />
+			<path d="M11 12.5v11" stroke="currentColor" stroke-width="2" />
+			<path d="M11 18h10.5" stroke="currentColor" stroke-width="2" />
+		</svg>
+	)
+}
+{
+	kind === 'ssl' && (
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<path d="M11 15v-3a7 7 0 0114 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+			<rect x="8" y="15" width="20" height="15" rx="4" stroke="currentColor" stroke-width="2" />
+			<path d="M16 20l-2 3 2 3M20 20l2 3-2 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+		</svg>
+	)
+}
+{
+	kind === 'secrets' && (
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<path d="M11 16h16v14H11z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+			<path d="M15 16v-3a3 3 0 016 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+			<circle cx="19" cy="23" r="2.5" stroke="currentColor" stroke-width="2" />
+			<path d="M20 24l3 2 3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+		</svg>
+	)
+}
+{
+	kind === 'api' && (
+		<svg class="icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+			<rect x="6" y="8" width="24" height="20" rx="5" stroke="currentColor" stroke-width="2" />
+			<path d="M12 16l-2.5 2.5L9 18M14 22h8M24.5 16l2 2 2-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 		</svg>
 	)
 }

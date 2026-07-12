@@ -19,6 +19,8 @@ import {
   deployments,
   dockerNodeExecutor,
   ensureLocalNodeId,
+  getProjectCredentials,
+  gitService,
   nodes,
   operations,
   projects,

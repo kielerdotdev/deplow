@@ -35,6 +35,11 @@ export type GitSyncAuth = GitCloneAuth & {
   provider?: string
 }
 
+export type GitSyncAuth = GitCloneAuth & {
+  /** github | gitlab — picks default username when omitted */
+  provider?: string
+}
+
 export class GitService {
   constructor(
     private readonly cloneRoot: string,

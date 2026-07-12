@@ -212,11 +212,16 @@ If a screen fails these, it is Coolify-shaped. Fix it.
 
 ## Suggested implementation order
 
-1. **P0.1** — Project page stack summary + Deploy as primary CTA
-2. **P0.2** — Simplify deploy form (source default, detect builder, hide node/ports)
-3. **P0.3** — Deployment detail with live status + logs
-4. **P0.4** — Elevate secrets download
-5. **P1.1–P1.3** — Retry, rollback, backup status on summary
+1. ~~**P0.1** — Project page stack summary + Deploy as primary CTA~~ **done**
+2. ~~**P0.2** — Simplify deploy form (source default, detect builder, hide node/ports)~~ **done**
+3. ~~**P0.3** — Deployment detail with live status + logs~~ **done** (async queue + poll)
+4. ~~**P0.4** — Elevate secrets download~~ **done**
+5. ~~**P1.1–P1.3** — Retry, rollback, backup status on summary~~ **done**
 6. **P2** only if the happy path already feels boringly reliable
 
-When blocked, prefer the smallest change that preserves the opinionated path over adding configuration knobs.
+### Shipped notes (2026-07-11)
+
+- Overview: mental-model copy, living deploy banner, failed+retry strip, secrets strip, 5 stack tiles (App / Postgres / Redis / S3 / Backups)
+- Header: Deploy primary + Secrets secondary + Roll back in menu
+- `runProductionDeploy` returns `queued` immediately; `executeProductionDeploy` runs in-process; UI polls ~1.5s and streams build logs in the ActionDialog
+- E2E polls `deployments/get` until `running`

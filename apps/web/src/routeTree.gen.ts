@@ -396,6 +396,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGitGithubAppManifestCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/git/oauth/gitlab/callback': {
+      id: '/api/git/oauth/gitlab/callback'
+      path: '/api/git/oauth/gitlab/callback'
+      fullPath: '/api/git/oauth/gitlab/callback'
+      preLoaderRoute: typeof ApiGitOauthGitlabCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/git/oauth/github/callback': {
+      id: '/api/git/oauth/github/callback'
+      path: '/api/git/oauth/github/callback'
+      fullPath: '/api/git/oauth/github/callback'
+      preLoaderRoute: typeof ApiGitOauthGithubCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/git/github/app-manifest/callback': {
+      id: '/api/git/github/app-manifest/callback'
+      path: '/api/git/github/app-manifest/callback'
+      fullPath: '/api/git/github/app-manifest/callback'
+      preLoaderRoute: typeof ApiGitGithubAppManifestCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 

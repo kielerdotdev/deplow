@@ -18,15 +18,11 @@ export interface DockerNodeRecord {
 
 export type DockerDeployOptions = DeployOptions & {
   projectId?: string
-  /** Optional command override (e.g. connectivity probe) */
+  serviceId?: string
+  serviceType?: "web" | "worker"
   command?: string[]
   entrypoint?: string[]
-  /**
-   * When true (default for user apps), apply gVisor + hardened HostConfig.
-   * Set false for ephemeral probe helpers that should stay on runc.
-   */
   secureRuntime?: boolean
-  /** Opt out of read-only rootfs for images that need a writable root */
   readOnlyRootfs?: boolean
 }
 
@@ -59,14 +55,10 @@ export class DockerNodeExecutor implements NodeExecutor {
     this.runtimeRequired = config.appRuntimeRequired
   }
 
-  /** Container name used for deploy / proxy upstream. */
   containerName(nodeId: string, serviceName: string): string {
     return `deplow-${nodeId.slice(0, 8)}-${serviceName}`.toLowerCase()
   }
 
-  /**
-   * Upstream host:port for the platform reverse proxy (Docker network DNS).
-   */
   proxyUpstream(
     nodeId: string,
     serviceName: string,
@@ -91,90 +83,42 @@ export class DockerNodeExecutor implements NodeExecutor {
       await this.assertRuntimeAvailable()
     }
 
-    try {
-      const existing = this.docker.getContainer(name)
-      await existing.remove({ force: true })
-    } catch {
-      // not found
-    }
-
     if (options.dockerCompose) {
       throw new Error(
         "Docker Compose deploy is not supported; pass options.image or build from source",
       )
     }
-
     if (!options.image) {
       throw new Error("DeployOptions.image is required")
     }
 
-    if (!options.image.startsWith("deplow/")) {
-      await this.pullImage(options.image)
-    } else {
-      try {
-        await this.docker.getImage(options.image).inspect()
-      } catch {
-        try {
-          await this.pullImage(options.image)
-        } catch {
-          throw new Error(
-            `Local image not found: ${options.image}. Build may have failed to load into Docker.`,
-          )
-        }
-      }
-    }
+    await this.removeExistingContainer(name)
+    await this.ensureImageAvailable(options.image)
 
     const containerPort = options.containerPort ?? 80
-    const publishPort = options.publishPort
-    const exposed: Record<string, object> = {
-      [`${containerPort}/tcp`]: {},
-    }
-    const portBindings: Record<string, Array<{ HostPort: string }>> = {}
-    if (publishPort) {
-      portBindings[`${containerPort}/tcp`] = [{ HostPort: String(publishPort) }]
-    }
-
+    const { exposed, portBindings } = buildPortMappings(
+      containerPort,
+      options.publishPort,
+    )
     const env = Object.entries(options.env ?? {}).map(([k, v]) => `${k}=${v}`)
-
-    const labels: Record<string, string> = {
-      "deplow.managed": "true",
-      "deplow.nodeId": nodeId,
-      "deplow.service": serviceName,
-      "deplow.runtime": useSecure ? this.runtimeLimits.runtime : "runc",
-    }
-    if (options.projectId) {
-      labels["deplow.projectId"] = options.projectId
-    }
-
-    const network = this.platformNetwork
-
+    const labels = buildLabels(
+      nodeId,
+      serviceName,
+      options,
+      useSecure,
+      this.runtimeLimits.runtime,
+    )
     const hostConfig = useSecure
       ? buildUserAppHostConfig({
           runtime: this.runtimeLimits,
-          networkMode: network,
+          networkMode: this.platformNetwork,
           portBindings,
           restartPolicyName: "unless-stopped",
           readOnlyRootfs: options.readOnlyRootfs,
         })
-      : {
-          PortBindings: portBindings,
-          RestartPolicy: {
-            Name: options.command?.length ? "no" : "unless-stopped",
-          },
-          NetworkMode: network,
-        }
+      : buildRuncHostConfig(this.platformNetwork, portBindings, options)
 
-    if (
-      useSecure &&
-      this.runtimeLimits.runtime !== "runc" &&
-      this.runtimeLimits.runtime !== "io.containerd.runc.v2"
-    ) {
-      // intentional; runsc is the secure default
-    } else if (useSecure && this.runtimeLimits.runtime === "runc") {
-      console.warn(
-        "[deplow] DEPLOW_APP_RUNTIME=runc — user apps are NOT sandboxed with gVisor",
-      )
-    }
+    warnOnInsecureRuntime(useSecure, this.runtimeLimits.runtime)
 
     const container = await this.docker.createContainer({
       name,
@@ -191,10 +135,6 @@ export class DockerNodeExecutor implements NodeExecutor {
     return { containerId: container.id, serviceName }
   }
 
-  /**
-   * Preflight: ensure the configured app runtime is registered with Docker.
-   * Cached for process lifetime after first successful check.
-   */
   async assertRuntimeAvailable(): Promise<void> {
     if (this.runtimeAvailableCache === true) return
     if (this.runtimeLimits.runtime === "runc") {
@@ -257,7 +197,6 @@ export class DockerNodeExecutor implements NodeExecutor {
 
   async exec(nodeId: string, command: string): Promise<string> {
     void nodeId
-    // Probe helpers use default runc — not user app sandbox
     await this.pullImage("alpine:3.20")
     const execContainer = await this.docker.createContainer({
       Image: "alpine:3.20",
@@ -287,7 +226,7 @@ export class DockerNodeExecutor implements NodeExecutor {
       return {
         online: true,
         docker: "running",
-        message: `Docker daemon OK · app runtime ${runtime.appRuntime}${runtime.appRuntimeAvailable ? "" : " (missing)"}`,
+        message: runtimeLabel(runtime),
         ...runtime,
       } as NodeStatus
     } catch (error) {
@@ -485,9 +424,7 @@ export class DockerNodeExecutor implements NodeExecutor {
   async removeProjectContainers(projectId: string): Promise<number> {
     const containers = await this.docker.listContainers({
       all: true,
-      filters: {
-        label: [`deplow.projectId=${projectId}`],
-      },
+      filters: { label: [`deplow.projectId=${projectId}`] },
     })
     let removed = 0
     for (const c of containers) {
@@ -501,13 +438,48 @@ export class DockerNodeExecutor implements NodeExecutor {
     return removed
   }
 
+  // ── internal helpers ──────────────────────────────────────────
+
+  private async removeExistingContainer(name: string): Promise<void> {
+    try {
+      await this.docker.getContainer(name).remove({ force: true })
+    } catch {
+      // container doesn't exist — fine
+    }
+  }
+
+  private async ensureImageAvailable(image: string): Promise<void> {
+    if (image.startsWith("deplow/")) {
+      const localAvailable = await this.isLocalImagePresent(image)
+      if (localAvailable) return
+      try {
+        await this.pullImage(image)
+        return
+      } catch {
+        throw new Error(
+          `Local image not found: ${image}. Build may have failed to load into Docker.`,
+        )
+      }
+    }
+    await this.pullImage(image)
+  }
+
+  private async isLocalImagePresent(image: string): Promise<boolean> {
+    try {
+      await this.docker.getImage(image).inspect()
+      return true
+    } catch {
+      return false
+    }
+  }
+
   private async pullImage(image: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       this.docker.pull(
         image,
-        (err: Error | null, stream: NodeJS.ReadableStream) => {
+        (err: Error | null, streamable: NodeJS.ReadableStream) => {
           if (err) return reject(err)
-          this.docker.modem.followProgress(stream, (e: Error | null) => {
+          this.docker.modem.followProgress(streamable, (e: Error | null) => {
             if (e) reject(e)
             else resolve()
           })
@@ -515,6 +487,86 @@ export class DockerNodeExecutor implements NodeExecutor {
       )
     })
   }
+}
+
+// ── module-level helpers ─────────────────────────────────────────
+
+function buildPortMappings(
+  containerPort: number,
+  publishPort?: number,
+): {
+  exposed: Record<string, object>
+  portBindings: Record<string, Array<{ HostPort: string }>>
+} {
+  const exposed: Record<string, object> = { [`${containerPort}/tcp`]: {} }
+  const portBindings: Record<string, Array<{ HostPort: string }>> = {}
+  if (publishPort) {
+    portBindings[`${containerPort}/tcp`] = [{ HostPort: String(publishPort) }]
+  }
+  return { exposed, portBindings }
+}
+
+function buildLabels(
+  nodeId: string,
+  serviceName: string,
+  options: DockerDeployOptions,
+  useSecure: boolean,
+  runtime: string,
+): Record<string, string> {
+  const labels: Record<string, string> = {
+    "deplow.managed": "true",
+    "deplow.nodeId": nodeId,
+    "deplow.service": serviceName,
+    "deplow.runtime": useSecure ? runtime : "runc",
+  }
+  if (options.projectId) {
+    labels["deplow.projectId"] = options.projectId
+  }
+  if (options.serviceId) {
+    labels["deplow.serviceId"] = options.serviceId
+  }
+  if (options.serviceType) {
+    labels["deplow.type"] = options.serviceType
+  }
+  return labels
+}
+
+function buildRuncHostConfig(
+  network: string,
+  portBindings: Record<string, Array<{ HostPort: string }>>,
+  options: DockerDeployOptions,
+): Record<string, unknown> {
+  return {
+    PortBindings: portBindings,
+    RestartPolicy: {
+      Name: options.command?.length ? "no" : "unless-stopped",
+    },
+    NetworkMode: network,
+  }
+}
+
+function warnOnInsecureRuntime(useSecure: boolean, runtime: string): void {
+  if (useSecure && runtime === "runc") {
+    console.warn(
+      "[deplow] DEPLOW_APP_RUNTIME=runc — user apps are NOT sandboxed with gVisor",
+    )
+  }
+}
+
+function runtimeLabel(runtime: {
+  appRuntime: string
+  appRuntimeAvailable: boolean
+}): string {
+  const name =
+    runtime.appRuntime === "runsc" || runtime.appRuntime.startsWith("runsc")
+      ? `gVisor (${runtime.appRuntime})`
+      : runtime.appRuntime === "runc"
+        ? "runc (not sandboxed)"
+        : runtime.appRuntime
+  if (!runtime.appRuntimeAvailable) {
+    return `Daemon OK · ${name} missing — install before deploy`
+  }
+  return `Daemon OK · app runtime ${name}`
 }
 
 function demuxDockerLogs(buffer: Buffer): string {

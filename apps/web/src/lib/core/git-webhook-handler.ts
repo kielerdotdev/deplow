@@ -17,6 +17,7 @@ export interface GitWebhookService {
   name: string
   slug: string
   nodeId: string | null
+  ownerId?: string | null
   gitProvider: string | null
   gitRepoUrl: string | null
   gitBranch: string | null

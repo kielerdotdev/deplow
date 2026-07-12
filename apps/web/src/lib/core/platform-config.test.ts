@@ -45,6 +45,7 @@ describe("loadPlatformConfig runtime + edge", () => {
     process.env.DEPLOW_APP_RUNTIME = "runc"
     process.env.DEPLOW_APP_RUNTIME_REQUIRED = "false"
     process.env.DEPLOW_BASE_DOMAIN = "apps.example.com"
+    process.env.DEPLOW_PUBLIC_URL_PROTOCOL = "https"
     process.env.DEPLOW_APP_MEMORY_MB = "256"
     process.env.DEPLOW_APP_CPUS = "0.5"
     delete process.env.NODE_ENV
@@ -52,6 +53,7 @@ describe("loadPlatformConfig runtime + edge", () => {
     expect(cfg.appRuntime).toBe("runc")
     expect(cfg.appRuntimeRequired).toBe(false)
     expect(cfg.baseDomain).toBe("apps.example.com")
+    expect(cfg.publicUrlProtocol).toBe("https")
     expect(cfg.appMemoryBytes).toBe(256 * 1024 * 1024)
     expect(cfg.appNanoCpus).toBe(500_000_000)
   })

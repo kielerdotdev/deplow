@@ -11,9 +11,12 @@
 /** Reserved prefix so production slugs never look like preview hosts. */
 export const PREVIEW_HOSTNAME_PREFIX = "pr-"
 
+function cleanDomain(baseDomain: string): string {
+  return baseDomain.replace(/^\.+/, "").replace(/\.$/, "")
+}
+
 export function productionHostname(slug: string, baseDomain: string): string {
-  const domain = baseDomain.replace(/^\.+/, "").replace(/\.$/, "")
-  return `${slug}.${domain}`
+  return `${slug}.${cleanDomain(baseDomain)}`
 }
 
 export function productionPublicUrl(
@@ -36,8 +39,7 @@ export function previewHostname(
   prefix = PREVIEW_HOSTNAME_PREFIX,
 ): string {
   const key = previewKey.replace(/^pr-?/i, "")
-  const domain = baseDomain.replace(/^\.+/, "").replace(/\.$/, "")
-  return `${prefix}${key}-${slug}.${domain}`
+  return `${prefix}${key}-${slug}.${cleanDomain(baseDomain)}`
 }
 
 /** True if a project slug would collide with the preview hostname scheme. */
@@ -47,9 +49,7 @@ export function slugCollidesWithPreviewPrefix(
 ): boolean {
   const normalized = slug.toLowerCase()
   const p = prefix.toLowerCase()
-  // Reject slugs that start with the preview prefix (e.g. "pr-foo")
   if (normalized.startsWith(p)) return true
-  // Also reject bare "pr" when prefix is "pr-" to avoid future ambiguity
   if (normalized === p.replace(/-$/, "")) return true
   return false
 }

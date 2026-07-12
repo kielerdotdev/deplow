@@ -10,6 +10,11 @@ describe("StatusBadge", () => {
     expect(screen.getByText("ready")).toBeTruthy()
   })
 
+  it("maps running to online", () => {
+    render(<StatusBadge status="running" />)
+    expect(screen.getByText("online")).toBeTruthy()
+  })
+
   it("renders failed status", () => {
     render(<StatusBadge status="failed" />)
     expect(screen.getByText("failed")).toBeTruthy()

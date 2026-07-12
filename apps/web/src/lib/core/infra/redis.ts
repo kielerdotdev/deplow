@@ -115,6 +115,7 @@ export class RedisInstance {
     const appUser = sanitizeIdentifier(`u_${projectSlug}`)
     const prefix = `${appUser}_`
     const password = randomPassword(28)
+
     const redis = this.client()
     await redis.connect()
     try {
@@ -299,4 +300,32 @@ export class RedisProvisioner {
     }
     return `redis://:${encodeURIComponent(password)}@${host}:${port}`
   }
+}
+
+async function safeDelUser(redis: Redis, username: string): Promise<void> {
+  try {
+    await redis.call("ACL", "DELUSER", username)
+  } catch {
+    // user may not exist yet — safe to ignore
+  }
+}
+
+async function deleteNamespacedKeys(
+  redis: Redis,
+  namespace: string,
+): Promise<void> {
+  let cursor = "0"
+  do {
+    const [next, keys] = (await redis.scan(
+      cursor,
+      "MATCH",
+      `${namespace}:*`,
+      "COUNT",
+      200,
+    )) as [string, string[]]
+    cursor = next
+    if (keys.length > 0) {
+      await redis.del(...keys)
+    }
+  } while (cursor !== "0")
 }

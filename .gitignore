@@ -7,12 +7,15 @@ dist-ssr
 !.env.example
 !**/.env.example
 .tanstack
+.turbo
+.vite
 .wrangler
 .output
 .vinxi
 .turbo
 __unconfig*
 todos.json
+coverage
 
 # runtime / local data
 /data/
@@ -23,3 +26,16 @@ infra/caddy/routes/*.caddy
 
 # typescript
 *.tsbuildinfo
+
+# local sqlite data
+data/
+packages/db/data/
+
+# generated per-project Caddy routes (runtime)
+infra/caddy/routes/*.caddy
+!infra/caddy/routes/.gitkeep
+
+# locks from other package managers (pnpm only)
+package-lock.json
+bun.lock
+yarn.lock
