@@ -23,6 +23,38 @@ const differentiators = [
 ];
 
 const steps = [
+	{ kind: 'create' as const, n: '1', title: 'Create', body: 'Spin up postgres, redis, and a bucket. Credentials encrypted at rest.' },
+	{ kind: 'build' as const, n: '2', title: 'Build', body: 'Railpack, Dockerfile, or pull a prebuilt image. Same path every time.' },
+	{ kind: 'run' as const, n: '3', title: 'Run', body: 'Env vars injected. Container starts under gVisor on your host.' },
+	{ kind: 'backup' as const, n: '4', title: 'Back up', body: 'Scheduled pg_dump into the platform bucket. No extra cron to write.' },
+];
+
+const stackItems = [
+	'SQLite holds project metadata',
+	'Postgres, redis, minio hold workload data',
+	'Docker runs the host; user apps run under gVisor',
+	'No ssh nodes, no swarm, no kube operator',
+];
+
+const sandboxChecks = [
+	{ strong: 'gVisor, not runc.', rest: 'User apps get a forged kernel — syscalls like ptrace and /proc poking are blocked at the boundary.' },
+	{ strong: 'Platform services stay privileged.', rest: 'Postgres, redis, and the control plane run on runc. Trusted, fast, no perf tax where you don’t need it.' },
+	{ strong: 'Per-project isolation.', rest: 'Docker networks and volumes separate every project’s data plane. One noisy neighbour can’t read another’s rows.' },
+	{ strong: 'Secrets never touch images.', rest: 'Env vars are injected at runtime and encrypted at rest. <b>Zero</b> plaintext leakage into build logs.' },
+];
+
+const competitors = [
+	{ name: 'Heroku', blurb: 'deplow runs in your cloud, one host, with a real sandbox — no dyno dynasty to outgrow.' },
+	{ name: 'Vercel', blurb: 'Bring your backend, not just your frontend. <b>Full-stack</b> per project, not per preview.' },
+	{ name: 'Render', blurb: 'One host, one bill. gVisor isolation where Render charges you per service for it.' },
+	{ name: 'Railway', blurb: 'Self-hosted and self-owned. <b>No usage grid</b>, no surprise dollar graph at 3am.' },
+	{ name: 'Dokploy', blurb: 'A control plane with a sandbox-first runtime. deplow ships gVisor by default, full stop.' },
+	{ name: 'Coolify', blurb: 'Faster local setup, a smaller surface, and the loop you can explain in one breath.' },
+	{ name: 'Dokku', blurb: 'Same single-host honesty. deplow adds a typed API, scheduled backups, and a real UI.' },
+	{ name: 'Porter', blurb: 'For when you’ve outgrown hand-tuned kube — <b>drift back</b> to one host without losing the platform.' },
+];
+
+const faqs = [
 	{
 		n: '01',
 		title: 'Install',

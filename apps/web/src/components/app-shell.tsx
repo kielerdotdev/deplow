@@ -59,6 +59,8 @@ type AppShellProps = {
   organizations?: OrgOption[]
   activeOrganization?: OrgOption | null
   actions?: React.ReactNode
+  /** Cloudflare-style account home: large hero title in content, minimal chrome */
+  accountHome?: boolean
   children: React.ReactNode
 }
 
@@ -116,6 +118,7 @@ export function AppShell({
   organizations = [],
   activeOrganization = null,
   actions,
+  accountHome,
   children,
 }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })

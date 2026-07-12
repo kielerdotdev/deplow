@@ -98,13 +98,10 @@ export class BuildService {
   private readonly runCommand: NonNullable<BuildServiceOptions["runCommand"]>
 
   constructor(options: BuildServiceOptions = {}) {
-    this.railpackBin =
-      options.railpackBin ?? process.env.RAILPACK_BIN ?? "railpack"
+    this.railpackBin = options.railpackBin ?? process.env.RAILPACK_BIN ?? "railpack"
     this.dockerBin = options.dockerBin ?? "docker"
     this.buildkitHost =
-      options.buildkitHost ??
-      process.env.BUILDKIT_HOST ??
-      "docker-container://buildkit"
+      options.buildkitHost ?? process.env.BUILDKIT_HOST ?? "docker-container://buildkit"
     this.runCommand = options.runCommand ?? defaultRunCommand
   }
 

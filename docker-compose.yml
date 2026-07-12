@@ -25,6 +25,20 @@ services:
       timeout: 3s
       retries: 10
 
+  # BuildKit daemon for railpack source builds (BUILDKIT_HOST=docker-container://buildkit).
+  # Must be --privileged for nested build operations.
+  buildkit:
+    image: moby/buildkit:latest
+    container_name: buildkit
+    restart: unless-stopped
+    privileged: true
+    healthcheck:
+      test: ["CMD", "buildctl", "debug", "workers"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   # Platform reverse proxy: Host {slug}.{baseDomain} → app container.
   # All edges (cloudflared, Tailscale Serve, Netbird) forward here with Host preserved.
   # Compose-network origin: http://caddy:80

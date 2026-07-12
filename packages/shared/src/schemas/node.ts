@@ -50,6 +50,10 @@ export const nodeSummarySchema = z.object({
   host: z.string(),
   status: z.enum(["online", "offline", "unknown"]),
   createdAt: z.string(),
+  /** OCI runtime for user apps (e.g. runsc) when known */
+  appRuntime: z.string().optional(),
+  appRuntimeAvailable: z.boolean().optional(),
+  appRuntimeRequired: z.boolean().optional(),
 })
 
 export type NodeSummary = z.infer<typeof nodeSummarySchema>
