@@ -1,134 +1,161 @@
 ---
 import LandingLayout from '../layouts/LandingLayout.astro';
 import Logo from '../components/landing/Logo.astro';
-import DashboardMockup from '../components/landing/diagrams/DashboardMockup.astro';
 
 const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
-const installCmd = 'git clone https://github.com/deplow/deplow.git && cd deplow && bash scripts/install.sh && pnpm dev';
+const repoUrl = 'https://github.com/deplow/deplow';
+const installCmd =
+	'git clone https://github.com/deplow/deplow.git && cd deplow && bash scripts/install.sh && pnpm dev';
 
-const pillars = [
+const differentiators = [
 	{
-		title: 'Typed services, not a catalog',
-		body: 'Empty project → add web, worker, postgres, redis → bind credentials. Same opinionated stack every time.',
+		title: 'One loop, not a catalog',
+		body: 'Add services, bind them, deploy, get a URL. No Compose files, no template marketplace, no database picker with twelve options.',
 	},
 	{
 		title: 'gVisor by default',
-		body: 'User apps run under runsc. Platform glue stays on runc. Security where untrusted code actually runs.',
+		body: 'User apps run under runsc. Platform Postgres, Redis, and Caddy stay on runc. If gVisor is missing, the deploy fails — we do not fall back quietly.',
 	},
 	{
-		title: 'One wildcard, done',
-		body: 'Domains tab sets *.{baseDomain}. Cloudflare Tunnel terminates TLS. Caddy on the host stays HTTP-only.',
+		title: 'Bindings, not env dumps',
+		body: 'Wire DATABASE_URL and REDIS_URL explicitly between services. Credentials are scoped per binding, not pasted into one giant env block.',
 	},
 ];
 
 const steps = [
-	{ n: '1', title: 'Install', body: 'scripts/install.sh verifies BuildKit, Railpack, and gVisor, then starts platform services.' },
-	{ n: '2', title: 'Domains', body: 'Set base domain once. Optional cloudflared edge for public HTTPS.' },
-	{ n: '3', title: 'Services', body: 'Add web + data, bind DATABASE_URL / REDIS_URL, deploy from the dashboard or git.' },
-	{ n: '4', title: 'Operate', body: 'Live logs, retry, rollback, scheduled pg_dump to platform MinIO, destroy that cleans up.' },
+	{
+		n: '01',
+		title: 'Install',
+		body: 'One script checks BuildKit, Railpack, and gVisor, then starts platform services on your Docker host.',
+	},
+	{
+		n: '02',
+		title: 'Wildcard domain',
+		body: 'Set a base domain in Domains. Cloudflare Tunnel handles TLS; Caddy on the host stays HTTP-only.',
+	},
+	{
+		n: '03',
+		title: 'Stack & bind',
+		body: 'Create a project, add web + Postgres + Redis, bind the app to data, deploy from git or the dashboard.',
+	},
+	{
+		n: '04',
+		title: 'Run it',
+		body: 'Live logs, retries, clean teardown. Scheduled pg_dump goes to platform MinIO.',
+	},
 ];
 
 const notFor = [
 	'Compose as a deploy path',
-	'MySQL / Mongo / template marketplaces',
+	'MySQL, Mongo, or template marketplaces',
 	'Custom domains or PR previews (v2)',
-	'Multi-server fleets or Swarm',
-	'SSO or a typed CLI',
+	'Multi-server fleets',
+	'SSO or a public CLI',
 ];
 
 const faqs = [
 	{
-		q: 'What is deplow?',
-		a: 'A small <strong>self-hosted control plane</strong> for typed services (web, worker, postgres, redis) plus bindings and S3 on one Docker host. User apps run under gVisor.',
+		q: 'How is this different from Coolify or Dokploy?',
+		a: 'They cover more surface area — Compose, templates, many databases, fleets. deplow does one thing: a Railway-style loop on a single host, with gVisor on user code. Need the kitchen sink? Use them. Need sandboxed app + Postgres + Redis + git push? Use us.',
 	},
 	{
-		q: 'How is this different from Coolify or Dokploy?',
-		a: 'Those win on breadth (Compose, templates, many DBs, fleets). deplow wins on a <strong>Railway-shaped loop</strong> with gVisor defaults. See <a href="/docs/concepts/scope/">Scope</a>.',
+		q: 'Where does HTTPS come from?',
+		a: 'TLS terminates at Cloudflare on the tunnel. Caddy on the host is HTTP-only in v1.',
 	},
 	{
 		q: 'Can I attach a custom domain?',
-		a: 'Not in v1. Every web service gets a URL under your platform wildcard. Custom domains are planned for v2.',
+		a: 'Not in v1. Web services get URLs under your platform wildcard (*.{baseDomain}). Custom domains are planned for v2.',
 	},
 	{
-		q: 'Where does TLS happen?',
-		a: 'At <strong>Cloudflare</strong> on the tunnel. Caddy is HTTP-only on the host — no Let’s Encrypt on Caddy in v1.',
-	},
-	{
-		q: 'Where do backups go?',
-		a: 'Scheduled <code>pg_dump</code> artifacts land in the platform MinIO backup bucket.',
-	},
-	{
-		q: 'Is there a CLI?',
-		a: 'No typed CLI and no general public REST API in v1. Dashboard-first; optional MCP tokens for agents.',
+		q: 'Is there a CLI or public API?',
+		a: 'No typed CLI and no general REST API in v1. Dashboard-first. MCP tokens exist for agents — they are not a product API.',
 	},
 ];
 ---
 
 <LandingLayout
 	title="deplow — self-hosted apps under gVisor"
-	description="deplow is a self-hosted control plane: typed services, bindings, Railpack builds, gVisor sandboxes, and wildcard URLs on the Docker host you already run."
+	description="Deploy web apps, Postgres, and Redis on your Docker host. Explicit bindings, git push deploys, wildcard URLs — with user code sandboxed under gVisor."
 >
-	<header class="nav">
-		<div class="nav-inner">
-			<a class="brand" href="/">
-				<Logo />
-				<span>deplow</span>
+	<nav class="nav">
+		<a href="/" class="nav-brand" aria-label="deplow home">
+			<Logo size={28} />
+			<span class="nav-wordmark">deplow</span>
+		</a>
+		<div class="nav-right">
+			<a href="/docs/" class="nav-link">Docs</a>
+			<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="nav-link">
+				GitHub
+				<span class="nav-link-arrow" aria-hidden="true">&#8599;</span>
 			</a>
-			<button type="button" class="nav-toggle" aria-label="Menu" aria-expanded="false" data-nav-toggle>
-				<span></span><span></span>
-			</button>
-			<nav class="nav-links" data-nav-links>
-				<a href="#how">How it works</a>
-				<a href="#security">Security</a>
-				<a href="/docs/">Docs</a>
-				<a class="btn btn--ghost" href={appUrl}>Dashboard</a>
-			</nav>
 		</div>
-	</header>
+	</nav>
 
 	<main>
 		<section class="hero">
-			<div class="hero-plane" aria-hidden="true">
-				<div class="hero-plane-inner">
-					<DashboardMockup />
-				</div>
+			<h1 class="tagline">Deploy on your host.<br />Sandboxed by default.</h1>
+			<p class="lede">
+				A control plane for one Docker machine — add services, bind Postgres and
+				Redis, deploy from git, get a wildcard URL. User code runs under gVisor.
+			</p>
+
+			<div class="hero-actions">
+				<a class="hero-button" href="/docs/getting-started/quick-start/">Get started</a>
+				<a class="secondary-link" href="/docs/concepts/scope/">What we don’t build</a>
 			</div>
-			<div class="hero-copy" data-reveal>
-				<p class="brand-mark">deplow</p>
-				<h1>Self-hosted apps.<br />Sandboxed by default.</h1>
-				<p class="hero-lede">
-					Typed services on one Docker host — postgres, redis, S3, git push, wildcard URLs —
-					with user code behind gVisor.
+
+			<div class="install" data-install>
+				<span class="prompt">$</span>
+				<code>{installCmd}</code>
+				<button type="button" class="copy" aria-label="Copy install command" data-copy={installCmd}>
+					Copy
+				</button>
+			</div>
+
+			<figure class="shot shot--hero">
+				<div class="browser-chrome" aria-hidden="true">
+					<span class="dot"></span>
+					<span class="dot"></span>
+					<span class="dot"></span>
+				<span class="url">localhost:3000 / projects / acme-shop</span>
+			</div>
+			<img
+				src="/screenshots/dashboard.jpeg"
+				alt="deplow project overview for acme-shop with web, postgres, and redis services"
+				width="1440"
+				height="900"
+				loading="eager"
+			/>
+			<figcaption>
+				Project stack — apps on the left, data on the right, bindings in between.
+			</figcaption>
+			</figure>
+		</section>
+
+		<section class="band" id="different">
+			<div class="band-head">
+				<h2>What we actually do</h2>
+				<p>
+					Most self-hosted panels try to run everything. We run the stack most
+					apps need — and isolate the code you did not write.
 				</p>
-				<div class="hero-actions">
-					<a class="btn btn--accent" href="/docs/getting-started/quick-start/">Quick start</a>
-					<a class="btn btn--ghost" href="/docs/concepts/scope/">What we don’t build</a>
-				</div>
-				<div class="install">
-					<span class="prompt">$</span>
-					<code>{installCmd}</code>
-					<button type="button" class="copy" aria-label="Copy install command" data-copy={installCmd}>
-						Copy
-					</button>
-				</div>
+			</div>
+			<div class="diff-list">
+				{
+					differentiators.map((d) => (
+						<div class="diff-item">
+							<h3>{d.title}</h3>
+							<p>{d.body}</p>
+						</div>
+					))
+				}
 			</div>
 		</section>
 
-		<section class="pillars" id="features" data-reveal>
-			{
-				pillars.map((p) => (
-					<div class="pillar">
-						<h2>{p.title}</h2>
-						<p>{p.body}</p>
-					</div>
-				))
-			}
-		</section>
-
-		<section class="section" id="how" data-reveal>
-			<div class="section-head">
-				<h2>The loop</h2>
-				<p>Four steps. No resource catalog. No “what kind of thing is this?”</p>
+		<section class="band" id="how">
+			<div class="band-head">
+				<h2>How it works</h2>
+				<p>Four steps from install to running app. No resource catalog in the middle.</p>
 			</div>
 			<ol class="steps">
 				{
@@ -145,27 +172,33 @@ const faqs = [
 			</ol>
 		</section>
 
-		<section class="section security" id="security" data-reveal>
-			<div class="section-head">
-				<h2>gVisor is the product feature</h2>
-				<p>
-					User apps run under <code>runsc</code>. Dedicated Postgres/Redis and platform MinIO/Caddy stay on runc.
-					The Docker socket never enters app containers.
-				</p>
+		<section class="band band--shot">
+			<figure class="shot">
+				<div class="browser-chrome" aria-hidden="true">
+					<span class="dot"></span>
+					<span class="dot"></span>
+					<span class="dot"></span>
+				<span class="url">localhost:3000 / home</span>
 			</div>
-			<ul class="security-list">
-				<li>Hardened HostConfig: dropped caps, no-new-privileges, readonly rootfs, memory/CPU limits</li>
-				<li>Missing runsc fails the deploy instead of silently falling back</li>
-				<li>Credentials flow through explicit bindings — least privilege, not a mega-env dump</li>
-			</ul>
+			<img
+				src="/screenshots/home.jpeg"
+				alt="deplow home dashboard showing projects, nodes, and GitHub integration"
+				width="1440"
+				height="900"
+				loading="lazy"
+			/>
+			<figcaption>
+				Home — your projects and platform settings in one place.
+			</figcaption>
+			</figure>
 		</section>
 
-		<section class="section out" data-reveal>
-			<div class="section-head">
-				<h2>Not for everyone — on purpose</h2>
+		<section class="band" id="not-for">
+			<div class="band-head">
+				<h2>Out of scope</h2>
 				<p>
-					If you need Coolify’s breadth, use Coolify.
-					<a href="/docs/concepts/scope/">Full scope →</a>
+					Narrow on purpose. If you need Coolify’s breadth, use Coolify.
+					<a class="inline-link" href="/docs/concepts/scope/">Full list →</a>
 				</p>
 			</div>
 			<ul class="out-list">
@@ -173,8 +206,8 @@ const faqs = [
 			</ul>
 		</section>
 
-		<section class="section" data-reveal>
-			<div class="section-head">
+		<section class="band" id="faq">
+			<div class="band-head">
 				<h2>Questions</h2>
 			</div>
 			<div class="faq">
@@ -182,48 +215,35 @@ const faqs = [
 					faqs.map((f) => (
 						<details>
 							<summary>{f.q}</summary>
-							<div class="faq-a" set:html={f.a} />
+							<p>{f.a}</p>
 						</details>
 					))
 				}
 			</div>
 		</section>
 
-		<section class="cta" data-reveal>
-			<h2>Install on your host.</h2>
-			<p>Bootstrap, Domains, deploy from the dashboard or git. That’s the launch bar.</p>
+		<section class="cta">
+			<h2>Install on your host</h2>
+			<p>Bootstrap, set your wildcard, deploy. That is the whole launch path.</p>
 			<div class="hero-actions">
-				<a class="btn btn--accent" href="/docs/getting-started/quick-start/">Read quick start</a>
-				<a class="btn btn--ghost" href={appUrl}>Open dashboard</a>
+				<a class="hero-button" href="/docs/getting-started/quick-start/">Read quick start</a>
+				<a class="secondary-link" href={appUrl}>Open dashboard</a>
 			</div>
 		</section>
 	</main>
 
 	<footer class="footer">
-		<div class="footer-inner">
-			<a class="brand" href="/">
-				<Logo size={22} />
-				<span>deplow</span>
-			</a>
-			<nav>
-				<a href="/docs/">Docs</a>
-				<a href="/docs/guides/domains/">Domains</a>
-				<a href="/docs/concepts/scope/">Scope</a>
-				<a href={appUrl}>Dashboard</a>
-			</nav>
-			<p>© 2026 deplow · MIT</p>
+		<span>&copy; {new Date().getFullYear()} deplow · MIT</span>
+		<div class="footer-links">
+			<a href="/docs/">Docs</a>
+			<a href="/docs/concepts/scope/">Scope</a>
+			<a href={appUrl}>Dashboard</a>
+			<a href={repoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 		</div>
 	</footer>
 
 	<script>
-		const toggle = document.querySelector<HTMLButtonElement>('[data-nav-toggle]');
-		const links = document.querySelector<HTMLElement>('[data-nav-links]');
-		toggle?.addEventListener('click', () => {
-			const open = links?.classList.toggle('is-open');
-			toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-		});
-
-		const copyBtn = document.querySelector<HTMLButtonElement>('[data-copy]');
+		const copyBtn = document.querySelector('[data-copy]');
 		copyBtn?.addEventListener('click', async () => {
 			const text = copyBtn.getAttribute('data-copy') ?? '';
 			try {

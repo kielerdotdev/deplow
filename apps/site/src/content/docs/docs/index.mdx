@@ -1,25 +1,27 @@
 ---
 title: Introduction
-description: What deplow is, what it provisions, and how it differs from generic PaaS panels.
-template: splash
-hero:
-  tagline: Self-hosted project runtime for Docker — sandboxed by default
-  image:
-    alt: deplow logo
-    file: ../../../assets/logo.svg
-  actions:
-    - text: Quick start
-      link: /docs/getting-started/quick-start/
-      icon: right-arrow
-    - text: Prerequisites
-      link: /docs/getting-started/prerequisites/
-      icon: document
-      variant: minimal
+description: What deplow is, what makes it different from Coolify/Dokploy, and how to start.
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components"
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
-deplow is an **opinionated self-hosted project runtime**. Most apps need a **database**, **object storage**, and a **runtime**. deplow runs that stack on a Docker host you control — with **gVisor** for user apps — so you skip hosted Postgres/Redis/S3 tabs and hand-rolled backup cron.
+deplow is an **opinionated self-hosted project runtime** for one Docker host. Most apps need a **database**, **cache**, **object storage**, and a **runtime**. deplow runs that stack under your control — with **gVisor** for user apps — so you skip hosted Postgres/Redis/S3 tabs and hand-rolled backup cron.
+
+## Why not Coolify / Dokploy?
+
+Those products win on **breadth**: Compose, templates, many databases, fleets. deplow wins on a **narrow Railway-shaped loop**:
+
+| deplow | Coolify / Dokploy |
+| ------ | ----------------- |
+| Typed services + explicit bindings | Resource catalogs and Compose |
+| gVisor by default for user apps | Usually plain Docker / runc |
+| Postgres + Redis + MinIO only | MySQL, Mongo, and more |
+| Platform wildcard URLs in v1 | Custom domains / many ingress modes |
+| Dashboard-first (optional MCP) | Broader ops surface |
+
+If you need the kitchen sink, use them. If you want sandboxed **app + Postgres + Redis + S3** with git push on a box you already run, use us. Full list: [Scope](/docs/concepts/scope/).
+
+## The loop
 
 ```text
 create empty project
@@ -30,12 +32,16 @@ create empty project
   → scheduled Postgres backups → platform MinIO
 ```
 
+![deplow project overview with web, worker, postgres, and redis](/screenshots/dashboard.jpeg)
+
 ## Start here
 
-1. [Prerequisites](/docs/getting-started/prerequisites/) — Docker, gVisor, BuildKit, Railpack
-2. [Quick start](/docs/getting-started/quick-start/) — `bash scripts/install.sh` then `pnpm dev`
-3. [Domains & URLs](/docs/guides/domains/) — base domain + optional Cloudflare Tunnel
-4. [Deploy](/docs/guides/deploy/) — bind, build, run
+<CardGrid>
+  <LinkCard title="Prerequisites" href="/docs/getting-started/prerequisites/" description="Docker, gVisor, BuildKit, Railpack" />
+  <LinkCard title="Quick start" href="/docs/getting-started/quick-start/" description="install.sh, then open the dashboard" />
+  <LinkCard title="Domains & URLs" href="/docs/guides/domains/" description="Base domain + optional Cloudflare Tunnel" />
+  <LinkCard title="Deploy an app" href="/docs/guides/deploy/" description="Bind, build, and run under gVisor" />
+</CardGrid>
 
 ## What you get
 
@@ -58,8 +64,9 @@ create empty project
   </Card>
 </CardGrid>
 
-## Explicitly out of scope
+## Honest limits (v1)
 
-See [Scope](/docs/concepts/scope/) for the full list. Short version: not Coolify/Dokploy. No MySQL/Mongo menu, no Compose deploy, no custom domains in v1 (platform wildcard only), no multi-server, no typed CLI.
-
-**v1** includes Caddy + cloudflared wildcard URLs and git **webhooks**. Previews and custom domains are **v2**.
+- **No custom domains** — every web service is under `*.{baseDomain}` (custom domains are v2)
+- **TLS at Cloudflare** — Caddy on the host is HTTP-only; we do not claim Let’s Encrypt on Caddy
+- **No typed CLI / public REST API** — dashboard-first; MCP tokens are optional for agents
+- **Not a Coolify clone** — see [Scope](/docs/concepts/scope/)

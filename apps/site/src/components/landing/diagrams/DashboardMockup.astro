@@ -1,137 +1,176 @@
 <svg
-	viewBox="0 0 720 460"
+	viewBox="0 0 1280 800"
 	fill="none"
 	xmlns="http://www.w3.org/2000/svg"
 	role="img"
-	aria-label="deplow dashboard: a project with an app, postgres, redis, and minio, all running on one host under gVisor"
+	aria-label="deplow project overview: acme-shop with web, worker, postgres, and redis services"
 >
 	<defs>
-		<linearGradient id="accent-bar" x1="0" y1="0" x2="0" y2="1">
-			<stop stop-color="#6b9fc9" />
-			<stop offset="1" stop-color="#3d7aad" />
+		<filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+			<feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#0b1220" flood-opacity="0.12" />
+		</filter>
+		<linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
+			<stop stop-color="#f4f6f9" />
+			<stop offset="1" stop-color="#eef1f6" />
 		</linearGradient>
 	</defs>
 
-	<rect width="720" height="460" fill="#0c0f23" />
-
-	<!-- top bar -->
-	<rect x="0" y="0" width="720" height="52" fill="#07091a" />
-	<rect x="0" y="51" width="720" height="1" fill="rgba(255,255,255,0.07)" />
-	<!-- logo mark -->
-	<rect x="24" y="16" width="22" height="20" rx="5" fill="#0c0f23" stroke="#6b9fc9" stroke-width="1.5" />
-	<path d="M29 26h8M37 26l-3 3M37 26l-3-3" stroke="#6b9fc9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-	<text x="54" y="31" fill="#eef1fb" font-family="Bricolage Grotesque, sans-serif" font-size="15" font-weight="700" letter-spacing="-0.4">deplow</text>
-	<text x="130" y="31" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="12">/ acme-shop / production</text>
-	<!-- nav pills -->
-	<rect x="520" y="14" width="64" height="24" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" />
-	<text x="552" y="30" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500" text-anchor="middle">Logs</text>
-	<rect x="592" y="14" width="64" height="24" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" />
-	<text x="624" y="30" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500" text-anchor="middle">Backups</text>
-	<rect x="664" y="14" width="32" height="24" rx="12" fill="url(#accent-bar)" />
-	<text x="680" y="30" fill="#0b1220" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="700" text-anchor="middle">+</text>
+	<!-- app chrome -->
+	<rect width="1280" height="800" rx="16" fill="url(#page)" />
+	<rect x="0.5" y="0.5" width="1279" height="799" rx="15.5" stroke="#d8dee8" />
 
 	<!-- sidebar -->
-	<rect x="0" y="52" width="180" height="408" fill="#07091a" />
-	<rect x="179" y="52" width="1" height="408" fill="rgba(255,255,255,0.07)" />
-	<text x="24" y="84" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500" letter-spacing="2">PROJECTS</text>
-	<!-- active project -->
-	<rect x="16" y="98" width="148" height="36" rx="8" fill="rgba(107,159,201,0.06)" stroke="rgba(107,159,201,0.2)" />
-	<circle cx="30" cy="116" r="3.5" fill="#6b9fc9" />
-	<text x="44" y="119" fill="#eef1fb" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600">acme-shop</text>
-	<text x="116" y="119" fill="#6b9fc9" font-family="IBM Plex Mono, monospace" font-size="10">5/5</text>
-	<!-- other rows -->
-	<rect x="16" y="142" width="148" height="34" rx="8" fill="transparent" />
-	<circle cx="30" cy="159" r="3.5" fill="#888fa8" />
-	<text x="44" y="162" fill="#c7cce0" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="500">status-page</text>
-	<text x="116" y="162" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">2/3</text>
-	<rect x="16" y="184" width="148" height="34" rx="8" fill="transparent" />
-	<circle cx="30" cy="201" r="3.5" fill="#888fa8" />
-	<text x="44" y="204" fill="#c7cce0" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="500">cron-runner</text>
-	<text x="116" y="204" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">1/1</text>
-	<rect x="16" y="226" width="148" height="34" rx="8" fill="transparent" />
-	<circle cx="30" cy="243" r="3.5" fill="rgba(255,255,255,0.2)" />
-	<text x="44" y="246" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="500">labs-blog</text>
-	<text x="120" y="246" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">idle</text>
+	<rect x="0" y="0" width="248" height="800" rx="16" fill="#fbfcfe" />
+	<rect x="248" y="0" width="1" height="800" fill="#e4e9f0" />
+	<!-- square off right radius so sidebar edge is flat -->
+	<rect x="232" y="0" width="16" height="800" fill="#fbfcfe" />
 
-	<text x="24" y="296" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500" letter-spacing="2">HOST</text>
-	<rect x="16" y="310" width="148" height="44" rx="9" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" />
-	<rect x="28" y="322" width="124" height="4" rx="2" fill="rgba(255,255,255,0.07)" />
-	<rect x="28" y="322" width="84" height="4" rx="2" fill="url(#accent-bar)" />
-	<text x="28" y="342" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">cpu 34% · mem 6.2g</text>
-	<rect x="16" y="362" width="148" height="32" rx="9" fill="rgba(107,159,201,0.05)" />
-	<circle cx="30" cy="378" r="3" fill="#6b9fc9" />
-	<text x="44" y="381" fill="#6b9fc9" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500">gVisor online</text>
+	<!-- brand -->
+	<rect x="20" y="20" width="32" height="32" rx="8" fill="#2563eb" />
+	<path
+		d="M28 36h12M40 36l-4 4M40 36l-4-4"
+		stroke="#fff"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+	/>
+	<text x="62" y="41" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="16" font-weight="600" letter-spacing="-0.4">deplow</text>
 
-	<!-- main content -->
-	<rect x="200" y="74" width="520" height="370" rx="14" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
-	<text x="224" y="106" fill="#eef1fb" font-family="Bricolage Grotesque, sans-serif" font-size="16" font-weight="700" letter-spacing="-0.3">acme-shop</text>
-	<text x="224" y="128" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="11">production · 5 services running</text>
-	<rect x="582" y="92" width="118" height="30" rx="8" fill="url(#accent-bar)" />
-	<text x="641" y="111" fill="#0b1220" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="700" text-anchor="middle">Deploy</text>
+	<!-- org switcher -->
+	<rect x="16" y="68" width="216" height="44" rx="10" fill="#fff" stroke="#e4e9f0" />
+	<circle cx="38" cy="90" r="12" fill="#dbeafe" />
+	<text x="38" y="94" fill="#1d4ed8" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="700" text-anchor="middle">MA</text>
+	<text x="58" y="86" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600">Marketing</text>
+	<text x="58" y="102" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="11">owner</text>
 
-	<!-- service cards: all use the same bar color (sage), only LEDs differ -->
-	<!-- web -->
-	<rect x="224" y="148" width="240" height="78" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
-	<rect x="224" y="148" width="4" height="78" rx="2" fill="url(#accent-bar)" />
-	<circle cx="246" cy="170" r="4" fill="#6b9fc9" />
-	<text x="258" y="174" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">web</text>
-	<text x="258" y="190" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">railpack · :3000</text>
-	<rect x="420" y="160" width="34" height="18" rx="9" fill="rgba(107,159,201,0.12)" />
-	<text x="437" y="172" fill="#6b9fc9" font-family="IBM Plex Sans, sans-serif" font-size="9" font-weight="700" text-anchor="middle">RUN</text>
-	<rect x="240" y="200" width="120" height="4" rx="2" fill="rgba(255,255,255,0.06)" />
-	<rect x="240" y="200" width="98" height="4" rx="2" fill="url(#accent-bar)" opacity="0.6" />
-	<text x="382" y="205" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">82%</text>
+	<text x="24" y="148" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600" letter-spacing="0.08em">GO TO</text>
 
-	<!-- worker -->
-	<rect x="476" y="148" width="226" height="78" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
-	<rect x="476" y="148" width="4" height="78" rx="2" fill="url(#accent-bar)" />
-	<circle cx="498" cy="170" r="4" fill="#6b9fc9" />
-	<text x="510" y="174" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">worker</text>
-	<text x="510" y="190" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">dockerfile · queued</text>
-	<rect x="656" y="160" width="34" height="18" rx="9" fill="rgba(107,159,201,0.12)" />
-	<text x="673" y="172" fill="#6b9fc9" font-family="IBM Plex Sans, sans-serif" font-size="9" font-weight="700" text-anchor="middle">RUN</text>
-	<rect x="492" y="200" width="120" height="4" rx="2" fill="rgba(255,255,255,0.06)" />
-	<rect x="492" y="200" width="40" height="4" rx="2" fill="url(#accent-bar)" opacity="0.6" />
-	<text x="634" y="205" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">33%</text>
+	<!-- nav items -->
+	<rect x="16" y="160" width="216" height="36" rx="8" fill="#eff6ff" />
+	<rect x="16" y="160" width="3" height="36" rx="1.5" fill="#2563eb" />
+	<rect x="28" y="170" width="16" height="16" rx="3" fill="none" stroke="#2563eb" stroke-width="1.6" />
+	<text x="54" y="183" fill="#1e3a8a" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="600">Home</text>
 
-	<!-- postgres -->
-	<rect x="224" y="238" width="152" height="72" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
-	<rect x="224" y="238" width="4" height="72" rx="2" fill="url(#accent-bar)" />
-	<circle cx="246" cy="260" r="4" fill="#6b9fc9" />
-	<text x="258" y="264" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">postgres</text>
-	<text x="258" y="280" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">:5432 · pg17</text>
-	<text x="244" y="298" fill="#6b9fc9" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="500">12 backups</text>
+	<rect x="28" y="214" width="16" height="16" rx="3" fill="none" stroke="#64748b" stroke-width="1.5" />
+	<text x="54" y="227" fill="#334155" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="500">Team</text>
+	<rect x="28" y="254" width="16" height="16" rx="3" fill="none" stroke="#64748b" stroke-width="1.5" />
+	<text x="54" y="267" fill="#334155" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="500">Settings</text>
 
-	<!-- redis -->
-	<rect x="388" y="238" width="152" height="72" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
-	<rect x="388" y="238" width="4" height="72" rx="2" fill="url(#accent-bar)" />
-	<circle cx="410" cy="260" r="4" fill="#6b9fc9" />
-	<text x="422" y="264" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">redis</text>
-	<text x="422" y="280" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">:6379 · 8</text>
-	<text x="408" y="298" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="500">142 ops/s</text>
+	<text x="24" y="316" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600" letter-spacing="0.08em">SYSTEM</text>
+	<rect x="28" y="334" width="16" height="16" rx="3" fill="none" stroke="#64748b" stroke-width="1.5" />
+	<text x="54" y="347" fill="#334155" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="500">Integrations</text>
+	<rect x="28" y="374" width="16" height="16" rx="3" fill="none" stroke="#64748b" stroke-width="1.5" />
+	<text x="54" y="387" fill="#334155" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="500">Domains</text>
+	<rect x="28" y="414" width="16" height="16" rx="3" fill="none" stroke="#64748b" stroke-width="1.5" />
+	<text x="54" y="427" fill="#334155" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="500">Nodes</text>
 
-	<!-- minio -->
-	<rect x="552" y="238" width="150" height="72" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
-	<rect x="552" y="238" width="4" height="72" rx="2" fill="url(#accent-bar)" />
-	<circle cx="574" cy="260" r="4" fill="#6b9fc9" />
-	<text x="586" y="264" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">minio</text>
-	<text x="586" y="280" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">s3 · 4.8g</text>
-	<text x="572" y="298" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="500">12 buckets</text>
+	<!-- user footer -->
+	<rect x="16" y="732" width="216" height="48" rx="10" fill="#fff" stroke="#e4e9f0" />
+	<circle cx="40" cy="756" r="14" fill="#e2e8f0" />
+	<text x="40" y="760" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="700" text-anchor="middle">MA</text>
+	<text x="62" y="752" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600">Marketing</text>
+	<text x="62" y="768" fill="#64748b" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="10">marketing@…</text>
 
-	<!-- logs panel -->
-	<rect x="224" y="324" width="478" height="108" rx="11" fill="#07091a" stroke="rgba(255,255,255,0.07)" />
-	<circle cx="240" cy="340" r="3" fill="#6b9fc9" />
-	<circle cx="252" cy="340" r="3" fill="#888fa8" />
-	<circle cx="264" cy="340" r="3" fill="#4d5480" />
-	<text x="280" y="344" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">web — logs</text>
+	<!-- main -->
+	<text x="280" y="48" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="28" font-weight="600" letter-spacing="-0.6">acme-shop</text>
+	<text x="280" y="72" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="13">4 services · apps.localhost</text>
 
-	<text x="240" y="368" fill="#c7cce0" font-family="IBM Plex Mono, monospace" font-size="11">GET /api/products</text>
-	<text x="446" y="368" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">200 · 14ms</text>
-	<text x="240" y="388" fill="#c7cce0" font-family="IBM Plex Mono, monospace" font-size="11">POST /api/checkout</text>
-	<text x="446" y="388" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">201 · 88ms</text>
-	<text x="240" y="408" fill="#c7cce0" font-family="IBM Plex Mono, monospace" font-size="11">GET /api/orders</text>
-	<text x="446" y="408" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">200 · 9ms</text>
+	<!-- search -->
+	<rect x="780" y="28" width="220" height="36" rx="8" fill="#fff" stroke="#e4e9f0" />
+	<circle cx="800" cy="46" r="6" fill="none" stroke="#94a3b8" stroke-width="1.5" />
+	<text x="816" y="50" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="12">Search…</text>
+	<text x="960" y="50" fill="#cbd5e1" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="10">⌘K</text>
 
-	<text x="240" y="428" fill="#fb7185" font-family="IBM Plex Mono, monospace" font-size="11">gVisor: syscall ptrace(•)</text>
-	<text x="446" y="428" fill="#fb7185" font-family="IBM Plex Mono, monospace" font-size="11">blocked</text>
+	<!-- add service -->
+	<rect x="1012" y="28" width="128" height="36" rx="8" fill="#2563eb" filter="url(#soft)" />
+	<text x="1076" y="51" fill="#fff" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="600" text-anchor="middle">+ Add service</text>
+
+	<!-- rail tabs -->
+	<rect x="280" y="100" width="112" height="34" rx="8" fill="#0f172a" />
+	<text x="336" y="122" fill="#fff" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Overview</text>
+	<rect x="400" y="100" width="120" height="34" rx="8" fill="#fff" stroke="#e4e9f0" />
+	<text x="460" y="122" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="500" text-anchor="middle">Deployments</text>
+	<rect x="528" y="100" width="80" height="34" rx="8" fill="#fff" stroke="#e4e9f0" />
+	<text x="568" y="122" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="500" text-anchor="middle">Logs</text>
+	<rect x="616" y="100" width="96" height="34" rx="8" fill="#fff" stroke="#e4e9f0" />
+	<text x="664" y="122" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="500" text-anchor="middle">Settings</text>
+
+	<!-- section label -->
+	<text x="280" y="174" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="15" font-weight="600">Services</text>
+	<text x="280" y="194" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Each service has its own page, lifecycle, and configuration.</text>
+
+	<!-- card: web -->
+	<rect x="280" y="214" width="460" height="168" rx="14" fill="#fff" stroke="#e4e9f0" />
+	<rect x="300" y="234" width="40" height="40" rx="10" fill="#eff6ff" />
+	<rect x="310" y="244" width="20" height="20" rx="4" fill="none" stroke="#2563eb" stroke-width="1.8" />
+	<text x="354" y="250" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="14" font-weight="600">web</text>
+	<text x="354" y="268" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Primary web · :5678</text>
+	<rect x="650" y="238" width="70" height="24" rx="999" fill="#ecfdf5" />
+	<circle cx="666" cy="250" r="3.5" fill="#059669" />
+	<text x="676" y="254" fill="#047857" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600">online</text>
+	<text x="300" y="302" fill="#2563eb" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">https://web.acme-shop.apps.localhost</text>
+	<rect x="300" y="322" width="88" height="32" rx="8" fill="#2563eb" />
+	<text x="344" y="343" fill="#fff" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Deploy</text>
+	<rect x="396" y="322" width="72" height="32" rx="8" fill="#fff" stroke="#e4e9f0" />
+	<text x="432" y="343" fill="#334155" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="500" text-anchor="middle">Logs</text>
+
+	<!-- card: worker -->
+	<rect x="756" y="214" width="460" height="168" rx="14" fill="#fff" stroke="#e4e9f0" />
+	<rect x="776" y="234" width="40" height="40" rx="10" fill="#f1f5f9" />
+	<rect x="786" y="244" width="20" height="20" rx="4" fill="none" stroke="#64748b" stroke-width="1.8" />
+	<text x="830" y="250" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="14" font-weight="600">worker</text>
+	<text x="830" y="268" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Worker process</text>
+	<rect x="1126" y="238" width="70" height="24" rx="999" fill="#ecfdf5" />
+	<circle cx="1142" cy="250" r="3.5" fill="#059669" />
+	<text x="1152" y="254" fill="#047857" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600">online</text>
+	<text x="776" y="302" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">No public URL · gVisor sandbox</text>
+	<rect x="776" y="322" width="88" height="32" rx="8" fill="#2563eb" />
+	<text x="820" y="343" fill="#fff" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">Deploy</text>
+	<rect x="872" y="322" width="72" height="32" rx="8" fill="#fff" stroke="#e4e9f0" />
+	<text x="908" y="343" fill="#334155" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="500" text-anchor="middle">Logs</text>
+
+	<!-- card: postgres -->
+	<rect x="280" y="398" width="460" height="148" rx="14" fill="#fff" stroke="#e4e9f0" />
+	<rect x="300" y="418" width="40" height="40" rx="10" fill="#ecfdf5" />
+	<rect x="310" y="428" width="20" height="20" rx="4" fill="none" stroke="#059669" stroke-width="1.8" />
+	<text x="354" y="434" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="14" font-weight="600">postgres</text>
+	<text x="354" y="452" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">PostgreSQL</text>
+	<rect x="650" y="422" width="70" height="24" rx="999" fill="#ecfdf5" />
+	<circle cx="666" cy="434" r="3.5" fill="#059669" />
+	<text x="676" y="438" fill="#047857" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600">ready</text>
+	<text x="300" y="492" fill="#64748b" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">bound → web.DATABASE_URL</text>
+	<text x="300" y="520" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11">Dedicated container · nightly backups</text>
+
+	<!-- card: redis -->
+	<rect x="756" y="398" width="460" height="148" rx="14" fill="#fff" stroke="#e4e9f0" />
+	<rect x="776" y="418" width="40" height="40" rx="10" fill="#fff7ed" />
+	<rect x="786" y="428" width="20" height="20" rx="4" fill="none" stroke="#ea580c" stroke-width="1.8" />
+	<text x="830" y="434" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="14" font-weight="600">redis</text>
+	<text x="830" y="452" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Redis</text>
+	<rect x="1126" y="422" width="70" height="24" rx="999" fill="#ecfdf5" />
+	<circle cx="1142" cy="434" r="3.5" fill="#059669" />
+	<text x="1152" y="438" fill="#047857" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600">ready</text>
+	<text x="776" y="492" fill="#64748b" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">bound → web.REDIS_URL</text>
+	<text x="776" y="520" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11">Dedicated container · persistence on</text>
+
+	<!-- data section preview -->
+	<text x="280" y="590" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="15" font-weight="600">Data services</text>
+	<text x="280" y="610" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Postgres and Redis are first-class. Bind them explicitly to apps.</text>
+
+	<rect x="280" y="628" width="936" height="120" rx="14" fill="#fff" stroke="#e4e9f0" />
+	<rect x="300" y="652" width="280" height="72" rx="10" fill="#f8fafc" stroke="#e4e9f0" />
+	<text x="320" y="680" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="600">postgres → web</text>
+	<text x="320" y="700" fill="#64748b" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="11">DATABASE_URL</text>
+	<rect x="520" y="666" width="40" height="20" rx="999" fill="#ecfdf5" />
+	<text x="540" y="680" fill="#047857" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">ok</text>
+
+	<rect x="596" y="652" width="280" height="72" rx="10" fill="#f8fafc" stroke="#e4e9f0" />
+	<text x="616" y="680" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="600">redis → web</text>
+	<text x="616" y="700" fill="#64748b" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="11">REDIS_URL</text>
+	<rect x="816" y="666" width="40" height="20" rx="999" fill="#ecfdf5" />
+	<text x="836" y="680" fill="#047857" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" text-anchor="middle">ok</text>
+
+	<rect x="892" y="652" width="300" height="72" rx="10" fill="#eff6ff" stroke="#bfdbfe" />
+	<text x="912" y="680" fill="#1e40af" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="600">gVisor online</text>
+	<text x="912" y="700" fill="#3b82f6" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="11">runsc · local node</text>
 </svg>
