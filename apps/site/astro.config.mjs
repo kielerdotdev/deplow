@@ -16,6 +16,13 @@ export default defineConfig({
       },
       favicon: "/favicon.svg",
       customCss: ["./src/styles/custom.css"],
+      expressiveCode: {
+        themes: ["github-dark-default"],
+        defaultProps: {
+          wrap: true,
+          preserveIndent: false,
+        },
+      },
       social: [
         {
           icon: "github",
@@ -43,12 +50,14 @@ export default defineConfig({
           tag: "link",
           attrs: {
             rel: "stylesheet",
-            href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&display=swap",
+            href: "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=IBM+Plex+Mono:wght@400;500&display=swap",
           },
         },
       ],
       components: {
         Header: "./src/components/DocsHeader.astro",
+        ThemeSelect: "./src/components/Empty.astro",
+        ThemeProvider: "./src/components/ThemeProvider.astro",
       },
       sidebar: [
         {

@@ -1,0 +1,16 @@
+---
+---
+
+{/* Force dark — matches marketing site; ThemeSelect is stubbed out. */}
+<script is:inline>
+	window.StarlightThemeProvider = (() => {
+		try {
+			localStorage.setItem("starlight-theme", "dark")
+		} catch {}
+		document.documentElement.dataset.theme = "dark"
+		document.documentElement.style.colorScheme = "dark"
+		return {
+			updatePickers() {},
+		}
+	})()
+</script>

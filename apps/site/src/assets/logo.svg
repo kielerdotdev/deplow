@@ -2,5 +2,5 @@
   <rect x="0" y="2" width="24" height="24" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
   <path d="M7 14h6M13 14l-3-3M13 14l-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
   <rect x="16" y="10" width="3" height="10" rx="1" fill="currentColor"/>
-  <text x="32" y="19" font-family="Bricolage Grotesque, system-ui, sans-serif" font-size="17" font-weight="800" fill="currentColor" letter-spacing="-0.03em">deplow</text>
+  <text x="32" y="19" font-family="DM Sans, system-ui, sans-serif" font-size="17" font-weight="600" fill="currentColor" letter-spacing="-0.03em">deplow</text>
 </svg>
