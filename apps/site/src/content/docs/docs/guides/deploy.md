@@ -12,7 +12,7 @@ Deploying runs a container for a **web** or **worker** service. Bind postgres/re
 3. Add a web service (and postgres/redis if needed), then **bind** data → app
 4. Choose a deploy mode:
    - **Image** — enter a registry reference
-   - **Source** — provide a local path or connected git repo; Railpack or Dockerfile build runs automatically
+   - **Source** — provide a local path or connected git repo; builds with **Railpack** by default. Dockerfile builds are opt-in under Advanced.
 5. Watch deployment logs and confirm the container is running
 
 Public URL (v1): `https://{project}.{baseDomain}` for the primary web service when Domains auto-subdomains are on. Custom domains are v2.

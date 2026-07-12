@@ -11,13 +11,13 @@ describe("selectBuildStrategy", () => {
     expect(selectBuildStrategy({ image: "nginx:alpine" })).toBe("image")
   })
 
-  it("selects dockerfile when source has Dockerfile", () => {
+  it("defaults to railpack even when a Dockerfile is present", () => {
     expect(
       selectBuildStrategy({
         sourcePath: "/app",
         hasDockerfile: true,
       }),
-    ).toBe("dockerfile")
+    ).toBe("railpack")
   })
 
   it("selects railpack when source has no Dockerfile", () => {
@@ -43,7 +43,7 @@ describe("selectBuildStrategy", () => {
     expect(() => selectBuildStrategy({})).toThrow(/image or sourcePath/)
   })
 
-  it("honors strategy overrides", () => {
+  it("uses Dockerfile only when explicitly overridden", () => {
     expect(
       selectBuildStrategy({
         sourcePath: "/app",
@@ -58,16 +58,24 @@ describe("selectBuildStrategy", () => {
         strategyOverride: "dockerfile",
       }),
     ).toBe("dockerfile")
+    expect(
+      selectBuildStrategy({
+        sourcePath: "/app",
+        hasDockerfile: true,
+        strategyOverride: "auto",
+      }),
+    ).toBe("railpack")
   })
 })
 
 describe("BuildService.buildFromSource", () => {
-  it("runs docker build when Dockerfile strategy is selected", async () => {
+  it("runs railpack by default even when a Dockerfile exists", async () => {
     const calls: string[][] = []
     const service = new BuildService({
+      railpackBin: "railpack",
       runCommand: async (cmd, args) => {
         calls.push([cmd, ...args])
-        return { code: 0, stdout: "built", stderr: "" }
+        return { code: 0, stdout: "ok", stderr: "" }
       },
     })
 
@@ -76,17 +84,19 @@ describe("BuildService.buildFromSource", () => {
     const os = await import("node:os")
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-build-"))
     fs.writeFileSync(path.join(dir, "Dockerfile"), "FROM alpine\n")
+    fs.writeFileSync(
+      path.join(dir, "package.json"),
+      JSON.stringify({ scripts: { start: "node server.js" } }),
+    )
     try {
       const result = await service.buildFromSource({
         sourcePath: dir,
         projectSlug: "demo",
         deploymentId: "dep1",
       })
-      expect(result.strategy).toBe("dockerfile")
+      expect(result.strategy).toBe("railpack")
       expect(result.image).toBe("deplow/demo:dep1")
-      expect(calls[0]?.[0]).toBe("docker")
-      expect(calls[0]).toContain("build")
-      expect(calls[0]).toContain("deplow/demo:dep1")
+      expect(calls[0]?.[0]).toBe("railpack")
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
@@ -259,7 +269,7 @@ describe("BuildService.buildFromSource", () => {
     }
   })
 
-  it("falls back to railpack when Dockerfile CMD is a local-dev server", async () => {
+  it("uses railpack by default when a local-dev Dockerfile is present", async () => {
     const calls: string[][] = []
     const service = new BuildService({
       railpackBin: "railpack",

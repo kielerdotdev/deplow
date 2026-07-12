@@ -566,35 +566,38 @@ export function AddServiceDialog({
                     <div className="space-y-1.5">
                       <Label>Build strategy</Label>
                       <div className="flex flex-wrap gap-2">
-                        {(["auto", "railpack", "dockerfile"] as const).map(
-                          (s) => (
-                            <Button
-                              key={s}
-                              type="button"
-                              size="sm"
-                              variant={
-                                strategyOverride === s ? "default" : "outline"
+                        {(
+                          [
+                            ["auto", "Railpack"],
+                            ["dockerfile", "Dockerfile"],
+                          ] as const
+                        ).map(([value, label]) => (
+                          <Button
+                            key={value}
+                            type="button"
+                            size="sm"
+                            variant={
+                              strategyOverride === value ? "default" : "outline"
+                            }
+                            onClick={() => {
+                              setStrategyOverride(value)
+                              if (selection) {
+                                void runAnalysis(selection, {
+                                  rootDirectory,
+                                  dockerfilePath,
+                                  strategyOverride: value,
+                                })
                               }
-                              onClick={() => {
-                                setStrategyOverride(s)
-                                if (selection) {
-                                  void runAnalysis(selection, {
-                                    rootDirectory,
-                                    dockerfilePath,
-                                    strategyOverride: s,
-                                  })
-                                }
-                              }}
-                            >
-                              {s === "auto"
-                                ? "Auto"
-                                : s === "railpack"
-                                  ? "Railpack"
-                                  : "Dockerfile"}
-                            </Button>
-                          ),
-                        )}
+                            }}
+                          >
+                            {label}
+                          </Button>
+                        ))}
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Railpack is the default. Use Dockerfile only when you
+                        want to build the repo&apos;s Dockerfile as-is.
+                      </p>
                     </div>
                     <div className="grid gap-2.5 sm:grid-cols-2">
                       <div className="space-y-1.5">

@@ -104,42 +104,57 @@ describe("analyzeDirectory", () => {
     }
   })
 
-  it("auto-selects root Dockerfile", async () => {
+  it("defaults to railpack even when a root Dockerfile exists", async () => {
     const dir = tempDir("deplow-root-df-")
     try {
-      write(dir, "Dockerfile", "FROM alpine\nEXPOSE 80\n")
-      write(dir, "package.json", '{"name":"x"}')
+      write(dir, "Dockerfile", "FROM alpine\nEXPOSE 80\nCMD npm run dev\n")
+      write(
+        dir,
+        "package.json",
+        JSON.stringify({
+          name: "x",
+          scripts: { start: "next start", build: "next build", dev: "next dev" },
+        }),
+      )
       const result = await analyzeDirectory({
         sourcePath: dir,
         repoName: "web",
-        runCommand: async () => ({ code: 1, stdout: "", stderr: "unused" }),
+        runCommand: mockRailpack(
+          { detectedProviders: ["node"], success: true },
+          { deploy: { startCommand: "npm start" } },
+        ),
       })
-      expect(result.strategy).toBe("dockerfile")
-      expect(result.dockerfilePath).toBe("Dockerfile")
+      expect(result.strategy).toBe("railpack")
+      expect(result.dockerfilePath).toBeNull()
+      expect(result.dockerfiles).toContain("Dockerfile")
       expect(result.suggestedType).toBe("web")
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
   })
 
-  it("auto-selects a single nested Dockerfile", async () => {
+  it("still lists nested Dockerfiles but does not auto-select them", async () => {
     const dir = tempDir("deplow-nested-df-")
     try {
       write(dir, "services/api/Dockerfile", "FROM node\n")
-      write(dir, "README.md", "# hi\n")
+      write(dir, "package.json", '{"name":"x","scripts":{"start":"node ."}}')
       const result = await analyzeDirectory({
         sourcePath: dir,
         repoName: "mono",
-        runCommand: async () => ({ code: 1, stdout: "", stderr: "unused" }),
+        runCommand: mockRailpack(
+          { detectedProviders: ["node"], success: true },
+          { deploy: { startCommand: "npm start" } },
+        ),
       })
-      expect(result.strategy).toBe("dockerfile")
-      expect(result.dockerfilePath).toBe("services/api/Dockerfile")
+      expect(result.strategy).toBe("railpack")
+      expect(result.dockerfilePath).toBeNull()
+      expect(result.dockerfiles).toContain("services/api/Dockerfile")
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
   })
 
-  it("requires choice when multiple Dockerfiles exist without a root one", async () => {
+  it("requires Dockerfile choice only when Dockerfile strategy is forced", async () => {
     const dir = tempDir("deplow-multi-df-")
     try {
       write(dir, "apps/api/Dockerfile", "FROM node\n")
@@ -147,6 +162,7 @@ describe("analyzeDirectory", () => {
       const multi = await analyzeDirectory({
         sourcePath: dir,
         repoName: "multi",
+        strategyOverride: "dockerfile",
         runCommand: async () => ({ code: 1, stdout: "", stderr: "unused" }),
       })
       expect(multi.needsChoice).toBe("dockerfile")
@@ -157,7 +173,28 @@ describe("analyzeDirectory", () => {
     }
   })
 
-  it("prefers a standard root Dockerfile over nested ones", async () => {
+  it("does not force Dockerfile choice in auto mode with multiple Dockerfiles", async () => {
+    const dir = tempDir("deplow-multi-df-auto-")
+    try {
+      write(dir, "apps/api/Dockerfile", "FROM node\n")
+      write(dir, "apps/web/Dockerfile", "FROM nginx\n")
+      write(dir, "package.json", '{"name":"x","scripts":{"start":"node ."}}')
+      const multi = await analyzeDirectory({
+        sourcePath: dir,
+        repoName: "multi",
+        runCommand: mockRailpack(
+          { detectedProviders: ["node"], success: true },
+          { deploy: { startCommand: "npm start" } },
+        ),
+      })
+      expect(multi.needsChoice).toBeNull()
+      expect(multi.strategy).toBe("railpack")
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("uses a root Dockerfile only when strategyOverride is dockerfile", async () => {
     const dir = tempDir("deplow-root-wins-")
     try {
       write(dir, "Dockerfile", "FROM alpine\n")
@@ -165,6 +202,7 @@ describe("analyzeDirectory", () => {
       const result = await analyzeDirectory({
         sourcePath: dir,
         repoName: "multi",
+        strategyOverride: "dockerfile",
         runCommand: async () => ({ code: 1, stdout: "", stderr: "unused" }),
       })
       expect(result.strategy).toBe("dockerfile")

@@ -3,7 +3,6 @@ import { existsSync, readFileSync, renameSync } from "node:fs"
 import path from "node:path"
 
 import {
-  isDevOrientedDockerfile,
   normalizeProductionStartCommand,
   resolveProductionBuildCommand,
 } from "./normalize-start-command"
@@ -22,9 +21,8 @@ export interface BuildSelectionInput {
 /**
  * Pure selection rules for how a deployment is produced.
  * - image only → pull/run image
- * - strategyOverride dockerfile | railpack → that strategy
- * - source + Dockerfile → docker build
- * - source without Dockerfile → railpack
+ * - strategyOverride dockerfile → docker build (manual only)
+ * - source (auto / railpack / unset) → always Railpack
  */
 export function selectBuildStrategy(input: BuildSelectionInput): BuildStrategy {
   const image = input.image?.trim()
@@ -35,11 +33,7 @@ export function selectBuildStrategy(input: BuildSelectionInput): BuildStrategy {
 
   if (sourcePath) {
     if (override === "dockerfile") return "dockerfile"
-    if (override === "railpack") return "railpack"
-
-    const hasDockerfile =
-      input.hasDockerfile ?? detectDockerfile(sourcePath, input.dockerfilePath)
-    return hasDockerfile ? "dockerfile" : "railpack"
+    return "railpack"
   }
 
   throw new Error("Either image or sourcePath is required for deploy")
@@ -139,27 +133,6 @@ export class BuildService {
       dockerfilePath: dockerfileAbs,
     })
     const image = this.imageTag(input.projectSlug, input.deploymentId)
-
-    // Local-dev Dockerfiles (CMD npm run dev / next dev) fail under our
-    // read-only rootfs — prefer Railpack unless the user forced dockerfile.
-    if (
-      strategy === "dockerfile" &&
-      input.strategyOverride !== "dockerfile" &&
-      dockerfileAbs &&
-      existsSync(dockerfileAbs)
-    ) {
-      try {
-        const dfText = readFileSync(dockerfileAbs, "utf8")
-        if (isDevOrientedDockerfile(dfText)) {
-          input.onLog?.(
-            "=== note ===\nDockerfile CMD looks like a local-dev server (e.g. npm run dev / next dev). Using Railpack for a production build instead. Set build strategy to Dockerfile to force the file as-is.\n\n",
-          )
-          strategy = "railpack"
-        }
-      } catch {
-        // keep dockerfile strategy if unreadable
-      }
-    }
 
     if (strategy === "dockerfile") {
       return this.buildWithDockerfile(

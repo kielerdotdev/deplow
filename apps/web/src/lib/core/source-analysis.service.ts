@@ -21,7 +21,6 @@ import path from "node:path"
 import type { GitCloneAuth } from "./git-clone-auth"
 import { GitService } from "./git.service"
 import {
-  isDevOrientedDockerfile,
   isRailpackCaddyCommand,
   normalizeProductionStartCommand,
   resolveProductionBuildCommand,
@@ -289,7 +288,10 @@ export async function analyzeDirectory(
             d.startsWith(`${selectedRoot}/`),
         )
 
-  if (override === "dockerfile" || override === "auto") {
+  // Dockerfile builds are opt-in only (strategyOverride === "dockerfile").
+  // Auto / Railpack always analyze as Railpack so local-dev Dockerfiles cannot
+  // take over the default path.
+  if (override === "dockerfile") {
     if (dockerfilePath) {
       const abs = resolveUnder(sourcePath, dockerfilePath)
       if (!existsSync(abs)) {
@@ -297,7 +299,7 @@ export async function analyzeDirectory(
       } else {
         strategy = "dockerfile"
       }
-    } else if (override === "dockerfile") {
+    } else {
       const rootDf = scopedDockerfiles.find(
         (d) =>
           d === "Dockerfile" ||
@@ -316,39 +318,6 @@ export async function analyzeDirectory(
         errors.push("Multiple Dockerfiles found—select one.")
       } else {
         errors.push("No Dockerfile found.")
-      }
-    } else {
-      // auto
-      const rootDf = findRootDockerfileRel(sourcePath, selectedRoot)
-      if (rootDf) {
-        dockerfilePath = rootDf
-        strategy = "dockerfile"
-      } else if (scopedDockerfiles.length === 1) {
-        dockerfilePath = scopedDockerfiles[0]!
-        strategy = "dockerfile"
-      } else if (scopedDockerfiles.length > 1) {
-        needsChoice = "dockerfile"
-        errors.push("Multiple Dockerfiles found—select one.")
-      }
-    }
-  }
-
-  // Auto mode: skip local-dev Dockerfiles (CMD npm run dev / next dev) so
-  // Railpack produces a production image for the read-only app runtime.
-  if (
-    strategy === "dockerfile" &&
-    override !== "dockerfile" &&
-    dockerfilePath
-  ) {
-    const abs = resolveUnder(sourcePath, dockerfilePath)
-    if (existsSync(abs)) {
-      try {
-        if (isDevOrientedDockerfile(readFileSync(abs, "utf8"))) {
-          strategy = null
-          dockerfilePath = null
-        }
-      } catch {
-        // keep dockerfile strategy
       }
     }
   }
@@ -767,25 +736,6 @@ function resolveUnder(root: string, rel: string): string {
 
 function hasManifest(dir: string): boolean {
   return MANIFEST_FILES.some((f) => existsSync(path.join(dir, f)))
-}
-
-function findRootDockerfileRel(
-  sourcePath: string,
-  selectedRoot: string,
-): string | null {
-  const base =
-    selectedRoot === "." ? sourcePath : path.join(sourcePath, selectedRoot)
-  if (existsSync(path.join(base, "Dockerfile"))) {
-    return selectedRoot === "."
-      ? "Dockerfile"
-      : path.posix.join(selectedRoot, "Dockerfile")
-  }
-  if (existsSync(path.join(base, "dockerfile"))) {
-    return selectedRoot === "."
-      ? "dockerfile"
-      : path.posix.join(selectedRoot, "dockerfile")
-  }
-  return null
 }
 
 function walk(
