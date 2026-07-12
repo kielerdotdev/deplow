@@ -73,9 +73,20 @@ railpack --version
 
 Recommended: enable `userns-remap: default` in `/etc/docker/daemon.json` (see [docs/secure-runtime.md](./docs/secure-runtime.md)).
 
-## Quick start (VPS / local)
+## Quick start (VPS / production)
 
-**One-shot** (Docker + Node/pnpm already installed):
+**Docker (recommended):**
+
+```bash
+git clone git@github.com:kielerdotdev/deplow.git && cd deplow
+bash scripts/deploy.sh          # creates .env, pulls/builds image, compose up
+# Open http://localhost:3000 — create user → Domains → Deploy
+```
+
+Image: `ghcr.io/kielerdotdev/deplow` (built by GitHub Actions on `main`).  
+Local image build: `DEPLOW_BUILD_LOCAL=1 bash scripts/deploy.sh`
+
+**Dev (Node on host):**
 
 ```bash
 bash scripts/install.sh   # or: pnpm install:host
@@ -183,21 +194,24 @@ User app containers run under **gVisor** with hardened defaults (dropped caps, n
 
 ## Scripts
 
-| Command                                       | Description                |
-| --------------------------------------------- | -------------------------- |
-| `bash scripts/install.sh` / `pnpm install:host` | Host bootstrap + infra   |
-| `pnpm dev`                                    | Web app on :3000           |
-| `pnpm check` / `pnpm test` / `pnpm typecheck` | Quality gates              |
-| `pnpm infra:up` / `infra:down`                | Platform containers        |
-| `pnpm db:push`                                | Apply control-plane schema |
-| `pnpm e2e`                                    | Docker-backed smoke        |
+| Command                                         | Description                          |
+| ----------------------------------------------- | ------------------------------------ |
+| `bash scripts/deploy.sh` / `pnpm deploy`        | Production compose (infra + web)     |
+| `bash scripts/install.sh` / `pnpm install:host` | Host bootstrap + infra (dev)         |
+| `pnpm dev`                                      | Web app on :3000                     |
+| `pnpm build` / `pnpm start`                     | Production build + srvx              |
+| `pnpm check` / `pnpm test` / `pnpm typecheck`   | Quality gates                        |
+| `pnpm infra:up` / `infra:down`                  | Platform containers (no web profile) |
+| `pnpm db:push`                                  | Apply control-plane schema           |
+| `pnpm e2e`                                      | Docker-backed smoke                  |
 
 ## Ports (compose)
 
-| Service       | Host    |
-| ------------- | ------- |
-| MinIO S3      | `59000` |
-| MinIO console | `59001` |
-| Caddy proxy   | `8088`  |
+| Service        | Host    |
+| -------------- | ------- |
+| Control plane  | `3000`  |
+| MinIO S3       | `59000` |
+| MinIO console  | `59001` |
+| Caddy proxy    | `8088`  |
 
 Postgres and Redis run as **dedicated containers per project** (ephemeral localhost ports for operator tools; Docker DNS for apps).
