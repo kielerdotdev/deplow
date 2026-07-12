@@ -126,6 +126,10 @@ const SERVICES_EXTRA_COLUMNS: Array<{ name: string; sql: string }> = [
     name: "error_code",
     sql: "ALTER TABLE services ADD COLUMN error_code text",
   },
+  {
+    name: "git_watch_paths",
+    sql: "ALTER TABLE services ADD COLUMN git_watch_paths text",
+  },
 ]
 
 const PROJECTS_EXTRA_COLUMNS: Array<{ name: string; sql: string }> = [
@@ -272,6 +276,15 @@ const INGRESS_CREATE_STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS service_hostnames_hostname_idx ON service_hostnames (hostname)`,
   `CREATE INDEX IF NOT EXISTS service_hostnames_service_idx ON service_hostnames (service_id)`,
+  `CREATE TABLE IF NOT EXISTS platform_operator_webhook (
+    id text PRIMARY KEY NOT NULL DEFAULT 'default',
+    enabled integer DEFAULT 0 NOT NULL,
+    url text DEFAULT '' NOT NULL,
+    secret_encrypted text,
+    on_failure integer DEFAULT 1 NOT NULL,
+    on_success integer DEFAULT 0 NOT NULL,
+    updated_at integer NOT NULL
+  )`,
 ]
 
 function tableColumns(sqlite: Database.Database, table: string): Set<string> {

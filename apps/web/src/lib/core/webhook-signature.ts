@@ -5,6 +5,8 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto"
 
+import micromatch from "micromatch"
+
 export type GitProvider = "github" | "gitlab"
 
 /**
@@ -106,4 +108,53 @@ export function detectGitProvider(headers: {
   if (headers["x-github-event"]) return "github"
   if (headers["x-gitlab-event"]) return "gitlab"
   return null
+}
+
+function collectPathsFromCommit(commit: unknown, into: Set<string>): void {
+  if (!commit || typeof commit !== "object") return
+  const c = commit as Record<string, unknown>
+  for (const key of ["added", "modified", "removed"] as const) {
+    const list = c[key]
+    if (!Array.isArray(list)) continue
+    for (const file of list) {
+      if (typeof file === "string" && file.length > 0) into.add(file)
+    }
+  }
+}
+
+/**
+ * Collect changed file paths from a GitHub/GitLab push payload.
+ * Returns null when the payload has no commits array (deploy-all; avoid false ignores).
+ */
+export function extractChangedFiles(
+  _provider: GitProvider,
+  payload: unknown,
+): string[] | null {
+  if (!payload || typeof payload !== "object") return null
+  const obj = payload as Record<string, unknown>
+  const paths = new Set<string>()
+
+  if (Array.isArray(obj.commits)) {
+    for (const commit of obj.commits) collectPathsFromCommit(commit, paths)
+  }
+
+  collectPathsFromCommit(obj.head_commit, paths)
+
+  // No commits field at all → cannot filter; caller should deploy.
+  if (!Array.isArray(obj.commits) && obj.head_commit == null) return null
+
+  return [...paths]
+}
+
+/**
+ * Whether a push should deploy given optional watch-path globs.
+ * Empty/null watchPaths → always deploy. Null changedFiles → deploy (unknown).
+ */
+export function shouldDeployForWatchPaths(
+  watchPaths: string[] | null | undefined,
+  changedFiles: string[] | null | undefined,
+): boolean {
+  if (!watchPaths || watchPaths.length === 0) return true
+  if (changedFiles == null) return true
+  return micromatch.some(changedFiles, watchPaths)
 }

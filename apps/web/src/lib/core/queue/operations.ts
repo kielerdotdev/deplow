@@ -1,5 +1,7 @@
 import { and, eq, inArray, lt, operations, db } from "@deplow/db"
 
+import { notifyOperatorWebhook } from "@/lib/core/operator-webhook"
+
 const STALE_RUNNING_MS = 2 * 60 * 60 * 1000
 
 export type OperationType =
@@ -146,6 +148,7 @@ export async function markOperationSucceeded(
       resultJson: result ? JSON.stringify(result) : null,
     })
     .where(eq(operations.id, id))
+  void notifyOperatorWebhook(id)
 }
 
 export async function markOperationFailed(
@@ -172,6 +175,7 @@ export async function markOperationFailed(
       logsText: error.logs ?? undefined,
     })
     .where(eq(operations.id, id))
+  void notifyOperatorWebhook(id)
 }
 
 /** Mark stale running ops as failed after process crash. */

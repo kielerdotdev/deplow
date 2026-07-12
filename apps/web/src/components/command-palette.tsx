@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
+  BellIcon,
   ClockIcon,
   FolderIcon,
   GlobeIcon,
@@ -148,6 +149,15 @@ export function CommandPalette() {
         icon: GlobeIcon,
         keywords: ["dns", "proxy", "caddy", "base"],
         perform: () => void navigate({ to: "/domains" }),
+      },
+      {
+        id: "nav.notifications",
+        label: "Notifications",
+        group: "Navigation",
+        mode: "goto",
+        icon: BellIcon,
+        keywords: ["webhook", "notify", "failure"],
+        perform: () => void navigate({ to: "/notifications" }),
       },
       {
         id: "nav.nodes",

@@ -1,5 +1,5 @@
 # deplow control plane — multi-stage build for GHCR / compose.
-# Runtime still needs host Docker (socket), BuildKit, Railpack, and preferably gVisor.
+# Runtime still needs host Docker (socket), BuildKit, and preferably gVisor.
 FROM node:22-bookworm-slim AS base
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -23,8 +23,23 @@ COPY packages/shared packages/shared
 RUN pnpm --filter @deplow/web build
 
 FROM base AS runner
-ARG RAILPACK_VERSION=latest
+ARG DOCKER_CLI_VERSION=27.5.1
 ARG TARGETARCH
+# Docker CLI (client only) — talks to the mounted host socket for builds / caddy reload / mc
+RUN set -eux; \
+  arch="$(uname -m)"; \
+  case "$arch" in \
+    x86_64|amd64) docker_arch="x86_64" ;; \
+    aarch64|arm64) docker_arch="aarch64" ;; \
+    *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+  esac; \
+  curl -fsSL "https://download.docker.com/linux/static/stable/${docker_arch}/docker-${DOCKER_CLI_VERSION}.tgz" \
+    | tar -xz -C /tmp; \
+  mv /tmp/docker/docker /usr/local/bin/docker; \
+  rm -rf /tmp/docker; \
+  docker --version
+
+# Railpack for source builds inside the control plane
 RUN set -eux; \
   arch="$(uname -m)"; \
   case "$arch" in \

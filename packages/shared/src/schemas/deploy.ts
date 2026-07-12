@@ -4,21 +4,15 @@ import { deployOptionsSchema } from "./node"
 
 export const createDeploymentInputSchema = z
   .object({
-    projectId: z.string().min(1),
+    serviceId: z.string().min(1),
     /** Optional — defaults to the project's pinned node / local Docker */
     nodeId: z.string().min(1).optional(),
-    serviceName: z
-      .string()
-      .min(1)
-      .max(64)
-      .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/)
-      .default("app"),
     /** Prebuilt image (optional if sourcePath set) — advanced path */
     image: z.string().min(1).optional(),
     /** Absolute path to app source for Dockerfile/Railpack build */
     sourcePath: z.string().min(1).optional(),
     /**
-     * When true, clone the project's connected git repo and deploy from that source.
+     * When true, clone the service's connected git repo and deploy from that source.
      * Mutually exclusive with a bare image-only deploy unless sourcePath is also set.
      */
     fromGit: z.boolean().optional().default(false),
@@ -102,8 +96,7 @@ export const retryDeploymentInputSchema = z.object({
 export type RetryDeploymentInput = z.infer<typeof retryDeploymentInputSchema>
 
 export const rollbackDeploymentInputSchema = z.object({
-  /** Deployment to roll back *from* — uses previous running image */
-  projectId: z.string().min(1),
+  serviceId: z.string().min(1),
   /** Optional explicit prior deployment id */
   deploymentId: z.string().min(1).optional(),
 })

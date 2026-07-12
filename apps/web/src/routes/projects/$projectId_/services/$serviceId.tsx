@@ -54,7 +54,7 @@ export const Route = createFileRoute(
   validateSearch: (search) => serviceSearchSchema.parse(search),
   loader: async ({ params }) => {
     const session = await getSession()
-    if (!session) throw redirect({ to: "/login" })
+    if (!session) throw redirect({ to: "/login", search: { redirect: undefined } })
     const [project, service, deployments, operations] = await Promise.all([
       client.projects.get({ id: params.projectId }),
       client.services.get({ id: params.serviceId }),
@@ -522,6 +522,25 @@ function ServicePage() {
                         }
                       >
                         Retry
+                      </Button>
+                    ) : null}
+                    {d.image &&
+                    (d.status === "stopped" ||
+                      (d.status === "running" && d.image !== service.image)) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() =>
+                          void client.deployments
+                            .rollback({
+                              serviceId: service.id,
+                              deploymentId: d.id,
+                            })
+                            .then(refresh)
+                        }
+                      >
+                        Rollback
                       </Button>
                     ) : null}
                   </div>

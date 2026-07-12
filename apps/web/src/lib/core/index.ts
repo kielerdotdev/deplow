@@ -2,6 +2,11 @@ export type { DeployOptions, NodeExecutor, NodeStatus } from "./node-executor"
 export type { DeployResult } from "./node-executor"
 export { DockerNodeExecutor } from "./docker-node-executor"
 export type { DockerNodeRecord } from "./docker-node-executor"
+export {
+  imageRetainCount,
+  retainAndPruneDeployImages,
+  selectRollbackTarget,
+} from "./image-retain"
 export { SshNodeExecutor } from "./ssh-node-executor"
 export type {
   ServerSpawner,
@@ -133,6 +138,13 @@ export { encryptString, decryptString, randomPassword } from "./crypto"
 export { PostgresProvisioner } from "./infra/postgres"
 export { RedisProvisioner } from "./infra/redis"
 export { StorageProvisioner } from "./infra/storage"
+export {
+  createS3Adapter,
+  r2EndpointForAccount,
+  type S3Adapter,
+  type S3AdapterConfig,
+  type S3ProviderKind,
+} from "./infra/s3"
 export { productionSlot, slotResourceName, slotLabel } from "./slot"
 export type { ResourceSlot, SlotKind } from "./slot"
 export {
@@ -163,6 +175,7 @@ export {
 } from "./git-webhook-handler"
 export type {
   GitWebhookHandlerDeps,
+  GitWebhookService,
   GitWebhookProject,
   GitWebhookResult,
 } from "./git-webhook-handler"
@@ -178,6 +191,8 @@ export {
   verifyWebhookSignature,
   branchFromRef,
   extractPushBranch,
+  extractChangedFiles,
+  shouldDeployForWatchPaths,
   detectGitProvider,
 } from "./webhook-signature"
 export type { GitProvider } from "./webhook-signature"

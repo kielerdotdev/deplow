@@ -117,7 +117,7 @@ export const projects = sqliteTable(
       .notNull()
       .default(86_400_000),
     lastBackupAt: integer("last_backup_at", { mode: "timestamp_ms" }),
-    /** Lazy-provisioned MinIO bucket credentials (not a user-facing service) */
+    /** Lazy-provisioned S3 bucket credentials (MinIO/R2 adapter; not a user-facing service) */
     storageCredentialsEncrypted: text("storage_credentials_encrypted"),
     bindingsMigratedAt: integer("bindings_migrated_at", {
       mode: "timestamp_ms",
@@ -194,6 +194,8 @@ export const services = sqliteTable(
     gitAccessTokenEncrypted: text("git_access_token_encrypted"),
     gitRemoteWebhookId: text("git_remote_webhook_id"),
     gitRepoFullName: text("git_repo_full_name"),
+    /** JSON array of micromatch globs; null/empty = deploy on any path */
+    gitWatchPaths: text("git_watch_paths"),
     /** Build config overrides (null = auto-detect) */
     buildStrategyOverride: text("build_strategy_override"),
     dockerfilePath: text("dockerfile_path"),
@@ -327,7 +329,7 @@ export const serviceBindings = sqliteTable(
 /**
  * A resource link connects a resource (Postgres, Redis, S3, etc.) to a project.
  * Resources are linked to the project and shared across all deployable services.
- * Postgres/Redis use dedicated containers; S3 uses shared MinIO buckets.
+ * Postgres/Redis use dedicated containers; S3 uses operator MinIO/R2 with on-demand buckets.
  */
 export const resourceLinks = sqliteTable(
   "resource_links",
@@ -623,6 +625,25 @@ export const platformIngress = sqliteTable("platform_ingress", {
   autoDomainsEnabled: integer("auto_domains_enabled", { mode: "boolean" })
     .notNull()
     .default(true),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
+/**
+ * Singleton operator HTTPS notify webhook (GTM thin carve-out).
+ * id is always "default".
+ */
+export const platformOperatorWebhook = sqliteTable("platform_operator_webhook", {
+  id: text("id").primaryKey().default("default"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  url: text("url").notNull().default(""),
+  secretEncrypted: text("secret_encrypted"),
+  onFailure: integer("on_failure", { mode: "boolean" }).notNull().default(true),
+  onSuccess: integer("on_success", { mode: "boolean" })
+    .notNull()
+    .default(false),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())

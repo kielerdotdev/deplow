@@ -73,7 +73,7 @@ Carve-out lives in [product.md](./product.md). Implementation can follow after t
 ## Sequencing after launch bar is green
 
 1. Keep docs/marketing aligned (no drift regressions)
-2. Thin failure webhook (if not already shipped)
+2. Thin failure webhook — shipped (System → Notifications)
 3. v2: custom domains + previews
 4. Never chase templates/Compose/multi-DB as a Coolify response
 

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   branchFromRef,
+  extractChangedFiles,
   extractPushBranch,
+  shouldDeployForWatchPaths,
   verifyGitHubSignature,
   verifyGitLabToken,
   verifyWebhookSignature,
@@ -71,5 +73,35 @@ describe("extractPushBranch", () => {
       "production",
     )
     expect(extractPushBranch("github", { ref: "refs/tags/v1" })).toBe(null)
+  })
+})
+
+describe("extractChangedFiles + shouldDeployForWatchPaths", () => {
+  it("collects added/modified/removed paths from commits", () => {
+    const files = extractChangedFiles("github", {
+      commits: [
+        {
+          added: ["a.ts"],
+          modified: ["b.ts"],
+          removed: ["c.ts"],
+        },
+      ],
+      head_commit: { modified: ["d.ts"] },
+    })
+    expect(files?.sort()).toEqual(["a.ts", "b.ts", "c.ts", "d.ts"])
+  })
+
+  it("returns null when commits are absent (deploy-all)", () => {
+    expect(extractChangedFiles("github", { ref: "refs/heads/main" })).toBe(null)
+    expect(shouldDeployForWatchPaths(["apps/**"], null)).toBe(true)
+  })
+
+  it("matches micromatch globs", () => {
+    expect(shouldDeployForWatchPaths(null, ["x.ts"])).toBe(true)
+    expect(shouldDeployForWatchPaths([], ["x.ts"])).toBe(true)
+    expect(shouldDeployForWatchPaths(["apps/**"], ["docs/readme.md"])).toBe(
+      false,
+    )
+    expect(shouldDeployForWatchPaths(["apps/**"], ["apps/web/a.ts"])).toBe(true)
   })
 })

@@ -22,6 +22,7 @@ type ServiceGit = {
   lastDeliveryAt?: string | null
   lastDeliveryStatus?: string | null
   lastDeliveryError?: string | null
+  watchPaths?: string[] | null
 }
 
 export function ServiceGitPanel({
@@ -45,6 +46,10 @@ export function ServiceGitPanel({
   const [webhookSecret] = useState(initialWebhookSecret ?? null)
   const [warning] = useState(initialWebhookWarning ?? null)
   const [copied, setCopied] = useState(false)
+  const [watchPathsText, setWatchPathsText] = useState(
+    (git.watchPaths ?? []).join("\n"),
+  )
+  const [watchSaved, setWatchSaved] = useState(false)
 
   if (!git.connected) {
     return (
@@ -75,6 +80,29 @@ export function ServiceGitPanel({
     await navigator.clipboard.writeText(git.webhookUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  async function saveWatchPaths() {
+    setPending(true)
+    setError(null)
+    setWatchSaved(false)
+    try {
+      const paths = watchPathsText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+      await client.services.update({
+        id: serviceId,
+        gitWatchPaths: paths.length > 0 ? paths : null,
+      })
+      setWatchSaved(true)
+      await onChanged()
+      setTimeout(() => setWatchSaved(false), 1500)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
@@ -157,6 +185,32 @@ export function ServiceGitPanel({
                   : "Add this URL as a push webhook if auto-register did not run."}
             </div>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-muted-foreground">
+            Watch paths (optional)
+          </label>
+          <p className="text-xs text-muted-foreground">
+            One micromatch glob per line. Empty = deploy on any change to the
+            production branch.
+          </p>
+          <textarea
+            className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
+            value={watchPathsText}
+            onChange={(e) => setWatchPathsText(e.target.value)}
+            placeholder={"apps/web/**\npackages/shared/**"}
+            spellCheck={false}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => void saveWatchPaths()}
+          >
+            {watchSaved ? "Saved" : "Save watch paths"}
+          </Button>
         </div>
 
         {git.lastDeliveryError ? (
