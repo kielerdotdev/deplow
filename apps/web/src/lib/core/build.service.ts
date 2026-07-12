@@ -5,6 +5,7 @@ import path from "node:path"
 import {
   isDevOrientedDockerfile,
   normalizeProductionStartCommand,
+  resolveProductionBuildCommand,
 } from "./normalize-start-command"
 
 export type BuildStrategy = "dockerfile" | "railpack" | "image"
@@ -176,7 +177,11 @@ export class BuildService {
       contextPath,
       image,
       {
-        buildCommand: input.buildCommand,
+        buildCommand: resolveProductionBuildCommand(
+          input.buildCommand,
+          contextPath,
+          input.startCommand,
+        ),
         startCommand: normalizeProductionStartCommand(
           input.startCommand,
           contextPath,

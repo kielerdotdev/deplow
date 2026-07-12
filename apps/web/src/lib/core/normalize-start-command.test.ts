@@ -4,7 +4,7 @@ import path from "node:path"
 
 import { describe, expect, it } from "vitest"
 
-import { normalizeProductionStartCommand, isDevOrientedDockerfile } from "./normalize-start-command"
+import { normalizeProductionStartCommand, isDevOrientedDockerfile, resolveProductionBuildCommand } from "./normalize-start-command"
 
 describe("normalizeProductionStartCommand", () => {
   it("rewrites astro dev via package start script", () => {
@@ -102,5 +102,30 @@ FROM node:20
 CMD ["next", "dev"]
 `),
     ).toBe(true)
+  })
+
+  it("infers npm run build for Next apps when Railpack omits buildCommand", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "deplow-next-build-"))
+    try {
+      writeFileSync(
+        path.join(dir, "package.json"),
+        JSON.stringify({
+          scripts: {
+            dev: "next dev",
+            build: "next build",
+            start: "next start",
+          },
+        }),
+      )
+      writeFileSync(path.join(dir, "package-lock.json"), "{}")
+      expect(resolveProductionBuildCommand(null, dir, "npm run start")).toBe(
+        "npm run build",
+      )
+      expect(resolveProductionBuildCommand("custom build", dir)).toBe(
+        "custom build",
+      )
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

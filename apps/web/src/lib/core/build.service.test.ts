@@ -282,14 +282,18 @@ describe("BuildService.buildFromSource", () => {
         scripts: { dev: "next dev", build: "next build", start: "next start" },
       }),
     )
+    fs.writeFileSync(path.join(dir, "package-lock.json"), "{}")
     try {
       const result = await service.buildFromSource({
         sourcePath: dir,
         projectSlug: "demo",
         deploymentId: "dep-dev",
+        startCommand: "npm run start",
       })
       expect(result.strategy).toBe("railpack")
       expect(calls[0]?.[0]).toBe("railpack")
+      expect(calls[0]).toContain("--build-cmd")
+      expect(calls[0]).toContain("npm run build")
       expect(calls.some((c) => c[0] === "docker")).toBe(false)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })

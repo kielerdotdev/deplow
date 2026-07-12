@@ -24,6 +24,7 @@ import {
   isDevOrientedDockerfile,
   isRailpackCaddyCommand,
   normalizeProductionStartCommand,
+  resolveProductionBuildCommand,
 } from "./normalize-start-command"
 
 const SKIP_DIRS = new Set([
@@ -405,7 +406,11 @@ export async function analyzeDirectory(
       railpack.startCommand,
       appRootAbs,
     )
-    buildCommand = railpack.buildCommand
+    buildCommand = resolveProductionBuildCommand(
+      railpack.buildCommand,
+      appRootAbs,
+      startCommand ?? railpack.startCommand,
+    )
     if (
       !startCommand &&
       !isRailpackCaddyCommand(railpack.startCommand)

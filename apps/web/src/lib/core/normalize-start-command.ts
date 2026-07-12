@@ -43,6 +43,53 @@ export function normalizeProductionStartCommand(
   return productionCommandForLeaf(leaf, scripts) ?? raw
 }
 
+/**
+ * Ensure frameworks that need a compile step get a build command.
+ * Railpack sometimes omits build for older Next apps; without it, `next start`
+ * fails with "Could not find a production build in .next".
+ */
+export function resolveProductionBuildCommand(
+  buildCommand: string | null | undefined,
+  sourcePath?: string | null,
+  startCommand?: string | null,
+): string | null {
+  const raw = buildCommand?.trim() || null
+  if (raw) return raw
+  if (!sourcePath) return null
+
+  const scripts = readPackageScripts(sourcePath)
+  const leaf = resolveLeafCommand(startCommand?.trim() || scripts.start || "", scripts)
+  const needsCompile =
+    looksLikeNext(leaf, scripts) ||
+    looksLikeAstro(leaf, scripts) ||
+    looksLikeVite(leaf, scripts) ||
+    Boolean(scripts.build?.trim())
+
+  if (!needsCompile) return null
+  if (scripts.build?.trim()) return packageManagerRun(sourcePath, "build")
+
+  if (looksLikeNext(leaf, scripts)) return "next build"
+  if (looksLikeAstro(leaf, scripts)) return "astro build"
+  if (looksLikeVite(leaf, scripts)) return "vite build"
+  return null
+}
+
+function packageManagerRun(sourcePath: string, script: string): string {
+  if (existsSync(path.join(sourcePath, "pnpm-lock.yaml"))) {
+    return `pnpm run ${script}`
+  }
+  if (existsSync(path.join(sourcePath, "yarn.lock"))) {
+    return `yarn ${script}`
+  }
+  if (
+    existsSync(path.join(sourcePath, "bun.lock")) ||
+    existsSync(path.join(sourcePath, "bun.lockb"))
+  ) {
+    return `bun run ${script}`
+  }
+  return `npm run ${script}`
+}
+
 /** Preview/serve command for static sites when Railpack suggested Caddy. */
 function productionCommandForStaticSite(scripts: Scripts): string | null {
   if (scripts.preview?.trim()) {
