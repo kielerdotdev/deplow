@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { existsSync, readFileSync, renameSync } from "node:fs"
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 import {
@@ -208,7 +208,10 @@ export class BuildService {
     cmds: { buildCommand?: string | null; startCommand?: string | null },
     onLog?: (chunk: string) => void,
   ): Promise<BuildResult> {
-    const prepNotes = prepareRailpackNodeLockfiles(sourcePath)
+    const prepNotes = [
+      ...prepareRailpackNodeLockfiles(sourcePath),
+      ...prepareRailpackNodeVersion(sourcePath),
+    ]
     if (prepNotes.length) onLog?.(`${prepNotes.join("\n")}\n`)
     const env: Record<string, string> = {
       ...process.env,
@@ -348,6 +351,68 @@ export function prepareRailpackNodeLockfiles(sourcePath: string): string[] {
     }
   }
   return notes
+}
+
+/**
+ * Pin a Node major for Railpack when the app does not declare one.
+ * Old Next.js (≤11) fails on Railpack's default Node 22.
+ */
+export function prepareRailpackNodeVersion(sourcePath: string): string[] {
+  const notes: string[] = []
+  if (
+    existsSync(path.join(sourcePath, ".node-version")) ||
+    existsSync(path.join(sourcePath, ".nvmrc"))
+  ) {
+    return notes
+  }
+
+  const pkgPath = path.join(sourcePath, "package.json")
+  if (!existsSync(pkgPath)) return notes
+
+  let pkg: {
+    engines?: { node?: string }
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+  }
+  try {
+    pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as typeof pkg
+  } catch {
+    return notes
+  }
+
+  if (pkg.engines?.node?.trim()) return notes
+
+  const nextRange =
+    pkg.dependencies?.next ?? pkg.devDependencies?.next ?? null
+  const nextMajor = parseDependencyMajor(nextRange)
+  if (nextMajor == null) return notes
+
+  // Align with Next.js supported Node ranges (conservative majors).
+  let nodeMajor: string | null = null
+  if (nextMajor <= 11) nodeMajor = "16"
+  else if (nextMajor <= 12) nodeMajor = "18"
+  else if (nextMajor <= 14) nodeMajor = "20"
+  if (!nodeMajor) return notes
+
+  try {
+    writeFileSync(path.join(sourcePath, ".node-version"), `${nodeMajor}\n`)
+    notes.push(
+      `=== deplow ===\nPinned Node ${nodeMajor} for Next.js ${nextMajor} (wrote .node-version for Railpack).`,
+    )
+  } catch {
+    notes.push(
+      `=== deplow ===\nCould not write .node-version; Next.js ${nextMajor} may fail on Railpack's default Node.`,
+    )
+  }
+  return notes
+}
+
+function parseDependencyMajor(range: string | null): number | null {
+  if (!range) return null
+  const match = range.match(/(\d+)/)
+  if (!match) return null
+  const n = Number(match[1])
+  return Number.isFinite(n) ? n : null
 }
 
 function explainRailpackFailure(result: {

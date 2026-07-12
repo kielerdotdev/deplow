@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   BuildService,
   prepareRailpackNodeLockfiles,
+  prepareRailpackNodeVersion,
   selectBuildStrategy,
 } from "./build.service"
 
@@ -377,6 +378,51 @@ describe("prepareRailpackNodeLockfiles", () => {
       const notes = prepareRailpackNodeLockfiles(dir)
       expect(notes).toEqual([])
       expect(fs.existsSync(path.join(dir, "bun.lock"))).toBe(true)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("prepareRailpackNodeVersion", () => {
+  it("pins Node 16 for Next.js 10 when no engines/.nvmrc", async () => {
+    const fs = await import("node:fs")
+    const path = await import("node:path")
+    const os = await import("node:os")
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-nodepin-"))
+    fs.writeFileSync(
+      path.join(dir, "package.json"),
+      JSON.stringify({
+        dependencies: { next: "10.0.9", react: "17.0.2" },
+      }),
+    )
+    try {
+      const notes = prepareRailpackNodeVersion(dir)
+      expect(notes.join("\n")).toMatch(/Pinned Node 16/)
+      expect(
+        fs.readFileSync(path.join(dir, ".node-version"), "utf8").trim(),
+      ).toBe("16")
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("does not override an existing .nvmrc", async () => {
+    const fs = await import("node:fs")
+    const path = await import("node:path")
+    const os = await import("node:os")
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-nvmrc-"))
+    fs.writeFileSync(
+      path.join(dir, "package.json"),
+      JSON.stringify({ dependencies: { next: "10.0.9" } }),
+    )
+    fs.writeFileSync(path.join(dir, ".nvmrc"), "14\n")
+    try {
+      expect(prepareRailpackNodeVersion(dir)).toEqual([])
+      expect(fs.readFileSync(path.join(dir, ".nvmrc"), "utf8").trim()).toBe(
+        "14",
+      )
+      expect(fs.existsSync(path.join(dir, ".node-version"))).toBe(false)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
