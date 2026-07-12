@@ -94,6 +94,55 @@ services:
       caddy:
         condition: service_healthy
 
+  # Control plane (UI + oRPC + deploy workers). Needs Docker socket for user apps.
+  # Start with: bash scripts/deploy.sh   (or: docker compose --profile app up -d)
+  web:
+    profiles: ["app"]
+    image: ${DEPLOW_IMAGE:-ghcr.io/kielerdotdev/deplow:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deplow-web
+    restart: unless-stopped
+    ports:
+      - "${DEPLOW_WEB_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: /data/deplow.db
+      DEPLOW_GIT_CLONE_ROOT: /data/git-clones
+      DEPLOW_PROXY_ROUTES_DIR: /etc/caddy/routes
+      DEPLOW_QUEUE_REDIS_URL: redis://platform-redis:6379
+      DEPLOW_MINIO_ENDPOINT: http://minio:9000
+      DEPLOW_MINIO_PUBLIC_ENDPOINT: ${DEPLOW_MINIO_PUBLIC_ENDPOINT:-http://127.0.0.1:59000}
+      DEPLOW_MINIO_ACCESS_KEY: ${DEPLOW_MINIO_ACCESS_KEY:-deplow}
+      DEPLOW_MINIO_SECRET_KEY: ${DEPLOW_MINIO_SECRET_KEY:-deplowsecret}
+      DEPLOW_BACKUP_BUCKET: ${DEPLOW_BACKUP_BUCKET:-deplow-backups}
+      DEPLOW_DOCKER_NETWORK: ${DEPLOW_DOCKER_NETWORK:-deplow_default}
+      DEPLOW_CADDY_CONTAINER: deplow-caddy
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      DEPLOW_PUBLIC_URL: ${DEPLOW_PUBLIC_URL:-http://localhost:3000}
+      DEPLOW_BASE_DOMAIN: ${DEPLOW_BASE_DOMAIN:-apps.localhost}
+      DEPLOW_PUBLIC_URL_PROTOCOL: ${DEPLOW_PUBLIC_URL_PROTOCOL:-http}
+      DEPLOW_APP_RUNTIME: ${DEPLOW_APP_RUNTIME:-runsc}
+      DEPLOW_APP_RUNTIME_REQUIRED: ${DEPLOW_APP_RUNTIME_REQUIRED:-true}
+      BUILDKIT_HOST: ${BUILDKIT_HOST:-docker-container://buildkit}
+      RAILPACK_BIN: /usr/local/bin/railpack
+      # Auth secrets come from env_file (.env) — do not interpolate empty overrides here.
+    volumes:
+      - ./data:/data
+      - ./infra/caddy/routes:/etc/caddy/routes
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      platform-redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      caddy:
+        condition: service_healthy
+
 volumes:
   deplow_minio_data:
   deplow_platform_redis_data:

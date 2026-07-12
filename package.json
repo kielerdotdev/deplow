@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter @deplow/web dev",
     "build": "pnpm --filter @deplow/web build",
+    "start": "pnpm --filter @deplow/web start",
     "preview": "pnpm --filter @deplow/web preview",
     "site:dev": "pnpm --filter @deplow/site dev",
     "site:build": "pnpm --filter @deplow/site build",
@@ -22,6 +23,7 @@
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "infra:ps": "docker compose ps",
+    "deploy": "bash scripts/deploy.sh",
     "e2e": "bash scripts/e2e.sh",
     "e2e:git": "bash scripts/e2e-git-oauth.sh",
     "install:host": "bash scripts/install.sh"

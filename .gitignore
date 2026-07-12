@@ -4,12 +4,21 @@ dist
 dist-ssr
 *.local
 .env*
+!.env.example
+!**/.env.example
 .tanstack
 .wrangler
 .output
 .vinxi
+.turbo
 __unconfig*
 todos.json
+
+# runtime / local data
+/data/
+packages/db/data/
+tmp/
+infra/caddy/routes/*.caddy
 
 # typescript
 *.tsbuildinfo

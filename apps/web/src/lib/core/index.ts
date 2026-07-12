@@ -127,8 +127,7 @@ export {
   reclaimStaleOperations,
   toOperationSummary,
 } from "./queue/operations"
-export { processDeployJob } from "./queue/deploy-processor"
-export { processProvisionJob } from "./queue/provision-processor"
+// Processors import @/lib/services — keep them out of this barrel (SSR init cycle).
 export { normalizeProductionStartCommand, isRailpackCaddyCommand } from "./normalize-start-command"
 export { encryptString, decryptString, randomPassword } from "./crypto"
 export { PostgresProvisioner } from "./infra/postgres"
