@@ -115,7 +115,7 @@ export async function processDeployJob(data: DeployJobData): Promise<void> {
       (service.buildStrategyOverride as BuildStrategyOverride | null) ||
       undefined
 
-    const strategy = selectBuildStrategy({
+    let strategy = selectBuildStrategy({
       image,
       sourcePath,
       strategyOverride,
@@ -166,6 +166,7 @@ export async function processDeployJob(data: DeployJobData): Promise<void> {
           },
         })
         image = built.image
+        strategy = built.strategy
         if (!streamed) {
           buildLogs = [buildLogs, built.logs].filter(Boolean).join("\n")
         }
