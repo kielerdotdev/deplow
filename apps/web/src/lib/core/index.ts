@@ -19,27 +19,117 @@ export { DockerSpawner } from "./spawners/docker"
 export { SecretsService } from "./secrets.service"
 export type { SecretsInput } from "./secrets.service"
 export { ProvisioningService } from "./provisioning.service"
+export { ResourceLinkService } from "./resource-link.service"
+export {
+  DataServiceRegistry,
+  DataContainerRuntime,
+  PostgresContainerDriver,
+  RedisContainerDriver,
+  S3SharedDriver,
+} from "./data-services"
+export type {
+  DataServiceDriver,
+  BackupCapable,
+  PitrCapable,
+  PrincipalsCapable,
+  ResourceCapabilities,
+  ProvisionContext,
+  DestroyContext,
+} from "./data-services"
+export type { BackupTarget } from "./backup.service"
 export type {
   CreateProjectResult,
   DestroyProjectInput,
 } from "./provisioning.service"
 export { BackupService } from "./backup.service"
-export type { BackupRecord, BackupStore } from "./backup.service"
+export type { BackupRecord, BackupStore, BackupKind } from "./backup.service"
 export { BackupScheduler } from "./backup-scheduler"
 export type { ScheduledProject } from "./backup-scheduler"
+export { PitrService } from "./pitr.service"
+export type { PitrWindow } from "./pitr.service"
 export {
   BuildService,
   selectBuildStrategy,
   detectDockerfile,
+  resolveRootDirectory,
+  resolveDockerfilePath,
+  resolveDockerfileAbsolute,
+  prepareRailpackNodeLockfiles,
 } from "./build.service"
 export type {
   BuildResult,
   BuildSelectionInput,
   BuildStrategy,
+  BuildStrategyOverride,
+  BuildFromSourceInput,
 } from "./build.service"
-export { loadPlatformConfig, assertProductionSecrets } from "./platform-config"
+export {
+  analyzeDirectory,
+  analyzeRemote,
+  assertAnalysisFresh,
+  cacheAnalysis,
+  clearAnalysisCache,
+  findApplicationRoots,
+  findDockerfiles,
+  fingerprintAnalysis,
+  fingerprintsMatch,
+  getCachedAnalysis,
+  toPublicAnalysis,
+} from "./source-analysis.service"
+export type {
+  AnalysisFingerprint,
+  AnalysisNeedsChoice,
+  AnalyzeDirectoryInput,
+  AnalyzeRemoteInput,
+  BuildStrategyChoice,
+  SourceAnalysisResult,
+} from "./source-analysis.service"
+export {
+  waitForServiceHealth,
+  extractPortFromLogs,
+  formatHealthError,
+} from "./health-check"
+export type { HealthCheckInput, HealthCheckResult } from "./health-check"
+export { loadPlatformConfig } from "./platform-config"
 export type { PlatformConfig } from "./platform-config"
-export { injectDeployEnv } from "./inject-env"
+export {
+  injectDeployEnv,
+  injectDeployEnvFromBindings,
+  containerRuntimeEnv,
+  buildDatabaseUrl,
+  buildRedisUrl,
+} from "./inject-env"
+export type { BindingEnvInput } from "./inject-env"
+export {
+  enqueueDeploy,
+  enqueueProvision,
+  enqueueBackup,
+  enqueueRestore,
+  enqueueDestroy,
+  startQueueWorkers,
+  closeQueueWorkers,
+  QUEUE_NAMES,
+} from "./queue"
+export type {
+  DeployJobData,
+  ProvisionJobData,
+  BackupJobData,
+  RestoreJobData,
+  DestroyJobData,
+} from "./queue"
+export {
+  createOperation,
+  markOperationQueued,
+  markOperationRunning,
+  markOperationSucceeded,
+  markOperationFailed,
+  updateOperationStage,
+  reclaimStaleOperations,
+  toOperationSummary,
+} from "./queue/operations"
+export { processDeployJob } from "./queue/deploy-processor"
+export { processProvisionJob } from "./queue/provision-processor"
+export { normalizeProductionStartCommand, isRailpackCaddyCommand } from "./normalize-start-command"
 export { encryptString, decryptString, randomPassword } from "./crypto"
 export { PostgresProvisioner } from "./infra/postgres"
 export { RedisProvisioner } from "./infra/redis"
@@ -56,8 +146,18 @@ export {
 } from "./proxy-hostname"
 export { ProxyService } from "./proxy.service"
 export type { ProxyRoute, ProxyServiceOptions } from "./proxy.service"
-export { reloadCaddyProxy, createCaddyReloadOnChange } from "./caddy-reload"
-export type { CaddyReloadOptions } from "./caddy-reload"
+export {
+  reloadCaddyProxy,
+  createCaddyReloadOnChange,
+  getLastCaddyReload,
+  probeCaddyProxy,
+  resetLastCaddyReload,
+} from "./caddy-reload"
+export type {
+  CaddyReloadOptions,
+  CaddyReloadResult,
+  CaddyProbeResult,
+} from "./caddy-reload"
 export {
   handleGitWebhook,
   gitWebhookResultToResponse,
@@ -83,25 +183,71 @@ export {
 } from "./webhook-signature"
 export type { GitProvider } from "./webhook-signature"
 export { GitService } from "./git.service"
-export type { GitConnectResult, GitCloneResult } from "./git.service"
+export type {
+  GitConnectResult,
+  GitCloneResult,
+  GitSyncAuth,
+} from "./git.service"
 export {
   listRemoteRepos,
   listRemoteBranches,
   normalizeRepoUrl,
 } from "./git-remote"
 export type { RemoteRepo, ListReposResult } from "./git-remote"
-export { summarizeDeployError, isExpectedDeployFailure } from "./user-error"
-export { ProjectDeployLock, projectDeployLock } from "./deploy-lock"
-export { isBackupDue, nextBackupDueAt } from "./backup-due"
-export type { BackupDueInput } from "./backup-due"
 export {
-  evaluateDoctorChecks,
-  doctorSummary,
-  MAX_WEBHOOK_BODY_BYTES,
-  isWebhookBodyTooLarge,
-} from "./doctor"
+  gitAuthConfigEnv,
+  hostFromRepoUrl,
+  defaultGitUsername,
+  authenticatedCloneUrl,
+  redactSecrets,
+} from "./git-clone-auth"
+export type { GitCloneAuth } from "./git-clone-auth"
+export {
+  resolveProjectCloneAuth,
+  resolveUserListToken,
+} from "./git-credentials"
 export type {
-  DoctorCheckResult,
-  DoctorProbeResults,
-  DoctorStatus,
-} from "./doctor"
+  ProjectGitAuthRow,
+  GitProviderLinkRow,
+  ResolveGitAuthDeps,
+} from "./git-credentials"
+export {
+  createGitHubAppJwt,
+  getInstallationAccessToken,
+  listInstallationRepos,
+  listUserInstallations,
+  exchangeGitHubOAuthCode,
+  fetchGitHubUser,
+  createRepoWebhook,
+  deleteRepoWebhook,
+  githubOAuthAuthorizeUrl,
+  githubAppInstallUrl,
+  githubAppDeleteSettingsUrl,
+  getAuthenticatedGitHubApp,
+  listAppInstallations,
+  uninstallAllGitHubAppInstallations,
+  buildGitHubAppManifest,
+  completeGitHubAppManifest,
+  isPublicInternetUrl,
+  randomOAuthState,
+  githubOAuthCallbackUrls,
+  redirectBaseFromRequest,
+  sanitizeBrowserOrigin,
+  GITHUB_OAUTH_CALLBACK_PATH,
+} from "./github-app"
+export type { GitHubAppConfig } from "./github-app"
+export {
+  gitlabOAuthAuthorizeUrl,
+  exchangeGitLabOAuthCode,
+  refreshGitLabToken,
+  fetchGitLabUser,
+  createGitLabProjectHook,
+  deleteGitLabProjectHook,
+} from "./gitlab-oauth"
+export type { GitLabOAuthConfig } from "./gitlab-oauth"
+export {
+  githubAppConfigFromEnv,
+  gitlabOAuthConfigFromEnv,
+  parseRepoFullName,
+  safeReturnTo,
+} from "./git-integrations"

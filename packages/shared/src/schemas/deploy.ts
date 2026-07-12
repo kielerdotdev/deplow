@@ -53,8 +53,10 @@ export type CreateDeploymentInput = z.infer<typeof createDeploymentInputSchema>
 export const deploymentStatusSchema = z.enum([
   "pending",
   "queued",
+  "analyzing",
   "building",
   "deploying",
+  "checking",
   "running",
   "failed",
   "stopped",
@@ -66,17 +68,29 @@ export const deploymentSummarySchema = z.object({
   id: z.string(),
   projectId: z.string(),
   nodeId: z.string(),
+  operationId: z.string().nullable().optional(),
   serviceName: z.string(),
   image: z.string().nullable().optional(),
   buildStrategy: z.string().nullable().optional(),
   buildLogs: z.string().nullable().optional(),
   sourcePath: z.string().nullable().optional(),
+  gitSha: z.string().nullable().optional(),
+  gitBranch: z.string().nullable().optional(),
+  failedStage: z.string().nullable().optional(),
   status: deploymentStatusSchema,
   containerId: z.string().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
   triggeredBy: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string().optional(),
+  failure: z
+    .object({
+      stage: z.string().nullable(),
+      rootCause: z.string().nullable(),
+      symptom: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
 })
 
 export type DeploymentSummary = z.infer<typeof deploymentSummarySchema>

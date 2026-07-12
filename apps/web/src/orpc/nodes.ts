@@ -5,6 +5,7 @@ import { eq } from "@deplow/db"
 import { registerNodeInputSchema } from "@deplow/shared"
 
 import { encryptString } from "@/lib/core"
+import { assertInstanceAdmin } from "@/lib/access"
 import {
   db,
   dockerNodeExecutor,
@@ -15,7 +16,14 @@ import {
 
 import { authedProcedure } from "./middleware"
 
-function toSummary(row: typeof nodes.$inferSelect) {
+function toSummary(
+  row: typeof nodes.$inferSelect,
+  runtime?: {
+    appRuntime?: string
+    appRuntimeAvailable?: boolean
+    appRuntimeRequired?: boolean
+  },
+) {
   return {
     id: row.id,
     name: row.name,
@@ -23,17 +31,44 @@ function toSummary(row: typeof nodes.$inferSelect) {
     host: row.host,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
+    ...runtime,
   }
 }
 
 export const list = authedProcedure.handler(async () => {
   const rows = await db.select().from(nodes)
-  return rows.map(toSummary)
+  // One runtime probe for the host — all local docker nodes share the daemon
+  let runtime:
+    | {
+        appRuntime: string
+        appRuntimeAvailable: boolean
+        appRuntimeRequired: boolean
+      }
+    | undefined
+  try {
+    runtime = await dockerNodeExecutor.getRuntimeStatus()
+  } catch {
+    runtime = undefined
+  }
+
+  return rows.map((row) =>
+    toSummary(
+      row,
+      row.provider === "docker" && runtime
+        ? {
+            appRuntime: runtime.appRuntime,
+            appRuntimeAvailable: runtime.appRuntimeAvailable,
+            appRuntimeRequired: runtime.appRuntimeRequired,
+          }
+        : undefined,
+    ),
+  )
 })
 
 export const register = authedProcedure
   .input(registerNodeInputSchema)
-  .handler(async ({ input }) => {
+  .handler(async ({ context, input }) => {
+    await assertInstanceAdmin(context.session!)
     const existing = await db
       .select()
       .from(nodes)
@@ -74,7 +109,18 @@ export const register = authedProcedure
 
 export const remove = authedProcedure
   .input(z.object({ id: z.string().min(1) }))
-  .handler(async ({ input }) => {
+  .handler(async ({ context, input }) => {
+    await assertInstanceAdmin(context.session!)
+    const [row] = await db.select().from(nodes).where(eq(nodes.id, input.id))
+    if (!row) {
+      throw new ORPCError("NOT_FOUND", { message: "Node not found" })
+    }
+    // Protect the default "local" node from accidental deletion
+    if (row.name === "local") {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "The local node cannot be removed",
+      })
+    }
     await db.delete(nodes).where(eq(nodes.id, input.id))
     return { ok: true as const }
   })

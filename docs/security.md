@@ -22,7 +22,7 @@ We assume:
 - User app images and source are **not** fully trusted
 - A compromised user app must not easily become host root, steal `docker.sock`, or freely attack sibling containers beyond what network policy allows
 
-We do **not** yet claim: multi-tenant hostile SaaS isolation, formal certification, or microVM-level guarantees. gVisor is the chosen userspace sandbox for v1.
+We do **not** yet claim: multi-tenant hostile SaaS isolation, formal certification, or microVM-level guarantees. Soft organizations share the host trust boundary (control-plane membership + per-project containers). gVisor is the chosen userspace sandbox for v1.
 
 ## Non-negotiable defaults
 
@@ -46,7 +46,7 @@ Full HostConfig and install steps: [secure-runtime.md](./secure-runtime.md).
 **Allowed / required framing:**
 
 - Self-hosted on your Docker host, with **sandboxed user apps** (gVisor by default)
-- Shared Postgres / Redis / MinIO with **per-project isolation**
+- Dedicated Postgres / Redis containers per project; shared MinIO with per-project buckets
 - Encrypted secrets and injected env — no secrets left as plain DB columns in the happy path
 - Security over convenience when those conflict
 - **Wildcard base domain + deplow proxy**; **v1 edge = cloudflared** (other edges later)

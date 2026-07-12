@@ -1,33 +1,88 @@
+/*
+  Unlayered on purpose — Starlight docs: unlayered custom CSS beats
+  @layer starlight.*. Gray scale FLIPS by theme; do not “fix” that.
+*/
+
 :root {
   --sl-font: "IBM Plex Sans", system-ui, sans-serif;
   --sl-font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --sl-color-accent-low: #e8efe9;
-  --sl-color-accent: #5d7a62;
-  --sl-color-accent-high: #3d5240;
-  --sl-color-white: #fbf8f3;
-  --sl-color-gray-1: #f3ede4;
-  --sl-color-gray-2: #8b939f;
-  --sl-color-gray-3: #4a5568;
-  --sl-color-gray-4: #2a3347;
-  --sl-color-gray-5: #1c2333;
-  --sl-color-gray-6: #141a26;
-  --sl-color-black: #0f131c;
 }
 
+/* Dark (Starlight’s :root default) */
 :root,
-:root[data-theme="light"],
-:root[data-theme="dark"],
 ::backdrop {
-  --sl-color-bg: #fbf8f3;
-  --sl-color-bg-nav: #fbf8f3;
-  --sl-color-hairline: rgba(28, 35, 51, 0.12);
-  --sl-color-text: #1c2333;
-  --sl-color-text-accent: #5d7a62;
+  --sl-color-white: hsl(210, 20%, 96%);
+  --sl-color-gray-1: hsl(212, 16%, 90%);
+  --sl-color-gray-2: hsl(214, 12%, 74%);
+  --sl-color-gray-3: hsl(215, 10%, 52%);
+  --sl-color-gray-4: hsl(218, 12%, 34%);
+  --sl-color-gray-5: hsl(220, 16%, 18%);
+  --sl-color-gray-6: hsl(222, 20%, 11%);
+  --sl-color-black: hsl(224, 24%, 6%);
+
+  --sl-color-accent-low: hsl(208, 28%, 14%);
+  --sl-color-accent: hsl(208, 42%, 55%);
+  --sl-color-accent-high: hsl(208, 50%, 76%);
+
+  --sl-color-text: var(--sl-color-gray-1);
+  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-bg-accent: var(--sl-color-accent);
+}
+
+/* Light */
+:root[data-theme="light"],
+[data-theme="light"] ::backdrop {
+  --sl-color-white: hsl(224, 24%, 7%);
+  --sl-color-gray-1: hsl(222, 18%, 12%);
+  --sl-color-gray-2: hsl(220, 12%, 22%);
+  --sl-color-gray-3: hsl(217, 10%, 36%);
+  --sl-color-gray-4: hsl(215, 8%, 50%);
+  --sl-color-gray-5: hsl(210, 12%, 84%);
+  --sl-color-gray-6: hsl(210, 18%, 94%);
+  --sl-color-gray-7: hsl(210, 24%, 97%);
+  --sl-color-black: hsl(0, 0%, 100%);
+
+  --sl-color-accent-low: hsl(208, 40%, 94%);
+  --sl-color-accent: hsl(208, 52%, 36%);
+  --sl-color-accent-high: hsl(208, 58%, 26%);
+
+  --sl-color-text: var(--sl-color-gray-2);
+  --sl-color-text-accent: var(--sl-color-accent);
+  --sl-color-text-invert: var(--sl-color-black);
+  --sl-color-bg-accent: var(--sl-color-accent);
+  --sl-color-bg-nav: var(--sl-color-gray-7);
+  --sl-color-bg-sidebar: var(--sl-color-bg);
 }
 
 .sl-markdown-content h1,
-.sl-markdown-content h2 {
+.sl-markdown-content h2,
+.sl-markdown-content h3 {
   font-family: "Bricolage Grotesque", system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+
+/* Kill the filled “current page” brick */
+.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"]:hover,
+.sidebar-content a[aria-current="page"]:focus {
+  color: var(--sl-color-white) !important;
+  background-color: transparent !important;
+  box-shadow: inset 2px 0 0 var(--sl-color-accent);
+  border-radius: 0;
+  font-weight: 600;
+}
+
+:root[data-theme="light"] .sidebar-content a[aria-current="page"],
+:root[data-theme="light"] .sidebar-content a[aria-current="page"]:hover,
+:root[data-theme="light"] .sidebar-content a[aria-current="page"]:focus {
+  color: var(--sl-color-accent-high) !important;
+  background-color: transparent !important;
+  box-shadow: inset 2px 0 0 var(--sl-color-accent);
+}
+
+.site-title,
+.site-title img,
+.site-title svg {
+  color: var(--sl-color-white);
 }

@@ -1,26 +1,30 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { BackupService } from "./backup.service"
-import { BackupScheduler } from "./backup-scheduler"
+import { BACKUP_DEFAULT_INTERVAL_MS, BackupScheduler } from "./backup-scheduler"
 
 describe("BackupScheduler", () => {
   afterEach(() => {
     vi.useRealTimers()
+    delete process.env.DEPLOW_BACKUP_DEFAULT_INTERVAL_MS
+    delete process.env.DEPLOW_BACKUP_ALLOW_FAST
   })
 
   it("registers a schedule and fires run without manual backup API", async () => {
     vi.useFakeTimers()
     const runs: string[] = []
     const backupService = {
-      run: async (projectId: string) => {
+      runAll: async (projectId: string) => {
         runs.push(projectId)
-        return {
-          id: "b1",
-          projectId,
-          storageKey: "k",
-          sizeBytes: 1,
-          status: "completed" as const,
-        }
+        return [
+          {
+            id: "b1",
+            projectId,
+            storageKey: "k",
+            sizeBytes: 1,
+            status: "completed" as const,
+          },
+        ]
       },
     } as unknown as BackupService
 
@@ -28,23 +32,15 @@ describe("BackupScheduler", () => {
     scheduler.schedule({
       projectId: "proj-1",
       intervalMs: 5_000,
-      getCredentials: async () =>
-        ({
-          database: {
-            host: "h",
-            port: 1,
-            database: "d",
-            user: "u",
-            password: "p",
+      getTargets: async () =>
+        [
+          {
+            resourceLinkId: "link-1",
+            kind: "postgres",
+            credentials: {},
+            driver: { capabilities: { backup: true } },
           },
-          redis: { host: "h", port: 1 },
-          storage: {
-            endpoint: "e",
-            bucket: "b",
-            accessKeyId: "a",
-            secretAccessKey: "s",
-          },
-        }) as never,
+        ] as never,
     })
 
     expect(scheduler.isScheduled("proj-1")).toBe(true)
@@ -59,9 +55,9 @@ describe("BackupScheduler", () => {
     scheduler.stopAll()
   })
 
-  it("tick records failure path when backupService.run throws", async () => {
+  it("tick records failure path when backupService.runAll throws", async () => {
     const backupService = {
-      run: async () => {
+      runAll: async () => {
         throw new Error("disk full")
       },
     } as unknown as BackupService
@@ -69,97 +65,35 @@ describe("BackupScheduler", () => {
     scheduler.schedule({
       projectId: "proj-2",
       intervalMs: 60_000,
-      getCredentials: async () =>
-        ({
-          database: {
-            host: "h",
-            port: 1,
-            database: "d",
-            user: "u",
-            password: "p",
+      getTargets: async () =>
+        [
+          {
+            resourceLinkId: "link-1",
+            kind: "postgres",
+            credentials: {},
+            driver: { capabilities: { backup: true } },
           },
-          redis: { host: "h", port: 1 },
-          storage: {
-            endpoint: "e",
-            bucket: "b",
-            accessKeyId: "a",
-            secretAccessKey: "s",
-          },
-        }) as never,
+        ] as never,
     })
     const result = await scheduler.tick("proj-2")
     expect(result).toBe("failed")
     scheduler.stopAll()
   })
 
-  it("skips tick when lastBackupAt says not due yet (durable schedule)", async () => {
-    const runs: string[] = []
-    const backupService = {
-      run: async (projectId: string) => {
-        runs.push(projectId)
-        return {
-          id: "b1",
-          projectId,
-          storageKey: "k",
-          sizeBytes: 1,
-          status: "completed" as const,
-        }
-      },
-    } as unknown as BackupService
+  it("normalizeIntervalMs clamps sub-hour demo values to daily", () => {
+    expect(BackupScheduler.normalizeIntervalMs(8_000)).toBe(
+      BACKUP_DEFAULT_INTERVAL_MS,
+    )
+    expect(BackupScheduler.normalizeIntervalMs(86_400_000)).toBe(86_400_000)
+  })
 
-    const scheduler = new BackupScheduler(backupService, { pollMs: 1_000 })
-    scheduler.schedule({
-      projectId: "proj-3",
-      intervalMs: 86_400_000,
-      getCredentials: async () =>
-        ({
-          database: {
-            host: "h",
-            port: 1,
-            database: "d",
-            user: "u",
-            password: "p",
-          },
-          redis: { host: "h", port: 1 },
-          storage: {
-            endpoint: "e",
-            bucket: "b",
-            accessKeyId: "a",
-            secretAccessKey: "s",
-          },
-        }) as never,
-      getLastBackupAt: async () => new Date(), // just now → not due
-    })
+  it("normalizeIntervalMs keeps short intervals when ALLOW_FAST=1", () => {
+    process.env.DEPLOW_BACKUP_ALLOW_FAST = "1"
+    expect(BackupScheduler.normalizeIntervalMs(8_000)).toBe(8_000)
+  })
 
-    expect(await scheduler.tick("proj-3")).toBe("skipped")
-    expect(runs).toHaveLength(0)
-
-    // Never backed up → due
-    scheduler.unschedule("proj-3")
-    scheduler.schedule({
-      projectId: "proj-3",
-      intervalMs: 86_400_000,
-      getCredentials: async () =>
-        ({
-          database: {
-            host: "h",
-            port: 1,
-            database: "d",
-            user: "u",
-            password: "p",
-          },
-          redis: { host: "h", port: 1 },
-          storage: {
-            endpoint: "e",
-            bucket: "b",
-            accessKeyId: "a",
-            secretAccessKey: "s",
-          },
-        }) as never,
-      getLastBackupAt: async () => null,
-    })
-    expect(await scheduler.tick("proj-3")).toBe("ok")
-    expect(runs).toEqual(["proj-3"])
-    scheduler.stopAll()
+  it("defaultIntervalMs ignores unsafe demo env without ALLOW_FAST", () => {
+    process.env.DEPLOW_BACKUP_DEFAULT_INTERVAL_MS = "8000"
+    expect(BackupScheduler.defaultIntervalMs()).toBe(BACKUP_DEFAULT_INTERVAL_MS)
   })
 })

@@ -9,14 +9,20 @@ export default defineConfig({
     starlight({
       title: "deplow",
       description:
-        "Opinionated self-hosted project runtime — app + Postgres + Redis + S3 on your Docker host, user apps sandboxed with gVisor.",
+        "Opinionated self-hosted project runtime — typed services, gVisor, Domains-managed URLs on your Docker host.",
       logo: {
         src: "./src/assets/logo.svg",
         replacesTitle: true,
       },
       favicon: "/favicon.svg",
       customCss: ["./src/styles/custom.css"],
-      social: [],
+      social: [
+        {
+          icon: "github",
+          label: "GitHub",
+          href: "https://github.com/deplow/deplow",
+        },
+      ],
       head: [
         {
           tag: "link",
@@ -59,6 +65,7 @@ export default defineConfig({
         {
           label: "Concepts",
           items: [
+            { label: "Scope", slug: "docs/concepts/scope" },
             { label: "Architecture", slug: "docs/concepts/architecture" },
             { label: "Projects", slug: "docs/concepts/projects" },
             { label: "Deploy modes", slug: "docs/concepts/deploy-modes" },
@@ -69,6 +76,8 @@ export default defineConfig({
           label: "Guides",
           items: [
             { label: "Deploy an app", slug: "docs/guides/deploy" },
+            { label: "Domains & URLs", slug: "docs/guides/domains" },
+            { label: "Git connect", slug: "docs/guides/git" },
             { label: "Backups", slug: "docs/guides/backups" },
             { label: "Secrets & env", slug: "docs/guides/secrets" },
           ],

@@ -1,14 +1,96 @@
 import { relations } from "drizzle-orm"
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+import {
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core"
 
 import { user } from "./auth-schema"
+
+export const organizations = sqliteTable(
+  "organizations",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [uniqueIndex("organizations_slug_idx").on(t.slug)],
+)
+
+export const organizationMembers = sqliteTable(
+  "organization_members",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["owner", "member"] })
+      .notNull()
+      .default("member"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("organization_members_org_user_idx").on(
+      t.organizationId,
+      t.userId,
+    ),
+    index("organization_members_user_idx").on(t.userId),
+    index("organization_members_org_idx").on(t.organizationId),
+  ],
+)
+
+export const organizationInvites = sqliteTable(
+  "organization_invites",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role", { enum: ["owner", "member"] })
+      .notNull()
+      .default("member"),
+    /** SHA-256 hex of the invite token */
+    tokenHash: text("token_hash").notNull().unique(),
+    invitedByUserId: text("invited_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("organization_invites_org_idx").on(t.organizationId),
+    index("organization_invites_email_idx").on(t.email),
+  ],
+)
 
 export const projects = sqliteTable(
   "projects",
   {
     id: text("id").primaryKey(),
-    name: text("name").notNull().unique(),
-    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Created-by user (audit); ACL is org membership */
     ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -25,32 +107,21 @@ export const projects = sqliteTable(
       .notNull()
       .default("provisioning"),
     /**
-     * AES-GCM encrypted JSON of production-slot Database/Redis/Storage credentials.
-     * Preview slots (v2) will use a separate map/table — do not overload this blob.
+     * @deprecated Prefer resource_links.credentials_encrypted.
+     * Kept so pre-migration projects can still decrypt for backup/inject.
      */
     credentialsEncrypted: text("credentials_encrypted"),
-    secretsYaml: text("secrets_yaml"),
     errorMessage: text("error_message"),
-    /** Public URL https://{slug}.{baseDomain} when proxy + base domain configured */
-    publicUrl: text("public_url"),
-    /** github | gitlab | null */
-    gitProvider: text("git_provider"),
-    gitRepoUrl: text("git_repo_url"),
-    /** Production branch that webhooks deploy (default main) */
-    gitBranch: text("git_branch").default("main"),
-    /** AES-GCM encrypted webhook shared secret */
-    gitWebhookSecretEncrypted: text("git_webhook_secret_encrypted"),
-    gitLastDeliveryAt: integer("git_last_delivery_at", {
-      mode: "timestamp_ms",
-    }),
-    gitLastDeliveryStatus: text("git_last_delivery_status"),
-    gitLastDeliveryError: text("git_last_delivery_error"),
-    gitConnectedAt: integer("git_connected_at", { mode: "timestamp_ms" }),
     /** Backup interval in ms (default daily); scheduler reads this */
     backupIntervalMs: integer("backup_interval_ms")
       .notNull()
       .default(86_400_000),
     lastBackupAt: integer("last_backup_at", { mode: "timestamp_ms" }),
+    /** Lazy-provisioned MinIO bucket credentials (not a user-facing service) */
+    storageCredentialsEncrypted: text("storage_credentials_encrypted"),
+    bindingsMigratedAt: integer("bindings_migrated_at", {
+      mode: "timestamp_ms",
+    }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -60,8 +131,239 @@ export const projects = sqliteTable(
       .notNull(),
   },
   (t) => [
+    uniqueIndex("projects_org_name_idx").on(t.organizationId, t.name),
+    uniqueIndex("projects_org_slug_idx").on(t.organizationId, t.slug),
     index("projects_owner_idx").on(t.ownerId),
+    index("projects_org_idx").on(t.organizationId),
     index("projects_node_idx").on(t.nodeId),
+  ],
+)
+
+/**
+ * A service is the primary durable operational unit within a project.
+ * Types: web/worker (apps) and postgres/redis (data). S3 stays project infra.
+ */
+export const services = sqliteTable(
+  "services",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Unique within the project */
+    name: text("name").notNull(),
+    /** Derived slug for container naming + proxy hostname */
+    slug: text("slug").notNull(),
+    /** web | worker | postgres | redis */
+    type: text("type", { enum: ["web", "worker", "postgres", "redis"] })
+      .notNull()
+      .default("web"),
+    /** Primary web service gets bare {projectSlug}.{baseDomain} */
+    isPrimary: integer("is_primary", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    containerPort: integer("container_port").notNull().default(80),
+    status: text("status", {
+      enum: [
+        "queued",
+        "provisioning",
+        "deploying",
+        "running",
+        "stopped",
+        "error",
+        "destroying",
+        /** @deprecated migrated to stopped/running */
+        "ready",
+      ],
+    })
+      .notNull()
+      .default("queued"),
+    /** Per-service git (null = not connected); app services only */
+    gitProvider: text("git_provider"),
+    gitRepoUrl: text("git_repo_url"),
+    gitBranch: text("git_branch").default("main"),
+    gitWebhookSecretEncrypted: text("git_webhook_secret_encrypted"),
+    gitConnectedAt: integer("git_connected_at", { mode: "timestamp_ms" }),
+    gitLastDeliveryAt: integer("git_last_delivery_at", {
+      mode: "timestamp_ms",
+    }),
+    gitLastDeliveryStatus: text("git_last_delivery_status"),
+    gitLastDeliveryError: text("git_last_delivery_error"),
+    gitAuthMethod: text("git_auth_method"),
+    gitInstallationId: text("git_installation_id"),
+    gitAccessTokenEncrypted: text("git_access_token_encrypted"),
+    gitRemoteWebhookId: text("git_remote_webhook_id"),
+    gitRepoFullName: text("git_repo_full_name"),
+    /** Build config overrides (null = auto-detect) */
+    buildStrategyOverride: text("build_strategy_override"),
+    dockerfilePath: text("dockerfile_path"),
+    rootDirectory: text("root_directory"),
+    buildCommand: text("build_command"),
+    startCommand: text("start_command"),
+    healthCheckPath: text("health_check_path"),
+    /** JSON object of service-specific env vars */
+    envJson: text("env_json"),
+    /** Encrypted credentials for data services (postgres/redis) */
+    credentialsEncrypted: text("credentials_encrypted"),
+    /** Migration bridge from resource_links */
+    legacyResourceLinkId: text("legacy_resource_link_id"),
+    lastOperationId: text("last_operation_id"),
+    /** Denormalized runtime state for quick display */
+    publicUrl: text("public_url"),
+    containerId: text("container_id"),
+    image: text("image"),
+    errorMessage: text("error_message"),
+    errorCode: text("error_code"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("services_project_idx").on(t.projectId),
+    uniqueIndex("services_project_name_idx").on(t.projectId, t.name),
+  ],
+)
+
+/**
+ * Long-running work tracked in SQLite; BullMQ executes the jobs.
+ */
+export const operations = sqliteTable(
+  "operations",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    serviceId: text("service_id").references(() => services.id, {
+      onDelete: "set null",
+    }),
+    type: text("type", {
+      enum: [
+        "deploy",
+        "provision",
+        "backup",
+        "restore",
+        "pitr_restore",
+        "destroy",
+      ],
+    }).notNull(),
+    status: text("status", {
+      enum: [
+        "created",
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+      ],
+    })
+      .notNull()
+      .default("created"),
+    stage: text("stage"),
+    idempotencyKey: text("idempotency_key"),
+    triggeredBy: text("triggered_by").default("manual"),
+    inputJson: text("input_json"),
+    resultJson: text("result_json"),
+    errorMessage: text("error_message"),
+    errorCode: text("error_code"),
+    rootCause: text("root_cause"),
+    symptom: text("symptom"),
+    logsText: text("logs_text"),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("operations_project_idx").on(t.projectId),
+    index("operations_service_idx").on(t.serviceId),
+    uniqueIndex("operations_idempotency_idx").on(t.idempotencyKey),
+  ],
+)
+
+/**
+ * Explicit consumer (web/worker) → provider (postgres/redis) bindings.
+ */
+export const serviceBindings = sqliteTable(
+  "service_bindings",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    consumerServiceId: text("consumer_service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    providerServiceId: text("provider_service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    envKey: text("env_key").notNull(),
+    /** Optional role/username within the provider */
+    principal: text("principal"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("service_bindings_project_idx").on(t.projectId),
+    index("service_bindings_consumer_idx").on(t.consumerServiceId),
+    uniqueIndex("service_bindings_consumer_env_idx").on(
+      t.consumerServiceId,
+      t.envKey,
+    ),
+  ],
+)
+
+/**
+ * A resource link connects a resource (Postgres, Redis, S3, etc.) to a project.
+ * Resources are linked to the project and shared across all deployable services.
+ * Postgres/Redis use dedicated containers; S3 uses shared MinIO buckets.
+ */
+export const resourceLinks = sqliteTable(
+  "resource_links",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** postgres | redis | s3 | mongo | mysql | ... */
+    kind: text("kind", {
+      enum: ["postgres", "redis", "s3", "mongo", "mysql"],
+    }).notNull(),
+    /** shared-instance (S3) | dedicated-container (Postgres/Redis) | external */
+    source: text("source", {
+      enum: ["shared-instance", "dedicated-container", "external"],
+    })
+      .notNull()
+      .default("dedicated-container"),
+    status: text("status", {
+      enum: ["provisioning", "ready", "error"],
+    })
+      .notNull()
+      .default("provisioning"),
+    credentialsEncrypted: text("credentials_encrypted"),
+    errorMessage: text("error_message"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("resource_links_project_idx").on(t.projectId),
+    uniqueIndex("resource_links_project_kind_idx").on(t.projectId, t.kind),
   ],
 )
 
@@ -103,12 +405,22 @@ export const deployments = sqliteTable(
   "deployments",
   {
     id: text("id").primaryKey(),
+    /** Service this deployment belongs to */
+    serviceId: text("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    /** Kept for query convenience (denormalized from service.projectId) */
     projectId: text("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     nodeId: text("node_id")
       .notNull()
       .references(() => nodes.id, { onDelete: "cascade" }),
+    /** Linked operation row for queue tracking */
+    operationId: text("operation_id").references(() => operations.id, {
+      onDelete: "set null",
+    }),
+    /** Service name snapshot (from service.name at deploy time) */
     serviceName: text("service_name").notNull(),
     image: text("image"),
     dockerCompose: text("docker_compose"),
@@ -116,17 +428,22 @@ export const deployments = sqliteTable(
     buildStrategy: text("build_strategy"),
     buildLogs: text("build_logs"),
     sourcePath: text("source_path"),
+    gitSha: text("git_sha"),
+    gitBranch: text("git_branch"),
+    failedStage: text("failed_stage"),
     /**
      * Living deploy status machine:
-     * queued → building → deploying → running | failed
+     * queued → analyzing → building → deploying → checking → running | failed
      * (pending kept as synonym for queued for older rows)
      */
     status: text("status", {
       enum: [
         "pending",
         "queued",
+        "analyzing",
         "building",
         "deploying",
+        "checking",
         "running",
         "failed",
         "stopped",
@@ -147,8 +464,10 @@ export const deployments = sqliteTable(
       .notNull(),
   },
   (t) => [
+    index("deployments_service_idx").on(t.serviceId),
     index("deployments_project_idx").on(t.projectId),
     index("deployments_node_idx").on(t.nodeId),
+    index("deployments_operation_idx").on(t.operationId),
   ],
 )
 
@@ -156,25 +475,45 @@ export const backups = sqliteTable(
   "backups",
   {
     id: text("id").primaryKey(),
+    /** Kept for query convenience */
     projectId: text("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    kind: text("kind", { enum: ["postgres"] })
+    /** @deprecated Prefer serviceId for data services */
+    resourceLinkId: text("resource_link_id").references(
+      () => resourceLinks.id,
+      {
+        onDelete: "cascade",
+      },
+    ),
+    /** Data service being backed up (postgres/redis) */
+    serviceId: text("service_id").references(() => services.id, {
+      onDelete: "cascade",
+    }),
+    kind: text("kind", {
+      enum: ["postgres", "snapshot", "pitr_restore", "redis"],
+    })
       .notNull()
-      .default("postgres"),
+      .default("snapshot"),
     storageKey: text("storage_key").notNull(),
     sizeBytes: integer("size_bytes"),
     status: text("status", {
-      enum: ["running", "completed", "failed"],
+      enum: ["running", "completed", "failed", "queued"],
     })
       .notNull()
       .default("running"),
+    /** PITR target timestamp (ISO) when kind=pitr_restore */
+    targetAt: text("target_at"),
     errorMessage: text("error_message"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (t) => [index("backups_project_idx").on(t.projectId)],
+  (t) => [
+    index("backups_project_idx").on(t.projectId),
+    index("backups_resource_link_idx").on(t.resourceLinkId),
+    index("backups_service_idx").on(t.serviceId),
+  ],
 )
 
 export const spawnedServers = sqliteTable("spawned_servers", {
@@ -195,7 +534,222 @@ export const spawnedServers = sqliteTable("spawned_servers", {
     .notNull(),
 })
 
+/**
+ * Per-user git provider identity (GitHub App OAuth / GitLab OAuth).
+ * Tokens encrypted with DEPLOW_SECRETS_KEY — never returned to clients.
+ */
+export const gitProviderLinks = sqliteTable(
+  "git_provider_links",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: ["github", "gitlab"] }).notNull(),
+    providerUserId: text("provider_user_id"),
+    login: text("login"),
+    avatarUrl: text("avatar_url"),
+    accessTokenEncrypted: text("access_token_encrypted"),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    githubInstallationId: text("github_installation_id"),
+    scopes: text("scopes"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("git_provider_links_user_idx").on(t.userId),
+    index("git_provider_links_user_provider_idx").on(t.userId, t.provider),
+  ],
+)
+
+/** Cached GitHub App installations linked to a user. */
+export const githubAppInstallations = sqliteTable(
+  "github_app_installations",
+  {
+    installationId: text("installation_id").primaryKey(),
+    accountLogin: text("account_login").notNull(),
+    accountType: text("account_type").notNull().default("User"),
+    linkedUserId: text("linked_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    suspendedAt: integer("suspended_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("github_app_installations_user_idx").on(t.linkedUserId)],
+)
+
+/**
+ * Encrypted platform integration config (GitHub App PEMs, GitLab OAuth clients).
+ * One row per provider key: github_app | gitlab_oauth
+ */
+export const platformIntegrations = sqliteTable("platform_integrations", {
+  provider: text("provider").primaryKey(),
+  configEncrypted: text("config_encrypted").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
+/**
+ * Singleton platform ingress settings (app-managed; env seeds once).
+ * id is always "default".
+ */
+export const platformIngress = sqliteTable("platform_ingress", {
+  id: text("id").primaryKey().default("default"),
+  /** e.g. apps.example.com — empty disables auto public URLs */
+  baseDomain: text("base_domain").notNull().default(""),
+  publicProtocol: text("public_protocol", {
+    enum: ["https", "http"],
+  })
+    .notNull()
+    .default("https"),
+  /** When true, web services get {slug}.{baseDomain} on deploy */
+  autoDomainsEnabled: integer("auto_domains_enabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
+/**
+ * Hostnames attached to a service for Caddy Host routing.
+ * kind=auto (v1), custom/preview (v2+). Multiple active hosts share one upstream.
+ */
+export const serviceHostnames = sqliteTable(
+  "service_hostnames",
+  {
+    id: text("id").primaryKey(),
+    serviceId: text("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    hostname: text("hostname").notNull(),
+    kind: text("kind", { enum: ["auto", "custom", "preview"] }).notNull(),
+    isPrimary: integer("is_primary", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    /** Preview slot key for kind=preview (e.g. PR number) */
+    previewKey: text("preview_key"),
+    status: text("status", {
+      enum: ["active", "pending", "disabled"],
+    })
+      .notNull()
+      .default("active"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("service_hostnames_hostname_idx").on(t.hostname),
+    index("service_hostnames_service_idx").on(t.serviceId),
+  ],
+)
+
+/**
+ * Operator MCP personal access tokens (Bearer for /api/mcp).
+ * Plaintext shown once at creation; only tokenHash is stored.
+ */
+export const mcpTokens = sqliteTable(
+  "mcp_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** SHA-256 hex of the full token */
+    tokenHash: text("token_hash").notNull().unique(),
+    /** First 8 chars of token for display (e.g. deplow_ab12…) */
+    prefix: text("prefix").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    index("mcp_tokens_user_idx").on(t.userId),
+    index("mcp_tokens_hash_idx").on(t.tokenHash),
+  ],
+)
+
+/** Short-lived OAuth CSRF state (cleaned on use / expiry). */
+export const oauthStates = sqliteTable("oauth_states", {
+  state: text("state").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  returnTo: text("return_to"),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+})
+
+export const organizationsRelations = relations(
+  organizations,
+  ({ many }) => ({
+    members: many(organizationMembers),
+    invites: many(organizationInvites),
+    projects: many(projects),
+  }),
+)
+
+export const organizationMembersRelations = relations(
+  organizationMembers,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationMembers.organizationId],
+      references: [organizations.id],
+    }),
+    user: one(user, {
+      fields: [organizationMembers.userId],
+      references: [user.id],
+    }),
+  }),
+)
+
+export const organizationInvitesRelations = relations(
+  organizationInvites,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationInvites.organizationId],
+      references: [organizations.id],
+    }),
+    invitedBy: one(user, {
+      fields: [organizationInvites.invitedByUserId],
+      references: [user.id],
+    }),
+  }),
+)
+
 export const projectsRelations = relations(projects, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [projects.organizationId],
+    references: [organizations.id],
+  }),
   owner: one(user, {
     fields: [projects.ownerId],
     references: [user.id],
@@ -204,11 +758,87 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.nodeId],
     references: [nodes.id],
   }),
+  services: many(services),
+  resourceLinks: many(resourceLinks),
   deployments: many(deployments),
   backups: many(backups),
+  operations: many(operations),
+  serviceBindings: many(serviceBindings),
 }))
 
+export const servicesRelations = relations(services, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [services.projectId],
+    references: [projects.id],
+  }),
+  deployments: many(deployments),
+  operations: many(operations),
+  hostnames: many(serviceHostnames),
+  consumerBindings: many(serviceBindings, {
+    relationName: "consumerBindings",
+  }),
+  providerBindings: many(serviceBindings, {
+    relationName: "providerBindings",
+  }),
+}))
+
+export const serviceHostnamesRelations = relations(
+  serviceHostnames,
+  ({ one }) => ({
+    service: one(services, {
+      fields: [serviceHostnames.serviceId],
+      references: [services.id],
+    }),
+  }),
+)
+
+export const resourceLinksRelations = relations(
+  resourceLinks,
+  ({ one, many }) => ({
+    project: one(projects, {
+      fields: [resourceLinks.projectId],
+      references: [projects.id],
+    }),
+    backups: many(backups),
+  }),
+)
+
+export const operationsRelations = relations(operations, ({ one }) => ({
+  project: one(projects, {
+    fields: [operations.projectId],
+    references: [projects.id],
+  }),
+  service: one(services, {
+    fields: [operations.serviceId],
+    references: [services.id],
+  }),
+}))
+
+export const serviceBindingsRelations = relations(
+  serviceBindings,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [serviceBindings.projectId],
+      references: [projects.id],
+    }),
+    consumer: one(services, {
+      fields: [serviceBindings.consumerServiceId],
+      references: [services.id],
+      relationName: "consumerBindings",
+    }),
+    provider: one(services, {
+      fields: [serviceBindings.providerServiceId],
+      references: [services.id],
+      relationName: "providerBindings",
+    }),
+  }),
+)
+
 export const deploymentsRelations = relations(deployments, ({ one }) => ({
+  service: one(services, {
+    fields: [deployments.serviceId],
+    references: [services.id],
+  }),
   project: one(projects, {
     fields: [deployments.projectId],
     references: [projects.id],
@@ -216,5 +846,24 @@ export const deploymentsRelations = relations(deployments, ({ one }) => ({
   node: one(nodes, {
     fields: [deployments.nodeId],
     references: [nodes.id],
+  }),
+  operation: one(operations, {
+    fields: [deployments.operationId],
+    references: [operations.id],
+  }),
+}))
+
+export const backupsRelations = relations(backups, ({ one }) => ({
+  project: one(projects, {
+    fields: [backups.projectId],
+    references: [projects.id],
+  }),
+  resourceLink: one(resourceLinks, {
+    fields: [backups.resourceLinkId],
+    references: [resourceLinks.id],
+  }),
+  service: one(services, {
+    fields: [backups.serviceId],
+    references: [services.id],
   }),
 }))

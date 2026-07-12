@@ -23,7 +23,7 @@ export interface GitWebhookHandlerDeps {
   /** Record delivery status on the project row */
   recordDelivery: (input: {
     projectId: string
-    status: "rejected" | "ignored" | "success" | "failed"
+    status: "rejected" | "ignored" | "accepted" | "success" | "failed"
     error?: string | null
   }) => Promise<void>
   /** Production deploy pipeline entry (clone → build → deploy → proxy) */
@@ -128,9 +128,10 @@ export async function handleGitWebhook(
       project,
       branch: expected,
     })
+    // Deploy is async — terminal success/failure is recorded by the deploy job.
     await deps.recordDelivery({
       projectId: project.id,
-      status: "success",
+      status: "accepted",
       error: null,
     })
     return {

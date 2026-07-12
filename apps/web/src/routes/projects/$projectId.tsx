@@ -1,850 +1,649 @@
 import { useEffect, useState } from "react"
-import {
-  Link,
-  createFileRoute,
-  redirect,
-  useRouter,
-} from "@tanstack/react-router"
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import {
   BoxIcon,
-  CopyIcon,
   DatabaseIcon,
-  ExternalLinkIcon,
-  GitBranchIcon,
   HardDriveIcon,
-  MoreHorizontalIcon,
+  PlusIcon,
   RocketIcon,
-  ScrollTextIcon,
   Trash2Icon,
   WorkflowIcon,
 } from "lucide-react"
+import { z } from "zod"
 
 import { ActionDialog } from "@/components/action-dialog"
-import { AppSheetBody, InfraSheetBody } from "@/components/project-app-sheet"
+import { AddServiceDialog } from "@/components/add-service-dialog"
 import { AppShell } from "@/components/app-shell"
+import { CommandAction } from "@/components/command-action"
 import { EmptyState } from "@/components/empty-state"
-import { DeploymentsPanel } from "@/components/project-deployments-panel"
+import { PageSection } from "@/components/page-section"
 import { ProjectRail, type ProjectSection } from "@/components/project-rail"
-import { ProjectSettings } from "@/components/project-settings"
-import { BackupsPanel } from "@/components/project-backups-panel"
-import { SecretsPanel } from "@/components/project-secrets-panel"
-import { StackCard } from "@/components/stack-card"
+import { ServiceCard } from "@/components/service-card"
 import { StatusBadge } from "@/components/status-badge"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { getSession } from "@/lib/auth.functions"
-import { client } from "@/lib/orpc"
 import {
-  repoShortName,
-  summarizeDeployError,
-  formatDateTime,
-} from "@/lib/ui-format"
+  parseProjectSection,
+  PROJECT_SECTION_IDS,
+} from "@/lib/command"
+import { client } from "@/lib/orpc"
+import { loadShellContext } from "@/lib/shell-context"
 
-type StackTarget = "app" | "postgres" | "redis" | "s3"
-
-export const Route = createFileRoute("/projects/$projectId")({
-  loader: async ({ params }) => {
-    const session = await getSession()
-    if (!session) throw redirect({ to: "/login" })
-
-    const [project, deployments, backups, schedule] = await Promise.all([
-      client.projects.get({ id: params.projectId }),
-      client.deployments.list({ projectId: params.projectId }),
-      client.projects.listBackups({ id: params.projectId }),
-      client.projects.backupSchedule({ id: params.projectId }),
-    ])
-    return { session, project, deployments, backups, schedule }
-  },
-  component: ProjectDetailPage,
+const projectSearchSchema = z.object({
+  section: z.enum(PROJECT_SECTION_IDS).optional().catch("overview"),
 })
 
-function ProjectDetailPage() {
-  const { session, project, deployments, backups, schedule } =
-    Route.useLoaderData()
+export const Route = createFileRoute("/projects/$projectId")({
+  validateSearch: (search) => projectSearchSchema.parse(search),
+  loader: async ({ params }) => {
+    const session = await getSession()
+    if (!session) throw redirect({ to: "/login", search: { redirect: undefined } })
+    const [shell, project, deployments] = await Promise.all([
+      loadShellContext(),
+      client.projects.get({ id: params.projectId }),
+      client.deployments.list({ projectId: params.projectId }),
+    ])
+    return { session, shell, project, deployments }
+  },
+  component: ProjectPage,
+})
+
+function ProjectPage() {
+  const { session, shell, project, deployments } = Route.useLoaderData()
+  const { section: sectionParam } = Route.useSearch()
+  const section = parseProjectSection(sectionParam)
   const router = useRouter()
-  const [section, setSection] = useState<ProjectSection>("overview")
-  const [stackTarget, setStackTarget] = useState<StackTarget | null>(null)
-  const [destroyOpen, setDestroyOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [deployServiceId, setDeployServiceId] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [logs, setLogs] = useState<string | null>(null)
-  const [logsOpen, setLogsOpen] = useState(false)
-  const [logsTitle, setLogsTitle] = useState("Logs")
-  const [selectedDeployId, setSelectedDeployId] = useState<string | null>(
-    deployments[0]?.id ?? null,
-  )
-  const [mode, setMode] = useState<"git" | "source" | "image">(
-    project.git?.connected ? "git" : "source",
-  )
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [image, setImage] = useState("")
-  const [sourcePath, setSourcePath] = useState("")
-  const [containerPort, setContainerPort] = useState(80)
-  const [publishPort, setPublishPort] = useState<number | "">("")
-  const [copied, setCopied] = useState<"url" | "secrets" | "webhook" | null>(
-    null,
-  )
-  const [gitRepoUrl, setGitRepoUrl] = useState(project.git?.repoUrl ?? "")
-  const [gitBranch, setGitBranch] = useState(project.git?.branch ?? "main")
-  const [gitProvider, setGitProvider] = useState<"github" | "gitlab">(
-    (project.git?.provider as "github" | "gitlab") || "github",
-  )
-  const [webhookSecretShown, setWebhookSecretShown] = useState<string | null>(
-    null,
+
+  const selectedService = project.services.find(
+    (service) => service.id === deployServiceId,
   )
 
-  const latest = deployments[0]
-  const selected =
-    deployments.find((d) => d.id === selectedDeployId) ?? latest ?? null
-  const appStatus = latest?.status ?? "ready"
-  const appDetail = !latest
-    ? "Not deployed · Deploy to go live under gVisor"
-    : latest.status === "running"
-      ? "Online · gVisor sandbox"
-      : ["building", "deploying", "queued", "pending"].includes(latest.status)
-        ? latest.status
-        : latest.status === "failed"
-          ? summarizeDeployError(
-              latest.errorMessage || latest.buildLogs || "Build failed",
-            )
-          : latest.status
-  const canDeploy = project.git?.connected
-    ? mode === "source"
-      ? Boolean(sourcePath.trim()) || !showAdvanced
-      : mode === "image"
-        ? Boolean(image.trim()) || !showAdvanced
-        : true
-    : mode === "source"
-      ? Boolean(sourcePath.trim())
-      : mode === "image"
-        ? Boolean(image.trim())
-        : false
-  const repoLabel = repoShortName(project.git?.repoUrl)
-  const infraReady = project.hasCredentials
-  const infraStatus = infraReady ? "ready" : "pending"
-  const infraDetail = infraReady ? "Provisioned" : "Provisioning"
-
-  useEffect(() => {
-    const active = deployments.some((d) =>
-      ["queued", "pending", "building", "deploying"].includes(d.status),
-    )
-    if (!active) return
-    const t = setInterval(() => {
-      void router.invalidate()
-    }, 2500)
-    return () => clearInterval(t)
-  }, [deployments, router])
+  function setSection(next: ProjectSection) {
+    void router.navigate({
+      to: "/projects/$projectId",
+      params: { projectId: project.id },
+      search: { section: next },
+      replace: true,
+    })
+  }
 
   async function refresh() {
     await router.invalidate()
   }
 
-  async function runBackup() {
+  async function addDataService(type: "postgres" | "redis") {
     setPending(true)
     setError(null)
     try {
-      await client.projects.backup({ id: project.id })
-      await refresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function destroyProject() {
-    setPending(true)
-    setError(null)
-    try {
-      await client.projects.destroy({ id: project.id })
-      await router.navigate({ to: "/" })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setPending(false)
-      setDestroyOpen(false)
-    }
-  }
-
-  async function deploy(forceMode?: "git" | "source" | "image") {
-    const effectiveMode = forceMode ?? mode
-    setPending(true)
-    setError(null)
-    setLogs(null)
-    try {
-      const options: {
-        containerPort?: number
-        publishPort?: number
-        image?: string
-      } = { containerPort }
-      if (publishPort !== "") options.publishPort = Number(publishPort)
-
-      let result
-      if (effectiveMode === "git") {
-        if (!project.git?.connected) {
-          throw new Error("Connect a Git repository first")
-        }
-        result = await client.deployments.create({
-          projectId: project.id,
-          serviceName: "app",
-          fromGit: true,
-          options,
-        })
-      } else if (effectiveMode === "image") {
-        if (!image.trim()) throw new Error("Image is required")
-        result = await client.deployments.create({
-          projectId: project.id,
-          serviceName: "app",
-          image: image.trim(),
-          options: { ...options, image: image.trim() },
-        })
-      } else {
-        if (!sourcePath.trim()) throw new Error("Source path is required")
-        result = await client.deployments.create({
-          projectId: project.id,
-          serviceName: "app",
-          sourcePath: sourcePath.trim(),
-          options,
-        })
-      }
-      setSelectedDeployId(result.id)
-      setStackTarget("app")
-      setSection("overview")
-      if (result.buildLogs) {
-        openLogs(`Build · ${result.id.slice(0, 8)}`, result.buildLogs)
-      }
-      await refresh()
-    } catch (e) {
-      const raw = e instanceof Error ? e.message : String(e)
-      setError(raw)
-      openLogs("Deploy failed", raw)
-    } finally {
-      setPending(false)
-    }
-  }
-
-  function openLogs(title: string, content: string | null | undefined) {
-    setLogsTitle(title)
-    setLogs(content ?? null)
-    setLogsOpen(true)
-  }
-
-  async function retryDeploy(id: string) {
-    setPending(true)
-    setError(null)
-    try {
-      const result = await client.deployments.retry({ id })
-      setSelectedDeployId(result.id)
-      await refresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function rollback() {
-    setPending(true)
-    setError(null)
-    try {
-      const result = await client.deployments.rollback({
+      const taken = project.services.some((s) => s.name === type)
+      const name = taken
+        ? `${type}-${Date.now().toString(36).slice(-4)}`
+        : type
+      const created = await client.services.create({
         projectId: project.id,
+        name,
+        type,
       })
-      setSelectedDeployId(result.id)
       await refresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function fetchLogs(nodeId: string, service: string, deployId?: string) {
-    setPending(true)
-    setError(null)
-    openLogs(
-      deployId ? `Runtime · ${deployId.slice(0, 8)}` : "Runtime logs",
-      "Loading…",
-    )
-    try {
-      const result = await client.deployments.logs({
-        projectId: project.id,
-        nodeId,
-        serviceName: service,
+      void router.navigate({
+        to: "/projects/$projectId/services/$serviceId",
+        params: { projectId: project.id, serviceId: created.id },
       })
-      setLogs(result.logs || "(no log output)")
-    } catch (e) {
-      setLogsOpen(false)
-      setError(e instanceof Error ? e.message : String(e))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setPending(false)
     }
   }
-
-  async function copyText(text: string, kind: "url" | "secrets" | "webhook") {
-    await navigator.clipboard.writeText(text)
-    setCopied(kind)
-    setTimeout(() => setCopied(null), 1500)
-  }
-
-  function downloadSecrets() {
-    const blob = new Blob([project.secretsYaml ?? ""], {
-      type: "text/yaml;charset=utf-8",
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${project.slug}-secrets.yaml`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  async function connectGit(selection?: {
-    provider: "github" | "gitlab"
-    repoUrl: string
-    branch: string
-  }) {
-    const provider = selection?.provider ?? gitProvider
-    const repoUrl = (selection?.repoUrl ?? gitRepoUrl).trim()
-    const branch = (selection?.branch ?? gitBranch).trim() || "main"
-    if (!repoUrl) {
-      setError("Select a repository first")
-      return
-    }
-    setPending(true)
-    setError(null)
-    try {
-      setGitProvider(provider)
-      setGitRepoUrl(repoUrl)
-      setGitBranch(branch)
-      const result = await client.projects.connectGit({
-        projectId: project.id,
-        provider,
-        repoUrl,
-        branch,
-      })
-      setWebhookSecretShown(result.webhookSecret)
-      await refresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function disconnectGit() {
-    setPending(true)
-    setError(null)
-    try {
-      await client.projects.disconnectGit({ projectId: project.id })
-      setWebhookSecretShown(null)
-      await refresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  function openStack(target: StackTarget) {
-    setStackTarget(target)
-    setSection("overview")
-    if (target === "app" && !project.git?.connected) {
-      setShowAdvanced(false)
-      setMode(project.git?.connected ? "git" : "source")
-    }
-  }
-
-  const backupMeta = schedule.lastBackupAt
-    ? `Last backup ${formatDateTime(schedule.lastBackupAt)}`
-    : schedule.scheduled
-      ? "Daily backups scheduled"
-      : "Backups not scheduled"
 
   return (
     <AppShell
       user={session.user}
+      instanceAdmin={shell.instanceAdmin}
+      organizations={shell.organizations}
+      activeOrganization={shell.activeOrganization}
       title={project.name}
-      description={
-        project.publicUrl
-          ? project.publicUrl.replace(/^https?:\/\//, "")
-          : "Deploy to get a public URL"
-      }
+      description={`${project.services.length} service${project.services.length === 1 ? "" : "s"}`}
       actions={
         <>
-          <StatusBadge status={latest?.status ?? project.status} />
-          <Button
-            size="sm"
-            disabled={pending || !canDeploy}
-            data-primary-action="deploy"
-            onClick={() => {
-              setStackTarget("app")
-              void deploy(
-                project.git?.connected && mode === "git"
-                  ? "git"
-                  : mode === "image"
-                    ? "image"
-                    : project.git?.connected
-                      ? "git"
-                      : mode,
-              )
-            }}
-          >
-            <RocketIcon data-icon="inline-start" />
-            {pending ? "Working…" : "Deploy"}
+          <CommandAction
+            id={`project.${project.id}.add-service`}
+            label="Add service"
+            keywords={["add", "service", "create"]}
+            icon={PlusIcon}
+            onSelect={() => setAddOpen(true)}
+          />
+          <Button onClick={() => setAddOpen(true)}>
+            <PlusIcon data-icon="inline-start" />
+            Add service
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button variant="outline" size="sm" />}
-            >
-              <MoreHorizontalIcon className="size-4" />
-              <span className="sr-only">More actions</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => setDestroyOpen(true)}
-              >
-                <Trash2Icon />
-                Destroy project
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() =>
+              void (async () => {
+                if (
+                  !window.confirm(
+                    `Destroy ${project.name}? Type confirmation is also available in Settings.`,
+                  )
+                )
+                  return
+                setPending(true)
+                try {
+                  await client.projects.destroy({ id: project.id })
+                  void router.navigate({ to: "/" })
+                } catch (cause) {
+                  setError(
+                    cause instanceof Error ? cause.message : String(cause),
+                  )
+                  setPending(false)
+                }
+              })()
+            }
+          >
+            <Trash2Icon data-icon="inline-start" />
+            Destroy
+          </Button>
         </>
       }
     >
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link to="/" className="hover:text-foreground hover:underline">
-          Projects
-        </Link>
-        <span>/</span>
-        <span className="font-medium text-foreground">{project.name}</span>
-      </div>
-
       {error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Deploy failed</AlertTitle>
-          <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span>{summarizeDeployError(error)}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={() => openLogs("Deploy failed", error)}
-            >
-              View details
-            </Button>
-          </AlertDescription>
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+      {project.services.map((service) => (
+        <CommandAction
+          key={service.id}
+          id={`project.${project.id}.open.${service.id}`}
+          label={`Open ${service.name}`}
+          keywords={["service", "open", service.name]}
+          icon={BoxIcon}
+          onSelect={() =>
+            void router.navigate({
+              to: "/projects/$projectId/services/$serviceId",
+              params: { projectId: project.id, serviceId: service.id },
+            })
+          }
+        />
+      ))}
+
+      {project.services
+        .filter((s) => s.type === "web" || s.type === "worker")
+        .map((service) => (
+          <CommandAction
+            key={`deploy-${service.id}`}
+            id={`project.${project.id}.deploy.${service.id}`}
+            label={`Deploy ${service.name}`}
+            keywords={["deploy", "release", service.name]}
+            icon={RocketIcon}
+            onSelect={() => setDeployServiceId(service.id)}
+          />
+        ))}
+
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <ProjectRail value={section} onChange={setSection} />
 
-        <div className="min-w-0 flex-1 flex flex-col gap-4">
+        <div className="min-w-0 flex-1 space-y-6">
           {section === "overview" ? (
             <>
-              {project.publicUrl ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-card px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Public URL
-                    </p>
-                    <a
-                      href={project.publicUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 truncate font-mono text-sm font-medium hover:underline"
-                    >
-                      {project.publicUrl}
-                      <ExternalLinkIcon className="size-3.5 shrink-0" />
-                    </a>
+              <PageSection
+                icon={BoxIcon}
+                title="Services"
+                description="Each service has its own page, lifecycle, and configuration."
+              >
+                {project.services.length ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {project.services.map((service) => {
+                      const latest = deployments.find(
+                        (deployment) => deployment.serviceId === service.id,
+                      )
+                      const isApp =
+                        service.type === "web" || service.type === "worker"
+                      return (
+                        <ServiceCard
+                          key={service.id}
+                          projectId={project.id}
+                          serviceId={service.id}
+                          name={service.name}
+                          type={service.type}
+                          isPrimary={service.isPrimary}
+                          containerPort={service.containerPort}
+                          status={latest?.status ?? service.status}
+                          publicUrl={service.publicUrl}
+                          errorMessage={service.errorMessage}
+                          pending={pending}
+                          hasDeployment={Boolean(latest)}
+                          onDeploy={
+                            isApp
+                              ? () => setDeployServiceId(service.id)
+                              : undefined
+                          }
+                          onLogs={
+                            isApp
+                              ? () =>
+                                  void router.navigate({
+                                    to: "/projects/$projectId/services/$serviceId",
+                                    params: {
+                                      projectId: project.id,
+                                      serviceId: service.id,
+                                    },
+                                    search: { tab: "logs" },
+                                  })
+                              : undefined
+                          }
+                        />
+                      )
+                    })}
                   </div>
+                ) : (
+                  <div className="surface-panel overflow-hidden">
+                    <EmptyState
+                      icon={BoxIcon}
+                      title="No services"
+                      description="Add a web app, worker, Postgres, or Redis service."
+                      action={
+                        <Button onClick={() => setAddOpen(true)}>
+                          Add service
+                        </Button>
+                      }
+                    />
+                  </div>
+                )}
+              </PageSection>
+
+              <PageSection
+                icon={DatabaseIcon}
+                title="Data services"
+                description="Postgres and Redis are first-class services. Bind them explicitly to apps."
+              >
+                <div className="mb-3 flex flex-wrap gap-2">
                   <Button
-                    variant="outline"
                     size="sm"
-                    onClick={() => void copyText(project.publicUrl!, "url")}
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => void addDataService("postgres")}
                   >
-                    <CopyIcon data-icon="inline-start" />
-                    {copied === "url" ? "Copied" : "Copy"}
+                    Add Postgres
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => void addDataService("redis")}
+                  >
+                    Add Redis
                   </Button>
                 </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-border/80 px-4 py-3 text-sm text-muted-foreground">
-                  No public URL yet. Deploy the app (and set{" "}
-                  <code className="text-xs">DEPLOW_BASE_DOMAIN</code> for
-                  wildcard HTTPS via Caddy + cloudflared).
-                </div>
-              )}
-
-              {project.git?.connected && repoLabel ? (
-                <button
-                  type="button"
-                  onClick={() => setSection("settings")}
-                  className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/30"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                      <GitBranchIcon className="size-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {repoLabel}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {project.git.branch ?? "main"} · push to deploy ·
-                        Settings
-                      </p>
-                    </div>
-                  </div>
-                  <StatusBadge status="connected" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setSection("settings")}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-border/80 px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
-                >
-                  <div>
-                    <p className="text-sm font-medium">Connect a repository</p>
-                    <p className="text-xs text-muted-foreground">
-                      Open Settings · Source — push to deploy
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {project.resourceLinks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground sm:col-span-3">
+                      No data services yet.
                     </p>
-                  </div>
-                  <GitBranchIcon className="size-4 shrink-0 text-muted-foreground" />
-                </button>
-              )}
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <StackCard
-                  title="App"
-                  icon={BoxIcon}
-                  status={latest ? appStatus : "ready"}
-                  detail={appDetail}
-                  selected={stackTarget === "app"}
-                  onClick={() => openStack("app")}
-                />
-                <StackCard
-                  title="Postgres"
-                  icon={DatabaseIcon}
-                  status={infraStatus}
-                  detail={infraDetail}
-                  selected={stackTarget === "postgres"}
-                  onClick={() => openStack("postgres")}
-                />
-                <StackCard
-                  title="Redis"
-                  icon={WorkflowIcon}
-                  status={infraStatus}
-                  detail={infraDetail}
-                  selected={stackTarget === "redis"}
-                  onClick={() => openStack("redis")}
-                />
-                <StackCard
-                  title="S3"
-                  icon={HardDriveIcon}
-                  status={infraStatus}
-                  detail={infraDetail}
-                  selected={stackTarget === "s3"}
-                  onClick={() => openStack("s3")}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">{backupMeta}</p>
+                  ) : (
+                    project.resourceLinks.map((link) => {
+                      const Icon =
+                        link.kind === "postgres"
+                          ? DatabaseIcon
+                          : link.kind === "redis"
+                            ? WorkflowIcon
+                            : HardDriveIcon
+                      return (
+                        <button
+                          key={link.id}
+                          type="button"
+                          className="surface-panel flex items-center justify-between gap-3 p-4 text-left hover:bg-muted/40"
+                          onClick={() =>
+                            void router.navigate({
+                              to: "/projects/$projectId/services/$serviceId",
+                              params: {
+                                projectId: project.id,
+                                serviceId: link.id,
+                              },
+                            })
+                          }
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="icon-well size-9">
+                              <Icon className="size-4" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium capitalize">
+                                {link.kind}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {link.source}
+                              </p>
+                            </div>
+                          </div>
+                          <StatusBadge status={link.status} />
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </PageSection>
             </>
           ) : null}
 
           {section === "deployments" ? (
-            <DeploymentsPanel
-              deployments={deployments}
-              selectedId={selected?.id ?? null}
-              pending={pending}
-              onSelect={setSelectedDeployId}
-              onViewLogs={(d) => {
-                if (d.buildLogs) {
-                  openLogs(`Build · ${d.id.slice(0, 8)}`, d.buildLogs)
-                } else {
-                  void fetchLogs(d.nodeId, d.serviceName, d.id)
-                }
-              }}
-              onRetry={(id) => void retryDeploy(id)}
-              onOpenDeploy={() => {
-                setSection("overview")
-                setStackTarget("app")
-              }}
-            />
+            <div className="surface-panel divide-y divide-border">
+              {deployments.length === 0 ? (
+                <p className="px-4 py-8 text-sm text-muted-foreground">
+                  No deployments yet
+                </p>
+              ) : (
+                deployments.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/30"
+                    onClick={() =>
+                      void router.navigate({
+                        to: "/projects/$projectId/services/$serviceId",
+                        params: {
+                          projectId: project.id,
+                          serviceId: d.serviceId,
+                        },
+                        search: { tab: "deployments" },
+                      })
+                    }
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {d.serviceName}
+                        {"gitSha" in d && d.gitSha ? (
+                          <span className="ml-2 font-mono text-xs text-muted-foreground">
+                            {String(d.gitSha).slice(0, 7)}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {d.createdAt}
+                        {d.errorMessage ? ` · ${d.errorMessage}` : ""}
+                      </p>
+                    </div>
+                    <StatusBadge status={d.status} />
+                  </button>
+                ))
+              )}
+            </div>
           ) : null}
 
           {section === "logs" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Logs</CardTitle>
-                <CardDescription>
-                  Build and runtime output for the selected deployment.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {selected ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={selected.status} />
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {selected.id.slice(0, 8)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() =>
-                          void fetchLogs(
-                            selected.nodeId,
-                            selected.serviceName,
-                            selected.id,
-                          )
-                        }
-                      >
-                        <ScrollTextIcon data-icon="inline-start" />
-                        Runtime logs
-                      </Button>
-                      {selected.buildLogs ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            openLogs(
-                              `Build · ${selected.id.slice(0, 8)}`,
-                              selected.buildLogs,
-                            )
-                          }
-                        >
-                          Build output
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <EmptyState
-                    size="sm"
-                    icon={ScrollTextIcon}
-                    title="No deployments yet"
-                    description="Deploy once to stream build and runtime logs here."
-                    action={
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSection("overview")
-                          setStackTarget("app")
-                        }}
-                      >
-                        Open deploy
-                      </Button>
-                    }
-                  />
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {section === "settings" ? (
-            <ProjectSettings
-              projectName={project.name}
-              projectSlug={project.slug}
-              publicUrl={project.publicUrl}
-              git={project.git}
-              pending={pending}
-              gitProvider={gitProvider}
-              setGitProvider={setGitProvider}
-              gitRepoUrl={gitRepoUrl}
-              setGitRepoUrl={setGitRepoUrl}
-              gitBranch={gitBranch}
-              setGitBranch={setGitBranch}
-              webhookSecretShown={webhookSecretShown}
-              copied={copied}
-              onCopyUrl={(url) => void copyText(url, "url")}
-              onCopyWebhook={(url) => void copyText(url, "webhook")}
-              onConnect={(sel) => void connectGit(sel)}
-              onDisconnect={() => void disconnectGit()}
-              onDeploy={() => {
-                setMode("git")
-                void deploy("git")
-              }}
-            />
+            <div className="surface-panel p-4">
+              <p className="text-sm text-muted-foreground">
+                Logs are scoped to each service. Open a service and use its Logs
+                tab.
+              </p>
+            </div>
           ) : null}
 
           {section === "secrets" ? (
-            <SecretsPanel
-              secretsYaml={project.secretsYaml}
-              copied={copied === "secrets"}
-              onCopy={() => void copyText(project.secretsYaml ?? "", "secrets")}
-              onDownload={downloadSecrets}
-            />
+            <SecretsPanel projectId={project.id} />
           ) : null}
 
-          {section === "backups" ? (
-            <BackupsPanel
-              schedule={schedule}
-              backups={backups}
+          {section === "settings" ? (
+            <ProjectSettingsPanel
+              project={project}
+              onError={setError}
               pending={pending}
-              onRun={() => void runBackup()}
+              setPending={setPending}
             />
           ) : null}
         </div>
       </div>
 
-      <Sheet
-        open={stackTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setStackTarget(null)
+      <AddServiceDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        projectId={project.id}
+        onCreated={async (serviceId) => {
+          await refresh()
+          if (serviceId) {
+            void router.navigate({
+              to: "/projects/$projectId/services/$serviceId",
+              params: { projectId: project.id, serviceId },
+            })
+          }
         }}
-      >
-        <SheetContent
-          side="right"
-          className="w-full gap-0 p-0 sm:max-w-xl"
-          showCloseButton
+        onError={setError}
+      />
+
+      <DeployServiceDialog
+        service={selectedService ?? null}
+        onClose={() => setDeployServiceId(null)}
+        onDeployed={refresh}
+        onError={setError}
+      />
+    </AppShell>
+  )
+}
+
+function DeployServiceDialog({
+  service,
+  onClose,
+  onDeployed,
+  onError,
+}: {
+  service: { id: string; name: string; containerPort: number } | null
+  onClose: () => void
+  onDeployed: () => Promise<void>
+  onError: (message: string | null) => void
+}) {
+  const [sourcePath, setSourcePath] = useState("")
+  const [image, setImage] = useState("")
+  const [pending, setPending] = useState(false)
+
+  async function deploy(event: React.FormEvent) {
+    event.preventDefault()
+    if (!service) return
+    setPending(true)
+    onError(null)
+    try {
+      await client.deployments.create({
+        serviceId: service.id,
+        ...(sourcePath.trim()
+          ? { sourcePath: sourcePath.trim() }
+          : image.trim()
+            ? { image: image.trim() }
+            : { fromGit: true }),
+      })
+      onClose()
+      await onDeployed()
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <ActionDialog
+      open={Boolean(service)}
+      onOpenChange={(open) => !open && onClose()}
+      title={service ? `Deploy ${service.name}` : "Deploy"}
+      description="Deploy from Git, a source path, or a prebuilt image."
+      icon={RocketIcon}
+      footer={
+        <Button type="submit" form="deploy-service" disabled={pending}>
+          Deploy
+        </Button>
+      }
+    >
+      <form id="deploy-service" className="space-y-3" onSubmit={deploy}>
+        <div className="space-y-1.5">
+          <Label htmlFor="source-path">Source path</Label>
+          <Input
+            id="source-path"
+            value={sourcePath}
+            onChange={(event) => setSourcePath(event.target.value)}
+            placeholder="/absolute/path/to/service"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="image">Or container image</Label>
+          <Input
+            id="image"
+            value={image}
+            onChange={(event) => setImage(event.target.value)}
+            placeholder="ghcr.io/you/service:latest"
+          />
+        </div>
+      </form>
+    </ActionDialog>
+  )
+}
+
+function SecretsPanel({ projectId }: { projectId: string }) {
+  const [masked, setMasked] = useState(true)
+  const [yaml, setYaml] = useState("")
+  const [loading, setLoading] = useState(true)
+
+  async function load(reveal: boolean) {
+    setLoading(true)
+    try {
+      const result = await client.projects.secrets({ id: projectId, reveal })
+      setYaml(
+        result.secretsYaml ||
+          "No credentials yet. Add Postgres/Redis first.",
+      )
+      setMasked(result.masked)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void load(false)
+  }, [projectId])
+
+  return (
+    <div className="surface-panel p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">Connection secrets</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Masked by default. Reveal is audited on the server.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={loading}
+          onClick={() => void load(masked)}
         >
-          <SheetHeader className="border-b pr-12">
-            <SheetTitle className="capitalize">
-              {stackTarget === "app" ? project.name : stackTarget}
-            </SheetTitle>
-            <SheetDescription>
-              {stackTarget === "app"
-                ? project.git?.connected
-                  ? deployments.length === 0
-                    ? "Ready to deploy from your connected repository."
-                    : "Live status, deploy, and recent history."
-                  : "Connect a Git repo first — then deploy in one click."
-                : "Bundled with this project. Credentials live under Secrets."}
-            </SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="flex-1">
-            <div className="flex flex-col gap-4 p-4">
-              {stackTarget === "app" ? (
-                <AppSheetBody
-                  gitConnected={Boolean(project.git?.connected)}
-                  repoLabel={repoLabel}
-                  gitBranch={project.git?.branch ?? "main"}
-                  mode={mode}
-                  setMode={setMode}
-                  showAdvanced={showAdvanced}
-                  setShowAdvanced={setShowAdvanced}
-                  sourcePath={sourcePath}
-                  setSourcePath={setSourcePath}
-                  image={image}
-                  setImage={setImage}
-                  containerPort={containerPort}
-                  setContainerPort={setContainerPort}
-                  publishPort={publishPort}
-                  setPublishPort={setPublishPort}
-                  pending={pending}
-                  canDeploy={canDeploy}
-                  latest={latest}
-                  selected={selected}
-                  deployments={deployments}
-                  onDeploy={(force) => void deploy(force)}
-                  onRetry={(id) => void retryDeploy(id)}
-                  onRollback={() => void rollback()}
-                  onFetchLogs={(d) =>
-                    void fetchLogs(d.nodeId, d.serviceName, d.id)
-                  }
-                  onSelectDeploy={setSelectedDeployId}
-                  onConnectGit={() => {
-                    setStackTarget(null)
-                    setSection("settings")
-                  }}
-                  onViewDeployments={() => {
-                    setStackTarget(null)
-                    setSection("deployments")
-                  }}
-                />
-              ) : stackTarget ? (
-                <InfraSheetBody
-                  name={stackTarget}
-                  ready={infraReady}
-                  onOpenSecrets={() => {
-                    setStackTarget(null)
-                    setSection("secrets")
-                  }}
-                />
-              ) : null}
-            </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
+          {masked ? "Reveal" : "Mask"}
+        </Button>
+      </div>
+      <ScrollArea className="h-64 rounded-lg border border-border bg-muted/20">
+        <pre className="p-4 font-mono text-xs whitespace-pre-wrap">
+          {loading ? "Loading…" : yaml}
+        </pre>
+      </ScrollArea>
+    </div>
+  )
+}
 
-      <Dialog open={destroyOpen} onOpenChange={setDestroyOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Destroy {project.name}?</DialogTitle>
-            <DialogDescription>
-              Permanently deletes the production Postgres database, Redis
-              namespace, S3 bucket, proxy route, and running containers.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button
-              variant="destructive"
-              disabled={pending}
-              onClick={() => void destroyProject()}
-            >
-              {pending ? "Destroying…" : "Destroy project"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+function ProjectSettingsPanel({
+  project,
+  onError,
+  pending,
+  setPending,
+}: {
+  project: {
+    id: string
+    name: string
+    slug: string
+    backupIntervalMs: number
+    nodeId: string | null
+  }
+  onError: (message: string | null) => void
+  pending: boolean
+  setPending: (v: boolean) => void
+}) {
+  const router = useRouter()
+  const [destroyOpen, setDestroyOpen] = useState(false)
+  const [confirm, setConfirm] = useState("")
 
+  return (
+    <div className="space-y-6">
+      <div className="surface-panel space-y-3 p-5 text-sm">
+        <h3 className="font-semibold">Project</h3>
+        <p>
+          <span className="text-muted-foreground">Name:</span> {project.name}
+        </p>
+        <p>
+          <span className="text-muted-foreground">Slug:</span>{" "}
+          <span className="font-mono">{project.slug}</span>
+        </p>
+        <p>
+          <span className="text-muted-foreground">Backup interval:</span>{" "}
+          {Math.round(project.backupIntervalMs / 3_600_000)}h
+        </p>
+        <p>
+          <span className="text-muted-foreground">Node:</span>{" "}
+          {project.nodeId ?? "unassigned"}
+        </p>
+      </div>
+      <div className="surface-panel space-y-3 p-5">
+        <h3 className="text-sm font-semibold text-destructive">Danger zone</h3>
+        <p className="text-xs text-muted-foreground">
+          Destroying a project removes all services, data containers, and
+          backups for this project.
+        </p>
+        <Button variant="destructive" onClick={() => setDestroyOpen(true)}>
+          Destroy project
+        </Button>
+      </div>
       <ActionDialog
-        open={logsOpen}
-        onOpenChange={setLogsOpen}
-        title={logsTitle}
-        description="Build and runtime output for this deployment."
-        size="xl"
-        contentClassName="max-h-[85vh]"
+        open={destroyOpen}
+        onOpenChange={setDestroyOpen}
+        title="Destroy project"
+        description={`Type ${project.name} to confirm.`}
+        icon={Trash2Icon}
         footer={
-          <Button variant="outline" onClick={() => setLogsOpen(false)}>
-            Close
+          <Button
+            variant="destructive"
+            disabled={confirm !== project.name || pending}
+            onClick={() =>
+              void (async () => {
+                setPending(true)
+                onError(null)
+                try {
+                  await client.projects.destroy({ id: project.id })
+                  void router.navigate({ to: "/" })
+                } catch (cause) {
+                  onError(
+                    cause instanceof Error ? cause.message : String(cause),
+                  )
+                  setPending(false)
+                }
+              })()
+            }
+          >
+            Destroy
           </Button>
         }
       >
-        <ScrollArea className="h-[min(28rem,55vh)] rounded-lg border bg-muted/40">
-          <pre className="p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-            {logs || "(no output)"}
-          </pre>
-        </ScrollArea>
+        <div className="space-y-2">
+          <Label>Project name</Label>
+          <Input
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder={project.name}
+          />
+        </div>
       </ActionDialog>
-    </AppShell>
+    </div>
   )
 }

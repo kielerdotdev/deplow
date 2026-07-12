@@ -31,8 +31,8 @@ one project =
 
 | Rule                    | Detail                                                                                                                 |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Bundle                  | Create project always provisions Postgres + Redis + S3 together                                                        |
-| One data plane per node | Shared instances; many projects; **no** per-project DB containers                                                      |
+| Bundle                  | Opinionated stack (web/worker + postgres/redis + S3); **service-first** — empty project, add services, bind           |
+| One data plane per node | Dedicated Postgres/Redis per project on the project’s node; shared MinIO                                               |
 | Production slot         | v1 only creates `kind: "production"` resources — shape APIs for preview slots later ([data-plane.md](./data-plane.md)) |
 | `nodeId`                | Every project pinned to a node (v1 = single local Docker node)                                                         |
 | Runtime                 | User apps → **gVisor (`runsc`)** by default ([secure-runtime.md](./secure-runtime.md))                                 |
@@ -42,7 +42,9 @@ one project =
 
 ### Explicitly DO NOT build
 
-Preview deployments, multi-node placement UI, Tailscale/Netbird edges, Compose deploys, other DBs, templates, teams/RBAC, CLI, metrics dashboards, browser terminal, public Postgres/Redis, full Traefik kitchen sink.
+Preview deployments, **custom domains** (v1 = platform wildcard only — [gtm.md](./gtm.md)), multi-node placement UI, Tailscale/Netbird edges, Compose deploys, other DBs, templates, teams/RBAC, CLI, metrics dashboards, browser terminal, public Postgres/Redis, full Traefik kitchen sink, Slack/Discord notification hubs.
+
+**Exception:** Streamable HTTP MCP at `/api/mcp` with operator PATs is in scope for agent deploy from Cursor — see [`mcp.md`](./mcp.md).
 
 Leave `SshNodeExecutor` / `HetznerSpawner` stubs alone or delete — do not implement.
 
@@ -130,22 +132,34 @@ Follow [`secure-runtime.md`](./secure-runtime.md) S1–S4:
 
 ### G2 — Platform proxy + cloudflared
 
-Per [`access.md`](./access.md):
+Per [`access.md`](./access.md) — **implemented:**
 
-1. Local reverse proxy (Caddy, Traefik, or nginx — pick one pragmatic default; document it) routing `Host: {slug}.{baseDomain}` → project container
+1. Local reverse proxy (**Caddy**) routing `Host: {slug}.{baseDomain}` → project container
 2. On deploy/stop/destroy: update proxy routes automatically
-3. cloudflared integration: operator configures tunnel token + `DEPLOW_BASE_DOMAIN` (or equivalent); tunnel points at the proxy
-4. Persist/display public URL on the project
-5. Compose/docs: how to set wildcard DNS → cloudflared once
+3. cloudflared integration: operator configures tunnel token + `DEPLOW_BASE_DOMAIN`; tunnel origin `http://caddy:80`
+4. Persist/display public URL on the service; Nodes → Public URLs shows ingress status
+5. Compose/docs: wildcard DNS → cloudflared once; Tailscale/Netbird documented as same-origin adapters
 6. **Do not** expose Postgres/Redis through the proxy
 
 ### G3 — Git webhooks
 
-1. Connect GitHub and/or GitLab repo to a project (PAT or app install — simplest secure path for v1)
-2. Webhook endpoint verifies signatures
-3. Push to configured branch → clone/fetch → build (Railpack/Dockerfile) → deploy production slot → update proxy
-4. UI: connection status, last delivery, failed delivery reason
+**Implemented** (per-service):
+
+1. Connect GitHub and/or GitLab repo to a **service** (OAuth / App / PAT)
+2. Webhook endpoint verifies signatures; auto-register remote hooks when possible (manual secret fallback)
+3. Push to configured branch → clone/fetch → build → deploy → update proxy
+4. UI: connection status, last delivery (`accepted` → terminal success/failed), failed delivery reason
 5. Manual deploy still works
+6. Smoke: `pnpm e2e` (Domains → services → Host→Caddy → backup → destroy)
+
+### G6 — Git OAuth (GitHub App + GitLab OAuth)
+
+Follow [`git-oauth.md`](./git-oauth.md):
+
+1. Happy path: **Connect GitHub/GitLab** (no PAT paste) → pick repo → auto webhook → private clone
+2. GitHub App (manifest or env) + installation tokens; GitLab OAuth Application
+3. PAT remains Advanced only
+4. Email/password login unchanged
 
 ### G4 — World-class UX
 
@@ -172,30 +186,30 @@ Implement [`ux-roadmap.md`](./ux-roadmap.md) **P0 + P1** (P2 optional):
 
 ### Product
 
-- [x] Project create provisions production Postgres + Redis + S3; credentials encrypted; `nodeId` set
+- [x] Project create pins `nodeId`; services provisioned on demand; credentials encrypted
 - [x] User app containers use gVisor + hardened HostConfig by default
 - [x] Missing `runsc` fails deploy with actionable error when required
 - [x] `{slug}.{baseDomain}` routes to the running app via platform proxy
 - [x] cloudflared documented + configurable as v1 edge
 - [x] Git webhook push deploys production; signature-verified
 - [x] Image / Dockerfile / Railpack deploys still work from UI
-- [x] Env injection + scheduled backups + destroy remain correct
-- [x] No preview/multi-node/other-edge features shipped
+- [x] Env injection (bindings) + scheduled backups + destroy remain correct
+- [x] No preview/multi-node/custom-domain features shipped
 
 ### UX
 
-- [x] New user can create → deploy without reading internal docs
-- [x] Project page has one primary Deploy action and visible stack state
+- [x] Project page has one primary Deploy action and visible stack state (ux-roadmap P0/P1)
 - [x] Deploy shows live status + logs; failure offers Retry
 - [x] Public URL and secrets download are obvious
 - [x] Git connection is understandable in one glance
+- [x] New user can create → deploy without reading internal docs (install.sh → Domains → deploy; [gtm.md](./gtm.md) for remaining GTM polish)
 - [x] Happy path hides nodes/providers/builder choice
-- [x] Passes the UX grammar checklist above
+- [ ] Passes the UX grammar checklist above (ongoing)
 
 ### Engineering
 
 - [x] Core stays framework-agnostic
-- [x] `pnpm check` and `pnpm test` pass (when deps installed)
+- [ ] `pnpm check` and `pnpm test` pass
 - [x] Tests for runtime HostConfig, proxy route naming, webhook signature verification (as applicable)
 
 ---

@@ -74,16 +74,16 @@ Self-hosted UIs often win on feature count and lose on path clarity: compose, ma
 
 ## Already right (protect these)
 
-- Bundled infra on create (not à-la-carte)
-- Auto-inject `DATABASE_URL` / `REDIS_URL` / `S3_*`
+- Opinionated stack (web/worker + postgres/redis + S3) — not a Coolify resource catalog
+- Explicit bindings inject `DATABASE_URL` / `REDIS_URL` / `S3_*`
 - Railpack default + Dockerfile if present
-- Scheduled backups by default
+- Scheduled backups when Postgres exists
 - Destroy tears down containers + infra
 - Downloadable `secrets.yaml`
 
 UI copy should reinforce the one-line mental model everywhere:
 
-> This project is your app plus Postgres, Redis, and S3. Deploy source; we inject credentials and back up Postgres.
+> This project holds your services — apps plus Postgres, Redis, and S3. Bind, deploy source; we inject credentials and back up Postgres.
 
 ---
 

@@ -3,7 +3,13 @@ title: Prerequisites
 description: Docker, gVisor, BuildKit, Railpack, Caddy/cloudflared, and Node.js requirements before running deplow.
 ---
 
-Before installing deplow, make sure your host has the following.
+Prefer the host bootstrap (installs/verifies BuildKit, Railpack, and gVisor, then starts platform services):
+
+```bash
+bash scripts/install.sh
+```
+
+Or satisfy the requirements below manually.
 
 ## Required
 
@@ -18,7 +24,7 @@ Before installing deplow, make sure your host has the following.
 
 ## gVisor setup
 
-User application containers run under **gVisor** by default (`DEPLOW_APP_RUNTIME=runsc`). Platform services (Postgres, Redis, MinIO, Caddy) stay on ordinary runc.
+User application containers run under **gVisor** by default (`DEPLOW_APP_RUNTIME=runsc`). Platform services (MinIO, Caddy, platform Redis) stay on ordinary runc. App Postgres/Redis are dedicated containers per service (also platform-managed, not gVisor).
 
 ```bash
 # Follow https://gvisor.dev/docs/user_guide/install/ then:
@@ -55,33 +61,40 @@ Optionally set `RAILPACK_BIN` if the binary lives elsewhere.
 
 ## Public URLs (Caddy + cloudflared)
 
-deplow’s platform reverse proxy is **Caddy** (included in `docker-compose.yml`). The v1 edge is **cloudflared**.
+deplow’s platform reverse proxy is **Caddy** (included in `docker-compose.yml`). **Domains are configured in the app** (Domains tab). Edges only forward to Caddy; the v1 edge is **cloudflared**.
 
-1. Set `DEPLOW_BASE_DOMAIN=apps.example.com`.
-2. Create a Cloudflare Tunnel that forwards to Caddy (`http://caddy:80` on the compose network, or host port `8088`).
-3. Point a **wildcard** DNS record `*.apps.example.com` at the tunnel **once**.
+**v1 is wildcard-only:** every web service gets a hostname under `*.{baseDomain}`. Custom domains are **v2**. **TLS terminates at Cloudflare** on the tunnel; Caddy on the host is HTTP-only (no Let’s Encrypt on Caddy in v1).
+
+**Origins:** `http://caddy:80` (compose) · `http://127.0.0.1:8088` (host).
+
+1. In the dashboard: set base domain (e.g. `apps.example.com`), protocol `https`, enable auto-assign subdomains.
+2. Create a Cloudflare Tunnel. Public hostname `*.apps.example.com` → service `http://caddy:80` (path `/`). The compose `edge` profile runs cloudflared on the **same default network** as Caddy.
+3. Point a **wildcard** DNS CNAME `*.apps.example.com` at the tunnel **once** (proxied).
 4. Set `CLOUDFLARE_TUNNEL_TOKEN` and start the edge profile:
 
 ```bash
 docker compose --profile edge up -d
 ```
 
-Every project then gets `https://{slug}.{baseDomain}` without more DNS. Postgres and Redis are never exposed through the proxy. See repo docs `docs/access.md`.
+Every web service then gets `https://{slug}.{baseDomain}` (or `{project}-{service}.{baseDomain}`) without more DNS. Postgres and Redis are never exposed through the proxy.
+
+`DEPLOW_BASE_DOMAIN` only seeds the DB on first boot. Other edges (Tailscale Serve, Netbird) forward to the same origins — see repo `docs/access.md` and `docs/gtm.md`.
 
 ## Platform services
 
-deplow expects shared platform services for workloads:
+Compose starts platform glue (not shared app databases):
 
-- **Postgres 16** — per-project databases and users
-- **Redis 7** — per-project ACL namespaces
+- **platform Redis** — BullMQ queues
 - **MinIO** — per-project S3 buckets
 - **Caddy** — hostname → app container routing
+- **BuildKit** — source/Dockerfile builds (also started by `scripts/install.sh`)
 
-The repo ships a `docker-compose.yml` that starts these on non-default host ports so they do not collide with local dev databases.
+**Postgres and Redis for apps** are dedicated Docker containers created when you add those services to a project.
 
 ## What you do not need
 
-- A separate hosted Postgres / Redis / S3 account per app (the platform bundle covers that)
+- A separate hosted Postgres / Redis / S3 account per app
 - Kubernetes, Swarm, or multi-host SSH setup
 - A separate database for each app's control plane (SQLite is used)
 - Per-project DNS records (one wildcard → cloudflared is enough)
+- Custom domains or Let’s Encrypt on Caddy (v1 uses Cloudflare TLS + platform wildcard)

@@ -5,6 +5,13 @@ description: pnpm workspace commands for development and operations.
 
 Run these from the repository root.
 
+## Host bootstrap
+
+| Command                               | Description                                                         |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `bash scripts/install.sh`             | Verify/install BuildKit, Railpack, gVisor; compose up; db push      |
+| `pnpm install:host`                   | Alias for `bash scripts/install.sh`                                 |
+
 ## Development
 
 | Command          | Description                        |
@@ -17,11 +24,11 @@ Run these from the repository root.
 
 ## Infrastructure
 
-| Command           | Description                              |
-| ----------------- | ---------------------------------------- |
-| `pnpm infra:up`   | Start Postgres, Redis, MinIO via compose |
-| `pnpm infra:down` | Stop platform services                   |
-| `pnpm infra:ps`   | Show compose service status              |
+| Command           | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `pnpm infra:up`   | Start MinIO, Caddy, platform Redis via compose    |
+| `pnpm infra:down` | Stop platform services                            |
+| `pnpm infra:ps`   | Show compose service status                       |
 
 ## Database
 

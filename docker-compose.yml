@@ -2,42 +2,24 @@
 # Host ports chosen to avoid common collisions on shared machines.
 #
 # User apps join the `default` network (name: deplow_default) so they can
-# resolve postgres/redis/minio by Docker DNS. The Caddy proxy is the only
-# public HTTP entry for apps; Postgres/Redis stay private.
+# resolve dedicated per-project Postgres/Redis containers and MinIO by Docker DNS.
+# The Caddy proxy is the only public HTTP entry for apps; data services stay private.
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: deplow-postgres
-    restart: unless-stopped
-    # Platform services stay on default runc — never runsc
-    environment:
-      POSTGRES_USER: deplow
-      POSTGRES_PASSWORD: deplow
-      POSTGRES_DB: postgres
-    ports:
-      - "55432:5432"
-    volumes:
-      - deplow_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U deplow -d postgres"]
-      interval: 3s
-      timeout: 5s
-      retries: 20
-
-  redis:
+  # Control-plane Redis for BullMQ (not per-project tenant Redis)
+  platform-redis:
     image: redis:7-alpine
-    container_name: deplow-redis
+    container_name: deplow-platform-redis
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "deplow", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "56379:6379"
+      - "56380:6379"
     volumes:
-      - deplow_redis_data:/data
+      - deplow_platform_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "deplow", "ping"]
-      interval: 3s
-      timeout: 5s
-      retries: 20
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   minio:
     image: minio/minio:latest
@@ -73,7 +55,9 @@ services:
       "
 
   # Platform reverse proxy: Host {slug}.{baseDomain} → app container.
-  # cloudflared (optional profile `edge`) points at this proxy.
+  # All edges (cloudflared, Tailscale Serve, Netbird) forward here with Host preserved.
+  # Compose-network origin: http://caddy:80
+  # Host-side origin:       http://127.0.0.1:8088
   caddy:
     image: caddy:2-alpine
     container_name: deplow-caddy
@@ -84,14 +68,20 @@ services:
       - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./infra/caddy/routes:/etc/caddy/routes
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/deplow-health"]
       interval: 10s
       timeout: 3s
       retries: 5
 
-  # v1 edge: Cloudflare Tunnel. Enable with:
+  # v1 edge: Cloudflare Tunnel on the default compose network (same as caddy).
+  # Enable with:
   #   CLOUDFLARE_TUNNEL_TOKEN=... docker compose --profile edge up -d
-  # Point wildcard DNS (*.apps.example.com) at the tunnel once.
+  # In Cloudflare Zero Trust → your tunnel → Public Hostname:
+  #   Hostname: *.apps.example.com
+  #   Path:     /
+  #   Service:  http://caddy:80
+  # DNS: CNAME *.apps.example.com → <tunnel-id>.cfargotunnel.com (proxied).
+  # cloudflared reaches Caddy via Docker DNS on the shared default network.
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: deplow-cloudflared
@@ -101,9 +91,9 @@ services:
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
     depends_on:
-      - caddy
+      caddy:
+        condition: service_healthy
 
 volumes:
-  deplow_pg_data:
-  deplow_redis_data:
   deplow_minio_data:
+  deplow_platform_redis_data:

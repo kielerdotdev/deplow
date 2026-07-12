@@ -1,202 +1,240 @@
 ---
 import LandingLayout from '../layouts/LandingLayout.astro';
 import Logo from '../components/landing/Logo.astro';
-import HeroDiagram from '../components/landing/diagrams/HeroDiagram.astro';
-import StackDiagram from '../components/landing/diagrams/StackDiagram.astro';
-import StepIcons from '../components/landing/diagrams/StepIcons.astro';
-import FeatureIcons from '../components/landing/icons/FeatureIcons.astro';
+import DashboardMockup from '../components/landing/diagrams/DashboardMockup.astro';
 
 const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
+const installCmd = 'git clone https://github.com/deplow/deplow.git && cd deplow && bash scripts/install.sh && pnpm dev';
 
-const features = [
+const pillars = [
 	{
-		kind: 'bundle' as const,
-		title: 'Full stack per project',
-		body: 'Postgres, redis, and an S3 bucket — provisioned and isolated when you create a project.',
+		title: 'Typed services, not a catalog',
+		body: 'Empty project → add web, worker, postgres, redis → bind credentials. Same opinionated stack every time.',
 	},
 	{
-		kind: 'build' as const,
-		title: 'Railpack or Dockerfile',
-		body: 'Source builds with Railpack by default. Bring a Dockerfile or pull a prebuilt image.',
-	},
-	{
-		kind: 'backup' as const,
-		title: 'Scheduled backups',
-		body: 'pg_dump on a timer. Artifacts land in the platform backup bucket automatically.',
-	},
-	{
-		kind: 'sandbox' as const,
 		title: 'gVisor by default',
-		body: 'User apps run sandboxed. Platform services stay on ordinary runc — security over convenience.',
+		body: 'User apps run under runsc. Platform glue stays on runc. Security where untrusted code actually runs.',
+	},
+	{
+		title: 'One wildcard, done',
+		body: 'Domains tab sets *.{baseDomain}. Cloudflare Tunnel terminates TLS. Caddy on the host stays HTTP-only.',
 	},
 ];
 
 const steps = [
+	{ n: '1', title: 'Install', body: 'scripts/install.sh verifies BuildKit, Railpack, and gVisor, then starts platform services.' },
+	{ n: '2', title: 'Domains', body: 'Set base domain once. Optional cloudflared edge for public HTTPS.' },
+	{ n: '3', title: 'Services', body: 'Add web + data, bind DATABASE_URL / REDIS_URL, deploy from the dashboard or git.' },
+	{ n: '4', title: 'Operate', body: 'Live logs, retry, rollback, scheduled pg_dump to platform MinIO, destroy that cleans up.' },
+];
+
+const notFor = [
+	'Compose as a deploy path',
+	'MySQL / Mongo / template marketplaces',
+	'Custom domains or PR previews (v2)',
+	'Multi-server fleets or Swarm',
+	'SSO or a typed CLI',
+];
+
+const faqs = [
 	{
-		kind: 'create' as const,
-		n: '1',
-		title: 'Create',
-		body: 'Spin up postgres, redis, and a bucket. Credentials encrypted at rest.',
+		q: 'What is deplow?',
+		a: 'A small <strong>self-hosted control plane</strong> for typed services (web, worker, postgres, redis) plus bindings and S3 on one Docker host. User apps run under gVisor.',
 	},
 	{
-		kind: 'build' as const,
-		n: '2',
-		title: 'Build',
-		body: 'Railpack, Dockerfile, or pull a prebuilt image. Same path every time.',
+		q: 'How is this different from Coolify or Dokploy?',
+		a: 'Those win on breadth (Compose, templates, many DBs, fleets). deplow wins on a <strong>Railway-shaped loop</strong> with gVisor defaults. See <a href="/docs/concepts/scope/">Scope</a>.',
 	},
 	{
-		kind: 'run' as const,
-		n: '3',
-		title: 'Run',
-		body: 'Env vars injected. Container starts under gVisor on your host.',
+		q: 'Can I attach a custom domain?',
+		a: 'Not in v1. Every web service gets a URL under your platform wildcard. Custom domains are planned for v2.',
 	},
 	{
-		kind: 'backup' as const,
-		n: '4',
-		title: 'Back up',
-		body: 'Scheduled pg_dump into the platform bucket. No extra cron to write.',
+		q: 'Where does TLS happen?',
+		a: 'At <strong>Cloudflare</strong> on the tunnel. Caddy is HTTP-only on the host — no Let’s Encrypt on Caddy in v1.',
+	},
+	{
+		q: 'Where do backups go?',
+		a: 'Scheduled <code>pg_dump</code> artifacts land in the platform MinIO backup bucket.',
+	},
+	{
+		q: 'Is there a CLI?',
+		a: 'No typed CLI and no general public REST API in v1. Dashboard-first; optional MCP tokens for agents.',
 	},
 ];
 ---
 
 <LandingLayout
-	title="deplow — self-hosted app + postgres + redis + s3"
-	description="Deploy to your own Docker host. One project gets postgres, redis, s3, secrets, builds, backups — user apps sandboxed with gVisor."
+	title="deplow — self-hosted apps under gVisor"
+	description="deplow is a self-hosted control plane: typed services, bindings, Railpack builds, gVisor sandboxes, and wildcard URLs on the Docker host you already run."
 >
 	<header class="nav">
 		<div class="nav-inner">
 			<a class="brand" href="/">
 				<Logo />
-				deplow
+				<span>deplow</span>
 			</a>
-			<nav class="nav-links">
-				<a href="#loop">The loop</a>
+			<button type="button" class="nav-toggle" aria-label="Menu" aria-expanded="false" data-nav-toggle>
+				<span></span><span></span>
+			</button>
+			<nav class="nav-links" data-nav-links>
+				<a href="#how">How it works</a>
+				<a href="#security">Security</a>
 				<a href="/docs/">Docs</a>
-				<a class="btn btn--ink" href={appUrl}>Dashboard →</a>
+				<a class="btn btn--ghost" href={appUrl}>Dashboard</a>
 			</nav>
 		</div>
 	</header>
 
 	<main>
-		<!-- HERO -->
-		<section class="hero wrap">
-			<p class="hero-eyebrow"><i></i> self-hosted · sandboxed · single host</p>
-			<h1>You have Docker.<br /><span>You want fewer tabs.</span></h1>
-			<p class="hero-lede">
-				<strong>deplow</strong> is a small control plane for one kind of project: an app plus postgres,
-				redis, s3, and secrets — on a machine you already control. User apps run under gVisor by default.
-			</p>
-			<div class="hero-actions">
-				<a class="btn btn--clay" href="/docs/getting-started/quick-start/">Start here</a>
-				<a class="btn btn--ghost" href="/docs/">Read docs</a>
+		<section class="hero">
+			<div class="hero-plane" aria-hidden="true">
+				<div class="hero-plane-inner">
+					<DashboardMockup />
+				</div>
 			</div>
-			<p class="hero-note">compose up · pnpm dev · open dashboard</p>
-
-			<div class="hero-diagram">
-				<HeroDiagram />
-			</div>
-		</section>
-
-		<!-- FEATURES -->
-		<section class="section wrap">
-			<div class="section-head section-head--center">
-				<p class="section-label">what you get</p>
-				<h2>One project. The whole bundle.</h2>
-				<p>Skip the hosted Postgres tab, the Redis tab, and the backup cron you meant to write.</p>
-			</div>
-			<div class="features">
-				{
-					features.map((f) => (
-						<article class="feature">
-							<FeatureIcons kind={f.kind} />
-							<h3>{f.title}</h3>
-							<p>{f.body}</p>
-						</article>
-					))
-				}
-			</div>
-			<div class="out">
-				<span class="out-label">not this release</span>
-				<div class="out-tags">
-					<span>kubernetes</span>
-					<span>multi-host</span>
-					<span>marketplace</span>
-					<span>custom domains / ssl</span>
+			<div class="hero-copy" data-reveal>
+				<p class="brand-mark">deplow</p>
+				<h1>Self-hosted apps.<br />Sandboxed by default.</h1>
+				<p class="hero-lede">
+					Typed services on one Docker host — postgres, redis, S3, git push, wildcard URLs —
+					with user code behind gVisor.
+				</p>
+				<div class="hero-actions">
+					<a class="btn btn--accent" href="/docs/getting-started/quick-start/">Quick start</a>
+					<a class="btn btn--ghost" href="/docs/concepts/scope/">What we don’t build</a>
+				</div>
+				<div class="install">
+					<span class="prompt">$</span>
+					<code>{installCmd}</code>
+					<button type="button" class="copy" aria-label="Copy install command" data-copy={installCmd}>
+						Copy
+					</button>
 				</div>
 			</div>
 		</section>
 
-		<!-- LOOP -->
-		<section class="section wrap--wide" id="loop">
-			<div class="section-head section-head--center">
-				<p class="section-label">deploy cycle</p>
-				<h2>The loop does not change</h2>
-				<p>Same four beats for every project. No branching strategy matrix.</p>
+		<section class="pillars" id="features" data-reveal>
+			{
+				pillars.map((p) => (
+					<div class="pillar">
+						<h2>{p.title}</h2>
+						<p>{p.body}</p>
+					</div>
+				))
+			}
+		</section>
+
+		<section class="section" id="how" data-reveal>
+			<div class="section-head">
+				<h2>The loop</h2>
+				<p>Four steps. No resource catalog. No “what kind of thing is this?”</p>
 			</div>
-			<div class="steps">
+			<ol class="steps">
 				{
 					steps.map((s) => (
-						<figure class="step">
-							<div class="step-art">
-								<StepIcons kind={s.kind} />
-							</div>
-							<figcaption class="step-body">
-								<div class="step-title">
-									<span class="step-n">{s.n}</span>
-									{s.title}
-								</div>
+						<li>
+							<span class="step-n">{s.n}</span>
+							<div>
+								<h3>{s.title}</h3>
 								<p>{s.body}</p>
-							</figcaption>
-						</figure>
+							</div>
+						</li>
+					))
+				}
+			</ol>
+		</section>
+
+		<section class="section security" id="security" data-reveal>
+			<div class="section-head">
+				<h2>gVisor is the product feature</h2>
+				<p>
+					User apps run under <code>runsc</code>. Dedicated Postgres/Redis and platform MinIO/Caddy stay on runc.
+					The Docker socket never enters app containers.
+				</p>
+			</div>
+			<ul class="security-list">
+				<li>Hardened HostConfig: dropped caps, no-new-privileges, readonly rootfs, memory/CPU limits</li>
+				<li>Missing runsc fails the deploy instead of silently falling back</li>
+				<li>Credentials flow through explicit bindings — least privilege, not a mega-env dump</li>
+			</ul>
+		</section>
+
+		<section class="section out" data-reveal>
+			<div class="section-head">
+				<h2>Not for everyone — on purpose</h2>
+				<p>
+					If you need Coolify’s breadth, use Coolify.
+					<a href="/docs/concepts/scope/">Full scope →</a>
+				</p>
+			</div>
+			<ul class="out-list">
+				{notFor.map((item) => <li>{item}</li>)}
+			</ul>
+		</section>
+
+		<section class="section" data-reveal>
+			<div class="section-head">
+				<h2>Questions</h2>
+			</div>
+			<div class="faq">
+				{
+					faqs.map((f) => (
+						<details>
+							<summary>{f.q}</summary>
+							<div class="faq-a" set:html={f.a} />
+						</details>
 					))
 				}
 			</div>
 		</section>
 
-		<!-- STACK -->
-		<section class="section wrap">
-			<div class="stack-grid">
-				<div class="stack-copy">
-					<p class="section-label">under the hood</p>
-					<h2>Layers you can explain in one breath</h2>
-					<p>
-						SQLite holds project metadata. Postgres, redis, and minio hold workload data. Docker runs
-						the host; <strong>user apps run under gVisor</strong> with hardened defaults.
-					</p>
-					<p>
-						No ssh nodes, no swarm, no kube operator. If you need those, this is not your tool — and
-						that is fine.
-					</p>
-				</div>
-				<div class="stack-diagram">
-					<StackDiagram />
-				</div>
-			</div>
-		</section>
-
-		<!-- CTA -->
-		<section class="wrap">
-			<div class="cta">
-				<div>
-					<h2>Ten-minute local setup</h2>
-					<p>Compose file for platform services ships in the repo. pnpm dev for the control plane.</p>
-				</div>
-				<div class="cta-actions">
-					<a class="btn btn--light" href="/docs/getting-started/quick-start/">Quick start</a>
-					<a class="btn btn--ghost-light" href={appUrl}>Open dashboard</a>
-				</div>
+		<section class="cta" data-reveal>
+			<h2>Install on your host.</h2>
+			<p>Bootstrap, Domains, deploy from the dashboard or git. That’s the launch bar.</p>
+			<div class="hero-actions">
+				<a class="btn btn--accent" href="/docs/getting-started/quick-start/">Read quick start</a>
+				<a class="btn btn--ghost" href={appUrl}>Open dashboard</a>
 			</div>
 		</section>
 	</main>
 
-	<footer class="footer wrap--wide">
+	<footer class="footer">
 		<div class="footer-inner">
-			<span>deplow · self-hosted on your docker host</span>
-			<div class="footer-links">
+			<a class="brand" href="/">
+				<Logo size={22} />
+				<span>deplow</span>
+			</a>
+			<nav>
 				<a href="/docs/">Docs</a>
-				<a href="/docs/reference/environment/">Env vars</a>
+				<a href="/docs/guides/domains/">Domains</a>
+				<a href="/docs/concepts/scope/">Scope</a>
 				<a href={appUrl}>Dashboard</a>
-			</div>
+			</nav>
+			<p>© 2026 deplow · MIT</p>
 		</div>
 	</footer>
+
+	<script>
+		const toggle = document.querySelector<HTMLButtonElement>('[data-nav-toggle]');
+		const links = document.querySelector<HTMLElement>('[data-nav-links]');
+		toggle?.addEventListener('click', () => {
+			const open = links?.classList.toggle('is-open');
+			toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+		});
+
+		const copyBtn = document.querySelector<HTMLButtonElement>('[data-copy]');
+		copyBtn?.addEventListener('click', async () => {
+			const text = copyBtn.getAttribute('data-copy') ?? '';
+			try {
+				await navigator.clipboard.writeText(text);
+				copyBtn.textContent = 'Copied';
+				setTimeout(() => {
+					copyBtn.textContent = 'Copy';
+				}, 1400);
+			} catch {
+				/* noop */
+			}
+		});
+	</script>
 </LandingLayout>

@@ -1,42 +1,56 @@
 import { spawn } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync, renameSync } from "node:fs"
 import path from "node:path"
 
+import { normalizeProductionStartCommand } from "./normalize-start-command"
+
 export type BuildStrategy = "dockerfile" | "railpack" | "image"
+export type BuildStrategyOverride = "auto" | "railpack" | "dockerfile"
 
 export interface BuildSelectionInput {
-  /** Prebuilt registry/local image (no source build) */
   image?: string
-  /** Absolute path to application source */
   sourcePath?: string
-  /** When true, source tree contains a Dockerfile (caller may pre-detect) */
   hasDockerfile?: boolean
+  strategyOverride?: BuildStrategyOverride | null
+  dockerfilePath?: string | null
 }
 
 /**
  * Pure selection rules for how a deployment is produced.
  * - image only → pull/run image
+ * - strategyOverride dockerfile | railpack → that strategy
  * - source + Dockerfile → docker build
  * - source without Dockerfile → railpack
  */
 export function selectBuildStrategy(input: BuildSelectionInput): BuildStrategy {
   const image = input.image?.trim()
   const sourcePath = input.sourcePath?.trim()
+  const override = input.strategyOverride
 
-  if (image && !sourcePath) {
-    return "image"
-  }
+  if (image && !sourcePath) return "image"
+
   if (sourcePath) {
+    if (override === "dockerfile") return "dockerfile"
+    if (override === "railpack") return "railpack"
+
     const hasDockerfile =
-      input.hasDockerfile ??
-      (existsSync(path.join(sourcePath, "Dockerfile")) ||
-        existsSync(path.join(sourcePath, "dockerfile")))
+      input.hasDockerfile ?? detectDockerfile(sourcePath, input.dockerfilePath)
     return hasDockerfile ? "dockerfile" : "railpack"
   }
+
   throw new Error("Either image or sourcePath is required for deploy")
 }
 
-export function detectDockerfile(sourcePath: string): boolean {
+export function detectDockerfile(
+  sourcePath: string,
+  dockerfilePath?: string | null,
+): boolean {
+  if (dockerfilePath) {
+    const abs = path.isAbsolute(dockerfilePath)
+      ? dockerfilePath
+      : path.join(sourcePath, dockerfilePath)
+    return existsSync(abs)
+  }
   return (
     existsSync(path.join(sourcePath, "Dockerfile")) ||
     existsSync(path.join(sourcePath, "dockerfile"))
@@ -49,18 +63,28 @@ export interface BuildResult {
   logs: string
 }
 
+export interface BuildFromSourceInput {
+  sourcePath: string
+  projectSlug: string
+  deploymentId: string
+  rootDirectory?: string | null
+  dockerfilePath?: string | null
+  strategyOverride?: BuildStrategyOverride | null
+  buildCommand?: string | null
+  startCommand?: string | null
+  /** Called with stdout/stderr chunks as the build runs (for live log preview). */
+  onLog?: (chunk: string) => void
+}
+
 export interface BuildServiceOptions {
-  /** Path to railpack binary (default: railpack on PATH) */
   railpackBin?: string
-  /** BUILDKIT_HOST for railpack, e.g. docker-container://buildkit */
   buildkitHost?: string
-  /** Override docker binary */
   dockerBin?: string
-  /** For tests: inject command runner */
   runCommand?: (
     cmd: string,
     args: string[],
     env?: Record<string, string>,
+    onOutput?: (chunk: string) => void,
   ) => Promise<{ code: number; stdout: string; stderr: string }>
 }
 
@@ -88,53 +112,182 @@ export class BuildService {
     return `deplow/${projectSlug}:${deploymentId}`
   }
 
-  async buildFromSource(input: {
-    sourcePath: string
-    projectSlug: string
-    deploymentId: string
-  }): Promise<BuildResult> {
-    const sourcePath = path.resolve(input.sourcePath)
-    if (!existsSync(sourcePath)) {
-      throw new Error(`Source path does not exist: ${sourcePath}`)
+  async buildFromSource(input: BuildFromSourceInput): Promise<BuildResult> {
+    const repoRoot = path.resolve(input.sourcePath)
+    if (!existsSync(repoRoot)) {
+      throw new Error(`Source path does not exist: ${repoRoot}`)
     }
 
-    const hasDockerfile = detectDockerfile(sourcePath)
+    const contextPath = resolveRootDirectory(repoRoot, input.rootDirectory)
+    if (!existsSync(contextPath)) {
+      throw new Error(
+        `Root directory does not exist: ${input.rootDirectory ?? "."}`,
+      )
+    }
+
+    const dockerfileAbs = resolveDockerfileAbsolute(
+      repoRoot,
+      contextPath,
+      input.dockerfilePath,
+    )
     const strategy = selectBuildStrategy({
-      sourcePath,
-      hasDockerfile,
+      sourcePath: contextPath,
+      hasDockerfile:
+        Boolean(dockerfileAbs) || detectDockerfile(contextPath, null),
+      strategyOverride: input.strategyOverride,
+      dockerfilePath: dockerfileAbs,
     })
     const image = this.imageTag(input.projectSlug, input.deploymentId)
 
     if (strategy === "dockerfile") {
-      const result = await this.runCommand(this.dockerBin, [
-        "build",
-        "-t",
+      return this.buildWithDockerfile(
+        contextPath,
         image,
-        sourcePath,
-      ])
-      const logs = formatLogs("dockerfile", result)
-      if (result.code !== 0) {
-        throw new Error(`docker build failed:\n${logs}`)
-      }
-      return { strategy, image, logs }
+        dockerfileAbs
+          ? path.relative(contextPath, dockerfileAbs) ||
+              path.basename(dockerfileAbs)
+          : null,
+        dockerfileAbs,
+        input.onLog,
+      )
     }
+    return this.buildWithRailpack(
+      contextPath,
+      image,
+      {
+        buildCommand: input.buildCommand,
+        startCommand: normalizeProductionStartCommand(
+          input.startCommand,
+          contextPath,
+        ),
+      },
+      input.onLog,
+    )
+  }
 
-    // railpack
+  private async buildWithDockerfile(
+    sourcePath: string,
+    image: string,
+    dockerfileRel: string | null,
+    dockerfileAbs: string | null,
+    onLog?: (chunk: string) => void,
+  ): Promise<BuildResult> {
+    const args = ["build", "-t", image]
+    if (dockerfileAbs) {
+      args.push("-f", dockerfileAbs)
+    } else if (dockerfileRel) {
+      const resolved = resolveDockerfilePath(sourcePath, dockerfileRel)
+      if (!resolved) {
+        throw new Error(`Dockerfile not found at ${dockerfileRel}`)
+      }
+      args.push("-f", resolved)
+    }
+    args.push(sourcePath)
+
+    onLog?.("=== dockerfile ===\n")
+    const result = await this.runCommand(
+      this.dockerBin,
+      args,
+      undefined,
+      onLog,
+    )
+    if (result.code !== 0) {
+      throw new Error(
+        `docker build failed:\n${formatLogs("dockerfile", result)}`,
+      )
+    }
+    return {
+      strategy: "dockerfile",
+      image,
+      logs: formatLogs("dockerfile", result),
+    }
+  }
+
+  private async buildWithRailpack(
+    sourcePath: string,
+    image: string,
+    cmds: { buildCommand?: string | null; startCommand?: string | null },
+    onLog?: (chunk: string) => void,
+  ): Promise<BuildResult> {
+    const prepNotes = prepareRailpackNodeLockfiles(sourcePath)
+    if (prepNotes.length) onLog?.(`${prepNotes.join("\n")}\n`)
     const env: Record<string, string> = {
       ...process.env,
       BUILDKIT_HOST: this.buildkitHost ?? "",
     }
-    const result = await this.runCommand(
-      this.railpackBin,
-      ["build", "--name", image, "--progress", "plain", sourcePath],
-      env,
-    )
-    const logs = formatLogs("railpack", result)
-    if (result.code !== 0) {
-      throw new Error(`railpack build failed:\n${logs}`)
+    const args = ["build", "--name", image, "--progress", "plain"]
+    if (cmds.buildCommand?.trim()) {
+      args.push("--build-cmd", cmds.buildCommand.trim())
     }
+    if (cmds.startCommand?.trim()) {
+      args.push("--start-cmd", cmds.startCommand.trim())
+    }
+    args.push(sourcePath)
+
+    onLog?.("=== railpack ===\n")
+    const result = await this.runCommand(this.railpackBin, args, env, onLog)
+    if (result.code !== 0) {
+      throw new Error(
+        `railpack build failed:\n${formatLogs("railpack", result)}${explainRailpackFailure(result)}`,
+      )
+    }
+    const logs = [prepNotes.join("\n"), formatLogs("railpack", result)]
+      .filter(Boolean)
+      .join("\n")
     return { strategy: "railpack", image, logs }
   }
+}
+
+export function resolveRootDirectory(
+  repoRoot: string,
+  rootDirectory?: string | null,
+): string {
+  const root = (rootDirectory ?? ".").trim() || "."
+  if (root === "." || root === "") return repoRoot
+  const resolved = path.resolve(repoRoot, root)
+  if (!resolved.startsWith(path.resolve(repoRoot))) {
+    throw new Error(`Root directory escapes repository: ${rootDirectory}`)
+  }
+  return resolved
+}
+
+/** Resolve Dockerfile path relative to build context (or absolute). */
+export function resolveDockerfilePath(
+  contextPath: string,
+  dockerfilePath: string,
+): string | null {
+  if (path.isAbsolute(dockerfilePath) && existsSync(dockerfilePath)) {
+    return dockerfilePath
+  }
+  const underContext = path.join(contextPath, dockerfilePath)
+  if (existsSync(underContext)) return underContext
+  const base = path.basename(dockerfilePath)
+  const nested = path.join(contextPath, base)
+  if (existsSync(nested)) return nested
+  return null
+}
+
+export function resolveDockerfileAbsolute(
+  repoRoot: string,
+  contextPath: string,
+  dockerfilePath?: string | null,
+): string | null {
+  const rel = dockerfilePath?.trim()
+  if (!rel) {
+    if (existsSync(path.join(contextPath, "Dockerfile"))) {
+      return path.join(contextPath, "Dockerfile")
+    }
+    if (existsSync(path.join(contextPath, "dockerfile"))) {
+      return path.join(contextPath, "dockerfile")
+    }
+    return null
+  }
+  if (path.isAbsolute(rel) && existsSync(rel)) return rel
+  const fromRepo = path.join(repoRoot, rel)
+  if (existsSync(fromRepo)) return fromRepo
+  const fromContext = path.join(contextPath, rel)
+  if (existsSync(fromContext)) return fromContext
+  return null
 }
 
 function formatLogs(
@@ -150,10 +303,83 @@ function formatLogs(
     .join("\n")
 }
 
+/**
+ * Railpack prefers bun.lock over package-lock.json. Dual lockfiles with a stale
+ * bun.lock fail as `bun install --frozen-lockfile`. When package.json does not
+ * declare bun as packageManager, stash bun lockfiles so npm is used instead.
+ */
+export function prepareRailpackNodeLockfiles(sourcePath: string): string[] {
+  const notes: string[] = []
+  const pkgPath = path.join(sourcePath, "package.json")
+  if (!existsSync(pkgPath)) return notes
+
+  let packageManager = ""
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+      packageManager?: string
+    }
+    packageManager = (pkg.packageManager ?? "").trim().toLowerCase()
+  } catch {
+    return notes
+  }
+
+  if (packageManager.startsWith("bun@") || packageManager === "bun") {
+    return notes
+  }
+
+  const hasNpmLock = existsSync(path.join(sourcePath, "package-lock.json"))
+  if (!hasNpmLock) return notes
+
+  for (const name of ["bun.lock", "bun.lockb"] as const) {
+    const lockPath = path.join(sourcePath, name)
+    if (!existsSync(lockPath)) continue
+    const stashed = `${lockPath}.deplow-ignored`
+    try {
+      if (existsSync(stashed)) {
+        renameSync(stashed, `${stashed}.${Date.now()}`)
+      }
+      renameSync(lockPath, stashed)
+      notes.push(
+        `=== deplow ===\nFound ${name} alongside package-lock.json without packageManager: bun. Using npm for Railpack (moved ${name} aside).`,
+      )
+    } catch {
+      notes.push(
+        `=== deplow ===\nCould not move ${name} aside; Railpack may still pick Bun.`,
+      )
+    }
+  }
+  return notes
+}
+
+function explainRailpackFailure(result: {
+  stdout: string
+  stderr: string
+}): string {
+  const text = `${result.stdout}\n${result.stderr}`
+  if (/lockfile had changes, but lockfile is frozen/i.test(text)) {
+    return [
+      "",
+      "=== hint ===",
+      "Bun lockfile is out of sync with package.json.",
+      "Fix in the repo: run `bun install` and commit bun.lock, or delete bun.lock if you use npm (keep package-lock.json).",
+      "If both lockfiles exist, set package.json \"packageManager\" or remove the unused lockfile.",
+    ].join("\n")
+  }
+  if (/unrecognized image format/i.test(text)) {
+    return [
+      "",
+      "=== hint ===",
+      "Railpack did not produce a usable image (often a failed install/build step above).",
+    ].join("\n")
+  }
+  return ""
+}
+
 function defaultRunCommand(
   cmd: string,
   args: string[],
   env?: Record<string, string>,
+  onOutput?: (chunk: string) => void,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
@@ -163,17 +389,19 @@ function defaultRunCommand(
     let stdout = ""
     let stderr = ""
     child.stdout.on("data", (d: Buffer) => {
-      stdout += d.toString("utf8")
+      const text = d.toString("utf8")
+      stdout += text
+      onOutput?.(text)
     })
     child.stderr.on("data", (d: Buffer) => {
-      stderr += d.toString("utf8")
+      const text = d.toString("utf8")
+      stderr += text
+      onOutput?.(text)
     })
     child.on("error", (err) => {
-      resolve({
-        code: 1,
-        stdout,
-        stderr: `${stderr}\n${err.message}`,
-      })
+      const msg = `\n${err.message}`
+      onOutput?.(msg)
+      resolve({ code: 1, stdout, stderr: `${stderr}${msg}` })
     })
     child.on("close", (code) => {
       resolve({ code: code ?? 1, stdout, stderr })

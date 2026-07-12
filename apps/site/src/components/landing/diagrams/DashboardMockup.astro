@@ -1,0 +1,137 @@
+<svg
+	viewBox="0 0 720 460"
+	fill="none"
+	xmlns="http://www.w3.org/2000/svg"
+	role="img"
+	aria-label="deplow dashboard: a project with an app, postgres, redis, and minio, all running on one host under gVisor"
+>
+	<defs>
+		<linearGradient id="accent-bar" x1="0" y1="0" x2="0" y2="1">
+			<stop stop-color="#6b9fc9" />
+			<stop offset="1" stop-color="#3d7aad" />
+		</linearGradient>
+	</defs>
+
+	<rect width="720" height="460" fill="#0c0f23" />
+
+	<!-- top bar -->
+	<rect x="0" y="0" width="720" height="52" fill="#07091a" />
+	<rect x="0" y="51" width="720" height="1" fill="rgba(255,255,255,0.07)" />
+	<!-- logo mark -->
+	<rect x="24" y="16" width="22" height="20" rx="5" fill="#0c0f23" stroke="#6b9fc9" stroke-width="1.5" />
+	<path d="M29 26h8M37 26l-3 3M37 26l-3-3" stroke="#6b9fc9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+	<text x="54" y="31" fill="#eef1fb" font-family="Bricolage Grotesque, sans-serif" font-size="15" font-weight="700" letter-spacing="-0.4">deplow</text>
+	<text x="130" y="31" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="12">/ acme-shop / production</text>
+	<!-- nav pills -->
+	<rect x="520" y="14" width="64" height="24" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" />
+	<text x="552" y="30" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500" text-anchor="middle">Logs</text>
+	<rect x="592" y="14" width="64" height="24" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" />
+	<text x="624" y="30" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500" text-anchor="middle">Backups</text>
+	<rect x="664" y="14" width="32" height="24" rx="12" fill="url(#accent-bar)" />
+	<text x="680" y="30" fill="#0b1220" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="700" text-anchor="middle">+</text>
+
+	<!-- sidebar -->
+	<rect x="0" y="52" width="180" height="408" fill="#07091a" />
+	<rect x="179" y="52" width="1" height="408" fill="rgba(255,255,255,0.07)" />
+	<text x="24" y="84" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500" letter-spacing="2">PROJECTS</text>
+	<!-- active project -->
+	<rect x="16" y="98" width="148" height="36" rx="8" fill="rgba(107,159,201,0.06)" stroke="rgba(107,159,201,0.2)" />
+	<circle cx="30" cy="116" r="3.5" fill="#6b9fc9" />
+	<text x="44" y="119" fill="#eef1fb" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600">acme-shop</text>
+	<text x="116" y="119" fill="#6b9fc9" font-family="IBM Plex Mono, monospace" font-size="10">5/5</text>
+	<!-- other rows -->
+	<rect x="16" y="142" width="148" height="34" rx="8" fill="transparent" />
+	<circle cx="30" cy="159" r="3.5" fill="#888fa8" />
+	<text x="44" y="162" fill="#c7cce0" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="500">status-page</text>
+	<text x="116" y="162" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">2/3</text>
+	<rect x="16" y="184" width="148" height="34" rx="8" fill="transparent" />
+	<circle cx="30" cy="201" r="3.5" fill="#888fa8" />
+	<text x="44" y="204" fill="#c7cce0" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="500">cron-runner</text>
+	<text x="116" y="204" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">1/1</text>
+	<rect x="16" y="226" width="148" height="34" rx="8" fill="transparent" />
+	<circle cx="30" cy="243" r="3.5" fill="rgba(255,255,255,0.2)" />
+	<text x="44" y="246" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="500">labs-blog</text>
+	<text x="120" y="246" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">idle</text>
+
+	<text x="24" y="296" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500" letter-spacing="2">HOST</text>
+	<rect x="16" y="310" width="148" height="44" rx="9" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" />
+	<rect x="28" y="322" width="124" height="4" rx="2" fill="rgba(255,255,255,0.07)" />
+	<rect x="28" y="322" width="84" height="4" rx="2" fill="url(#accent-bar)" />
+	<text x="28" y="342" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">cpu 34% · mem 6.2g</text>
+	<rect x="16" y="362" width="148" height="32" rx="9" fill="rgba(107,159,201,0.05)" />
+	<circle cx="30" cy="378" r="3" fill="#6b9fc9" />
+	<text x="44" y="381" fill="#6b9fc9" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500">gVisor online</text>
+
+	<!-- main content -->
+	<rect x="200" y="74" width="520" height="370" rx="14" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
+	<text x="224" y="106" fill="#eef1fb" font-family="Bricolage Grotesque, sans-serif" font-size="16" font-weight="700" letter-spacing="-0.3">acme-shop</text>
+	<text x="224" y="128" fill="#888fa8" font-family="IBM Plex Sans, sans-serif" font-size="11">production · 5 services running</text>
+	<rect x="582" y="92" width="118" height="30" rx="8" fill="url(#accent-bar)" />
+	<text x="641" y="111" fill="#0b1220" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="700" text-anchor="middle">Deploy</text>
+
+	<!-- service cards: all use the same bar color (sage), only LEDs differ -->
+	<!-- web -->
+	<rect x="224" y="148" width="240" height="78" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
+	<rect x="224" y="148" width="4" height="78" rx="2" fill="url(#accent-bar)" />
+	<circle cx="246" cy="170" r="4" fill="#6b9fc9" />
+	<text x="258" y="174" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">web</text>
+	<text x="258" y="190" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">railpack · :3000</text>
+	<rect x="420" y="160" width="34" height="18" rx="9" fill="rgba(107,159,201,0.12)" />
+	<text x="437" y="172" fill="#6b9fc9" font-family="IBM Plex Sans, sans-serif" font-size="9" font-weight="700" text-anchor="middle">RUN</text>
+	<rect x="240" y="200" width="120" height="4" rx="2" fill="rgba(255,255,255,0.06)" />
+	<rect x="240" y="200" width="98" height="4" rx="2" fill="url(#accent-bar)" opacity="0.6" />
+	<text x="382" y="205" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">82%</text>
+
+	<!-- worker -->
+	<rect x="476" y="148" width="226" height="78" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
+	<rect x="476" y="148" width="4" height="78" rx="2" fill="url(#accent-bar)" />
+	<circle cx="498" cy="170" r="4" fill="#6b9fc9" />
+	<text x="510" y="174" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">worker</text>
+	<text x="510" y="190" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">dockerfile · queued</text>
+	<rect x="656" y="160" width="34" height="18" rx="9" fill="rgba(107,159,201,0.12)" />
+	<text x="673" y="172" fill="#6b9fc9" font-family="IBM Plex Sans, sans-serif" font-size="9" font-weight="700" text-anchor="middle">RUN</text>
+	<rect x="492" y="200" width="120" height="4" rx="2" fill="rgba(255,255,255,0.06)" />
+	<rect x="492" y="200" width="40" height="4" rx="2" fill="url(#accent-bar)" opacity="0.6" />
+	<text x="634" y="205" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">33%</text>
+
+	<!-- postgres -->
+	<rect x="224" y="238" width="152" height="72" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
+	<rect x="224" y="238" width="4" height="72" rx="2" fill="url(#accent-bar)" />
+	<circle cx="246" cy="260" r="4" fill="#6b9fc9" />
+	<text x="258" y="264" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">postgres</text>
+	<text x="258" y="280" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">:5432 · pg17</text>
+	<text x="244" y="298" fill="#6b9fc9" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="500">12 backups</text>
+
+	<!-- redis -->
+	<rect x="388" y="238" width="152" height="72" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
+	<rect x="388" y="238" width="4" height="72" rx="2" fill="url(#accent-bar)" />
+	<circle cx="410" cy="260" r="4" fill="#6b9fc9" />
+	<text x="422" y="264" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">redis</text>
+	<text x="422" y="280" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">:6379 · 8</text>
+	<text x="408" y="298" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="500">142 ops/s</text>
+
+	<!-- minio -->
+	<rect x="552" y="238" width="150" height="72" rx="11" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" />
+	<rect x="552" y="238" width="4" height="72" rx="2" fill="url(#accent-bar)" />
+	<circle cx="574" cy="260" r="4" fill="#6b9fc9" />
+	<text x="586" y="264" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">minio</text>
+	<text x="586" y="280" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10">s3 · 4.8g</text>
+	<text x="572" y="298" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="500">12 buckets</text>
+
+	<!-- logs panel -->
+	<rect x="224" y="324" width="478" height="108" rx="11" fill="#07091a" stroke="rgba(255,255,255,0.07)" />
+	<circle cx="240" cy="340" r="3" fill="#6b9fc9" />
+	<circle cx="252" cy="340" r="3" fill="#888fa8" />
+	<circle cx="264" cy="340" r="3" fill="#4d5480" />
+	<text x="280" y="344" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="10">web — logs</text>
+
+	<text x="240" y="368" fill="#c7cce0" font-family="IBM Plex Mono, monospace" font-size="11">GET /api/products</text>
+	<text x="446" y="368" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">200 · 14ms</text>
+	<text x="240" y="388" fill="#c7cce0" font-family="IBM Plex Mono, monospace" font-size="11">POST /api/checkout</text>
+	<text x="446" y="388" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">201 · 88ms</text>
+	<text x="240" y="408" fill="#c7cce0" font-family="IBM Plex Mono, monospace" font-size="11">GET /api/orders</text>
+	<text x="446" y="408" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">200 · 9ms</text>
+
+	<text x="240" y="428" fill="#fb7185" font-family="IBM Plex Mono, monospace" font-size="11">gVisor: syscall ptrace(•)</text>
+	<text x="446" y="428" fill="#fb7185" font-family="IBM Plex Mono, monospace" font-size="11">blocked</text>
+</svg>

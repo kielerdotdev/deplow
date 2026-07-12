@@ -8,6 +8,7 @@ Canonical project documentation. **These files dictate product, marketing, and i
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | [philosophy.md](./philosophy.md)         | **Why deplow exists** — the problem we solve and the principles we will not dilute                          |
 | [sequencing.md](./sequencing.md)         | **v1 / v2 / v3** — what to build now vs later                                                               |
+| [gtm.md](./gtm.md)                       | **Public launch bar** — happy path gate vs Coolify/Dokploy; domain + notify decisions                       |
 | [product.md](./product.md)               | **What we ship** — one project shape, in/out of scope                                                       |
 | [data-plane.md](./data-plane.md)         | **DB/Redis/S3 linking** — design for previews + multi-node without building them yet                        |
 | [security.md](./security.md)             | **Security stance** — non-negotiable priorities; marketing must not contradict this                         |

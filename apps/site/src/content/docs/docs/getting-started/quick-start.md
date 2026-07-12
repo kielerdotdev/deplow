@@ -1,11 +1,26 @@
 ---
 title: Quick start
-description: Install dependencies, start platform services, and launch the deplow control plane.
+description: Bootstrap the host, start platform services, and launch the deplow control plane.
 ---
 
-Get deplow running locally in a few commands.
+Get deplow running with the host installer (preferred) or the manual steps below.
 
-## 1. Clone and install
+## Preferred: one script
+
+```bash
+git clone <your-repo-url> deplow
+cd deplow
+bash scripts/install.sh
+pnpm dev
+```
+
+The installer checks Docker/Node/pnpm, starts BuildKit, installs Railpack when missing, installs/verifies gVisor (`runsc`), runs `pnpm install`, starts compose services, and applies the control-plane schema. Open [http://localhost:3000](http://localhost:3000).
+
+If gVisor is not ready, the script exits non-zero and prints next steps — deploys require `runsc` by default (`DEPLOW_APP_RUNTIME=runc` is an unsandboxed escape hatch only).
+
+## Manual path
+
+### 1. Clone and install
 
 ```bash
 git clone <your-repo-url> deplow
@@ -13,15 +28,15 @@ cd deplow
 pnpm install
 ```
 
-## 2. Start platform services
+### 2. Start platform services
 
 ```bash
 pnpm infra:up
 ```
 
-This starts Postgres (`:55432`), Redis (`:56379`), and MinIO S3 (`:59000`) via Docker Compose.
+This starts MinIO, Caddy, platform Redis, and related compose services. App Postgres/Redis are created later as project services.
 
-## 3. Apply control-plane schema
+### 3. Apply control-plane schema
 
 ```bash
 pnpm db:push
@@ -29,7 +44,7 @@ pnpm db:push
 
 The control plane uses SQLite (`packages/db/data/deplow.db` by default).
 
-## 4. Configure environment
+### 4. Configure environment
 
 ```bash
 cp apps/web/.env.example apps/web/.env
@@ -38,15 +53,9 @@ cp apps/web/.env.example apps/web/.env
 Set at minimum:
 
 - `BETTER_AUTH_SECRET` — auth signing and encryption fallback
-- Platform connection vars if you changed compose defaults (`DEPLOW_POSTGRES_*`, `DEPLOW_REDIS_*`, `DEPLOW_MINIO_*`)
+- `BUILDKIT_HOST=docker-container://buildkit` if you use the BuildKit container
 
-For faster backup demos, optionally add:
-
-```bash
-echo 'DEPLOW_BACKUP_DEFAULT_INTERVAL_MS=10000' >> apps/web/.env
-```
-
-## 5. Start the control plane
+### 5. Start the control plane
 
 ```bash
 pnpm dev
@@ -54,7 +63,13 @@ pnpm dev
 
 Open the dashboard at [http://localhost:3000](http://localhost:3000).
 
-## 6. Smoke test (optional)
+## First deploy loop
+
+1. **Domains** — set base domain (e.g. `apps.localhost` or `apps.example.com`), enable auto subdomains. v1 URLs are platform wildcard only.
+2. **Create project** → add a web service (+ postgres/redis if needed) → bind → **Deploy**.
+3. Optional public HTTPS: Cloudflare Tunnel + `docker compose --profile edge up -d` (TLS at Cloudflare).
+
+## Smoke test (optional)
 
 With Docker and platform services running:
 
@@ -66,6 +81,7 @@ This exercises image deploy, backup, and project destroy against the live API.
 
 ## Next steps
 
+- [Prerequisites](/docs/getting-started/prerequisites/)
 - [Create and deploy a project](/docs/guides/deploy/)
 - [Configure backups](/docs/guides/backups/)
 - [Environment variable reference](/docs/reference/environment/)

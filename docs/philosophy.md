@@ -2,7 +2,7 @@
 
 deplow exists for one boring truth:
 
-**Most apps you deploy need a database, object storage (S3 / R2-shaped), and a JS (or container) runtime — and that is about it.**
+**Most projects need several processes sharing a database, cache, and object storage — and that is about it.**
 
 You should not have to:
 
@@ -12,43 +12,36 @@ You should not have to:
 - Manually schedule and store Postgres backups
 - Run a kitchen-sink PaaS panel that pretends every stack is equally first-class
 
-deplow is the opposite of that sprawl: **one project gets the whole bundle on a machine you already control.**
+deplow is the opposite of that sprawl: **one project gets the opinionated stack (apps + Postgres + Redis + S3) on a machine you already control** — service-first, not a resource catalog.
 
-## The bundle
+## The model
 
 ```text
 one project =
-  one app
-  + Postgres
-  + Redis
-  + S3 (MinIO)
-  + encrypted secrets
-  + scheduled Postgres backups
+  multiple independently deployable services
+    (web | worker | postgres | redis)
+  + explicit service↔resource bindings
+  + lazy project S3 (MinIO) for backups
+  + durable operations (BullMQ) for deploy/provision/backup
 ```
 
-Create a project → infra is provisioned → deploy with Railpack, a Dockerfile, or a prebuilt image → backups run without a second product.
-
-That is the product. Everything else is noise until this loop is excellent.
+Create an empty project → add the services you need → bind apps to data services → deploy. Failures keep the service record and are retryable.
 
 ## Principles (non-negotiable)
 
-### 1. Project-first, not service-à-la-carte
+### 1. Service-first, project as container
 
-You do not pick “add Redis later.” Creating a project provisions Postgres, Redis, and S3 together. Isolation is per project (DB/user, Redis ACL/namespace, bucket + keys).
+A project is a container. Services are the primary durable operational units (apps and data). Postgres and Redis share the same service identity and lifecycle as web/worker processes, with specialized UX where needed.
 
-### 2. Shared platform, isolated tenants — not instance multi-tenancy
+### 2. Explicit bindings, least privilege
 
-**One data-plane instance of each service per node:** one Postgres, one Redis, one MinIO. (v1 = one node for the whole install.) Projects are tenants of that node’s platform (DB/user, Redis ACL/namespace, bucket + keys) — not owners of their own Postgres/Redis/MinIO processes.
+Apps receive credentials only through explicit bindings (e.g. `DATABASE_URL` → a Postgres service). Nothing is auto-injected to every service.
 
-Out of scope:
+### 3. Dedicated data containers per service
 
-- Pools of named Postgres/Redis/MinIO instances with placement UI on a single node
-- Per-project dedicated database/cache containers
-- “Pick which Redis this project uses” on the same node
+Each Postgres/Redis service gets its own Docker container and volume on the node. Object storage remains shared MinIO with per-project buckets provisioned lazily.
 
-v3 may add **more nodes**, each with its own shared trio; a project still never spans nodes. See [sequencing.md](./sequencing.md) and [data-plane.md](./data-plane.md).
-
-If one host is too small, add a node later (v3) or scale the box. Do not grow per-project DB containers. That is how we avoid the hosted-service tax without becoming Coolify.
+If one host is too small, add a node later (v3) or scale the box. Dedicated per-project Postgres/Redis containers keep restores and PITR scoped to one project without a multi-tenant cluster tax.
 
 ### 3. Railway-shaped DX, self-hosted
 
@@ -74,7 +67,7 @@ Postgres dumps to the platform backup bucket are on-demand and scheduled. Users 
 
 ### 7. Proxy-owned URLs, cloudflared edge (v1)
 
-People need public app URLs without per-project DNS. **deplow owns the local reverse proxy** and assigns `{project}.{baseDomain}`. v1 edge is **cloudflared** (wildcard once). More edges later — [access.md](./access.md), [sequencing.md](./sequencing.md).
+People need public app URLs without per-project DNS. **deplow owns the local reverse proxy** and assigns `{project}.{baseDomain}`. Domains are **app-managed** (env seeds once). v1 edge is **cloudflared** (wildcard once). Other edges (Tailscale Serve, Netbird) forward to the same Caddy origin — [access.md](./access.md), [sequencing.md](./sequencing.md).
 
 ### 8. Git push-to-deploy (v1); previews later
 
@@ -85,7 +78,7 @@ People need public app URLs without per-project DNS. **deplow owns the local rev
 - A generic “deploy anything” panel
 - A hosted cloud (you bring the host)
 - A Kubernetes / Swarm control plane
-- An instance-pool manager (per-project DB containers)
+- A marketplace of one-click app templates
 - A replacement for Cloudflare (we integrate cloudflared as an edge)
 - A place that soft-pedals security to sound friendlier than the runtime we ship
 
