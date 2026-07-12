@@ -60,22 +60,8 @@ function EnsureNodeDialogBody({
   onOpenChange: (open: boolean) => void
 }) {
   const router = useRouter()
-  const [ensureOpen, setEnsureOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  function openEnsure() {
-    setError(null)
-    setEnsureOpen(true)
-  }
-
-  function handleEnsureOpenChange(open: boolean) {
-    setEnsureOpen(open)
-    if (!open) {
-      setError(null)
-      setPending(false)
-    }
-  }
 
   async function ensureLocalNode() {
     setPending(true)
@@ -89,20 +75,6 @@ function EnsureNodeDialogBody({
       setPending(false)
     }
   }
-
-  const ensureButton = (
-    <Button size="sm" onClick={openEnsure}>
-      <PlusIcon data-icon="inline-start" />
-      Add node
-    </Button>
-  )
-
-  const runtimeMissing = nodes.some(
-    (n) =>
-      n.provider === "docker" &&
-      n.appRuntimeRequired !== false &&
-      n.appRuntimeAvailable === false,
-  )
 
   return (
     <ActionDialog
