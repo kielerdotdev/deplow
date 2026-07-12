@@ -205,7 +205,7 @@ export function AppShell({
               <div className="flex shrink-0 items-center gap-2">{actions}</div>
             ) : null}
           </header>
-          <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+          <div className="animate-content-in flex flex-1 flex-col gap-6 p-4 md:p-6">
             {children}
           </div>
         </SidebarInset>

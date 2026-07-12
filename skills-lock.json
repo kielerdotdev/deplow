@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "skills": {
+    "animation-vocabulary": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-vocabulary/SKILL.md",
+      "computedHash": "39319fc9a33c15be08666b3685f58666f042ff36bb902b7814c0834a5ba99df4"
+    },
+    "improve": {
+      "source": "git@github.com:shadcn/improve.git",
+      "sourceUrl": "git@github.com:shadcn/improve.git",
+      "sourceType": "git",
+      "skillPath": "skills/improve/SKILL.md",
+      "computedHash": "39a9358732dcff385e9e4d3e60b4547856f834e54a58b35e455aa9bd49928c13"
+    },
+    "review-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-animations/SKILL.md",
+      "computedHash": "c92905bff59c3007d07c2638a2a83d5d71c901feef108cce1da0bf3c7cafd579"
+    },
+    "search-registry-items": {
+      "source": "Ali-Hussein-dev/shoogle",
+      "sourceType": "github",
+      "skillPath": "skills/search-registry-items/SKILL.md",
+      "computedHash": "0127e12d87ad8b3df3b9e19c25cc5b1e75d62a3e5c8a6359af9fb1cea0acf0e9"
+    },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "d81caa0f86aabab65b25e302d454f23a3328760386ed9078345584c0d5c8058e"
+    }
+  }
+}

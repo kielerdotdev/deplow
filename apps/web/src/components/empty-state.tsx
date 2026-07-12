@@ -1,15 +1,24 @@
 import type { LucideIcon } from "lucide-react"
 
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { cn } from "@/lib/utils"
 
 type EmptyStateProps = {
-  icon?: LucideIcon
+  icon: LucideIcon
   title: string
-  description?: string
+  description: string
   action?: React.ReactNode
+  /** Secondary outline-style action (Railway dual-CTA pattern) */
   secondaryAction?: React.ReactNode
-  size?: "sm" | "md"
   className?: string
+  size?: "default" | "sm"
 }
 
 export function EmptyState({
@@ -18,35 +27,50 @@ export function EmptyState({
   description,
   action,
   secondaryAction,
-  size = "md",
   className,
+  size = "default",
 }: EmptyStateProps) {
   return (
-    <div
+    <Empty
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center",
-        size === "sm" ? "px-4 py-8" : "px-6 py-12",
+        "relative border-0",
+        size === "default" ? "gap-5 px-6 py-20" : "gap-3 px-4 py-12",
         className,
       )}
     >
-      {Icon ? (
-        <Icon
+      <EmptyHeader
+        className={cn(
+          "max-w-md",
+          size === "default" ? "gap-2" : "gap-1.5",
+        )}
+      >
+        <EmptyMedia
+          variant="icon"
           className={cn(
-            "text-muted-foreground",
-            size === "sm" ? "size-6" : "size-8",
+            "icon-well mb-0 border border-dashed border-border bg-muted/60 text-muted-foreground",
+            size === "default" ? "size-16 rounded-lg [&_svg]:size-7" : "size-12 [&_svg]:size-5",
           )}
-        />
-      ) : null}
-      <p className="text-sm font-medium">{title}</p>
-      {description ? (
-        <p className="max-w-sm text-xs text-muted-foreground">{description}</p>
-      ) : null}
+        >
+          <Icon />
+        </EmptyMedia>
+        <EmptyTitle
+          className={cn(
+            "font-semibold tracking-tight",
+            size === "default" ? "text-lg" : "text-sm",
+          )}
+        >
+          {title}
+        </EmptyTitle>
+        <EmptyDescription className="text-balance leading-relaxed">
+          {description}
+        </EmptyDescription>
+      </EmptyHeader>
       {action || secondaryAction ? (
-        <div className="mt-2 flex w-full max-w-xs flex-col gap-2">
+        <EmptyContent className="mt-1 max-w-xs gap-2">
           {action}
           {secondaryAction}
-        </div>
+        </EmptyContent>
       ) : null}
-    </div>
+    </Empty>
   )
 }
