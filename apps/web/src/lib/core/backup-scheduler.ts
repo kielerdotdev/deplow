@@ -1,44 +1,49 @@
-import type { ProjectCredentials } from "@deplow/shared"
-
-import { isBackupDue } from "./backup-due"
-import type { BackupService } from "./backup.service"
+import type { BackupService, BackupTarget } from "./backup.service"
 
 export interface ScheduledProject {
   projectId: string
   intervalMs: number
-  getCredentials: () => Promise<ProjectCredentials | null>
-  /**
-   * Optional: last successful backup time from durable storage.
-   * When provided, ticks skip until isBackupDue is true (survives restarts).
-   */
-  getLastBackupAt?: () => Promise<Date | string | number | null | undefined>
+  getTargets: () => Promise<BackupTarget[]>
 }
+
+/** One hour — demos may go lower only with DEPLOW_BACKUP_ALLOW_FAST=1 */
+export const BACKUP_MIN_INTERVAL_MS = 60 * 60 * 1000
+export const BACKUP_DEFAULT_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 /**
  * In-process backup scheduler (v1).
- * Polls on an interval; actual run gated by persisted lastBackupAt + intervalMs.
+ * One interval timer per project; backs up every BackupCapable resource link.
  */
 export class BackupScheduler {
   private readonly timers = new Map<string, ReturnType<typeof setInterval>>()
   private readonly meta = new Map<string, ScheduledProject>()
-  /** Min wall-clock poll so we can honor lastBackupAt without long setTimeouts */
-  private readonly pollMs: number
 
-  constructor(
-    private readonly backupService: BackupService,
-    options?: { pollMs?: number },
-  ) {
-    this.pollMs = options?.pollMs ?? 60_000
-  }
+  constructor(private readonly backupService: BackupService) {}
 
-  /** Default daily unless DEPLOW_BACKUP_DEFAULT_INTERVAL_MS is set */
   static defaultIntervalMs(): number {
     const raw = process.env.DEPLOW_BACKUP_DEFAULT_INTERVAL_MS
     if (raw) {
       const n = Number(raw)
-      if (Number.isFinite(n) && n >= 1000) return n
+      if (Number.isFinite(n) && n >= 1000) {
+        return BackupScheduler.normalizeIntervalMs(n)
+      }
     }
-    return 24 * 60 * 60 * 1000
+    return BACKUP_DEFAULT_INTERVAL_MS
+  }
+
+  static normalizeIntervalMs(intervalMs: number): number {
+    if (!Number.isFinite(intervalMs) || intervalMs < 1000) {
+      return BACKUP_DEFAULT_INTERVAL_MS
+    }
+    const allowFast = process.env.DEPLOW_BACKUP_ALLOW_FAST === "1"
+    if (!allowFast && intervalMs < BACKUP_MIN_INTERVAL_MS) {
+      return BACKUP_DEFAULT_INTERVAL_MS
+    }
+    return Math.floor(intervalMs)
+  }
+
+  static allowFastIntervals(): boolean {
+    return process.env.DEPLOW_BACKUP_ALLOW_FAST === "1"
   }
 
   list(): Array<{ projectId: string; intervalMs: number }> {
@@ -55,11 +60,9 @@ export class BackupScheduler {
   schedule(project: ScheduledProject): void {
     this.unschedule(project.projectId)
     this.meta.set(project.projectId, project)
-    // Poll at min(interval, pollMs) so short intervals still work in tests
-    const every = Math.min(Math.max(project.intervalMs, 100), this.pollMs)
     const timer = setInterval(() => {
       void this.tick(project.projectId)
-    }, every)
+    }, project.intervalMs)
     if (typeof timer === "object" && "unref" in timer) {
       timer.unref()
     }
@@ -73,28 +76,13 @@ export class BackupScheduler {
     this.meta.delete(projectId)
   }
 
-  /**
-   * Exposed for tests / forced verification ticks.
-   * Skips when lastBackupAt says not due yet.
-   */
   async tick(projectId: string): Promise<"ok" | "skipped" | "failed"> {
     const project = this.meta.get(projectId)
     if (!project) return "skipped"
     try {
-      if (project.getLastBackupAt) {
-        const lastBackupAt = await project.getLastBackupAt()
-        if (
-          !isBackupDue({
-            lastBackupAt,
-            intervalMs: project.intervalMs,
-          })
-        ) {
-          return "skipped"
-        }
-      }
-      const credentials = await project.getCredentials()
-      if (!credentials) return "skipped"
-      await this.backupService.run(projectId, credentials)
+      const targets = await project.getTargets()
+      if (targets.length === 0) return "skipped"
+      await this.backupService.runAll(projectId, targets)
       return "ok"
     } catch {
       return "failed"

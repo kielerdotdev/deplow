@@ -22,8 +22,9 @@
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "infra:ps": "docker compose ps",
-    "doctor": "bash scripts/doctor.sh",
-    "e2e": "bash scripts/e2e.sh"
+    "e2e": "bash scripts/e2e.sh",
+    "e2e:git": "bash scripts/e2e-git-oauth.sh",
+    "install:host": "bash scripts/install.sh"
   },
   "devDependencies": {
     "@voidzero-dev/vite-plus-core": "0.2.4",

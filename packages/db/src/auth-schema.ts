@@ -9,6 +9,10 @@ export const user = sqliteTable("user", {
     .default(false)
     .notNull(),
   image: text("image"),
+  /** Instance-wide admin (system settings: Domains, Nodes, Integrations). */
+  instanceAdmin: integer("instance_admin", { mode: "boolean" })
+    .default(false)
+    .notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),

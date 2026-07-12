@@ -2,12 +2,25 @@ import { Link, useRouterState } from "@tanstack/react-router"
 import {
   BoxIcon,
   ChevronsUpDownIcon,
+  GlobeIcon,
+  KeyRoundIcon,
   LayoutDashboardIcon,
   LogOutIcon,
+  PlugIcon,
   ServerIcon,
+  UsersIcon,
 } from "lucide-react"
 
-import { authClient } from "@/lib/auth-client"
+import { CommandAction } from "@/components/command-action"
+import {
+  CommandPalette,
+  CommandPaletteTrigger,
+} from "@/components/command-palette"
+import {
+  OrgSwitcher,
+  type OrgOption,
+} from "@/components/org-switcher"
+import { PersonAvatar } from "@/components/org-ui"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +30,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Separator } from "@/components/ui/separator"
 import {
   Sidebar,
   SidebarContent,
@@ -34,24 +46,59 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { authClient } from "@/lib/auth-client"
+import { CommandProvider } from "@/lib/command"
+import { cn } from "@/lib/utils"
 
 type AppShellProps = {
   user: {
     name: string
     email: string
   }
+  instanceAdmin?: boolean
+  organizations?: OrgOption[]
+  activeOrganization?: OrgOption | null
   title?: string
   description?: string
   actions?: React.ReactNode
+  /** Cloudflare-style account home: large hero title in content, minimal chrome */
+  accountHome?: boolean
   children: React.ReactNode
 }
 
-const navItems = [
+const primaryNav = [
   {
-    title: "Projects",
+    title: "Home",
     to: "/" as const,
     icon: LayoutDashboardIcon,
     match: (path: string) => path === "/" || path.startsWith("/projects"),
+  },
+  {
+    title: "Team",
+    to: "/organization" as const,
+    icon: UsersIcon,
+    match: (path: string) => path.startsWith("/organization"),
+  },
+  {
+    title: "Settings",
+    to: "/settings" as const,
+    icon: KeyRoundIcon,
+    match: (path: string) => path.startsWith("/settings"),
+  },
+]
+
+const systemNav = [
+  {
+    title: "Integrations",
+    to: "/integrations" as const,
+    icon: PlugIcon,
+    match: (path: string) => path.startsWith("/integrations"),
+  },
+  {
+    title: "Domains",
+    to: "/domains" as const,
+    icon: GlobeIcon,
+    match: (path: string) => path.startsWith("/domains"),
   },
   {
     title: "Nodes",
@@ -63,9 +110,13 @@ const navItems = [
 
 export function AppShell({
   user,
+  instanceAdmin = false,
+  organizations = [],
+  activeOrganization = null,
   title,
   description,
   actions,
+  accountHome,
   children,
 }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -77,9 +128,23 @@ export function AppShell({
 
   return (
     <TooltipProvider>
-      <SidebarProvider>
-        <Sidebar collapsible="icon">
-          <SidebarHeader>
+      <CommandProvider>
+        <SidebarProvider>
+          <CommandPalette />
+          <CommandAction
+            id="account.sign-out"
+            label="Sign out"
+            group="Account"
+            mode="action"
+            keywords={["logout", "exit"]}
+            icon={LogOutIcon}
+            onSelect={handleSignOut}
+          />
+          <Sidebar
+            collapsible="icon"
+            className="border-r border-sidebar-border bg-sidebar"
+          >
+          <SidebarHeader className="gap-2 border-b border-sidebar-border/80 pb-2">
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -87,26 +152,30 @@ export function AppShell({
                   render={<Link to="/" />}
                   className="data-[slot=sidebar-menu-button]:p-1.5!"
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                     <BoxIcon className="size-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">deplow</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      Project runtime
+                    <span className="truncate font-semibold tracking-tight">
+                      deplow
                     </span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
+            {organizations.length > 0 ? (
+              <OrgSwitcher
+                organizations={organizations}
+                active={activeOrganization}
+              />
+            ) : null}
           </SidebarHeader>
 
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Platform</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((item) => (
+                  {primaryNav.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         isActive={item.match(pathname)}
@@ -121,6 +190,27 @@ export function AppShell({
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            {instanceAdmin ? (
+              <SidebarGroup>
+                <SidebarGroupLabel>System</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {systemNav.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          isActive={item.match(pathname)}
+                          tooltip={item.title}
+                          render={<Link to={item.to} />}
+                        >
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : null}
           </SidebarContent>
 
           <SidebarFooter>
@@ -135,24 +225,23 @@ export function AppShell({
                       />
                     }
                   >
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted text-xs font-medium uppercase">
-                      {(user.name || user.email).slice(0, 2)}
-                    </div>
+                    <PersonAvatar name={user.name} email={user.email} />
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-medium">{user.name}</span>
                       <span className="truncate text-xs text-muted-foreground">
                         {user.email}
                       </span>
                     </div>
-                    <ChevronsUpDownIcon className="ml-auto size-4" />
+                    <ChevronsUpDownIcon className="ml-auto size-4 opacity-60" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="w-(--anchor-width) min-w-56"
+                    className="w-(--anchor-width) min-w-56 p-1.5"
                     side="top"
                     align="start"
+                    sideOffset={6}
                   >
                     <DropdownMenuGroup>
-                      <DropdownMenuLabel className="font-normal">
+                      <DropdownMenuLabel className="px-2 py-1.5 font-normal">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-sm font-medium">
                             {user.name}
@@ -165,7 +254,27 @@ export function AppShell({
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                      <DropdownMenuItem onClick={handleSignOut}>
+                      <DropdownMenuItem
+                        className="gap-2 rounded-md"
+                        render={<Link to="/organization" />}
+                      >
+                        <UsersIcon />
+                        Team
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="gap-2 rounded-md"
+                        render={<Link to="/settings" />}
+                      >
+                        <KeyRoundIcon />
+                        Settings
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        className="gap-2 rounded-md"
+                        onClick={handleSignOut}
+                      >
                         <LogOutIcon />
                         Sign out
                       </DropdownMenuItem>
@@ -177,15 +286,19 @@ export function AppShell({
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset>
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarInset className="min-w-0 overflow-x-hidden bg-background">
+          <header
+            className={cn(
+              "sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur-sm",
+              accountHome && "border-transparent",
+            )}
+          >
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-1 h-4" />
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <div className="min-w-0">
+            {!accountHome ? (
+              <div className="min-w-0 flex-1">
                 {title ? (
                   <>
-                    <h1 className="truncate text-lg font-semibold leading-none">
+                    <h1 className="truncate text-sm font-semibold leading-tight tracking-tight">
                       {title}
                     </h1>
                     {description ? (
@@ -194,22 +307,29 @@ export function AppShell({
                       </p>
                     ) : null}
                   </>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    Dashboard
-                  </span>
-                )}
+                ) : null}
               </div>
-            </div>
+            ) : (
+              <div className="flex-1" />
+            )}
+            <CommandPaletteTrigger className="mr-1" />
             {actions ? (
               <div className="flex shrink-0 items-center gap-2">{actions}</div>
             ) : null}
           </header>
-          <div className="animate-content-in flex flex-1 flex-col gap-6 p-4 md:p-6">
+          <div
+            className={cn(
+              "animate-content-in flex min-w-0 flex-1 flex-col overflow-x-hidden",
+              accountHome
+                ? "gap-6 p-4 md:gap-8 md:px-8 md:pb-10 md:pt-2"
+                : "gap-6 p-4 md:p-6",
+            )}
+          >
             {children}
           </div>
         </SidebarInset>
-      </SidebarProvider>
+        </SidebarProvider>
+      </CommandProvider>
     </TooltipProvider>
   )
 }

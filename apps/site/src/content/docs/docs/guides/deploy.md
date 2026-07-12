@@ -1,18 +1,21 @@
 ---
 title: Deploy an app
-description: Deploy from a prebuilt image, Dockerfile, or Railpack build via the dashboard or API.
+description: Deploy from a prebuilt image, Dockerfile, or Railpack build via the dashboard.
 ---
 
-Deploying attaches a running container to your project's provisioned resources.
+Deploying runs a container for a **web** or **worker** service. Bind postgres/redis/S3 first if the app needs those env vars.
 
 ## Via the dashboard
 
 1. Sign in at [http://localhost:3000](http://localhost:3000)
 2. Create a project (or open an existing one)
-3. Choose a deploy mode:
+3. Add a web service (and postgres/redis if needed), then **bind** data → app
+4. Choose a deploy mode:
    - **Image** — enter a registry reference
-   - **Source** — provide a local path; Railpack or Dockerfile build runs automatically
-4. Watch deployment logs and confirm the container is running
+   - **Source** — provide a local path or connected git repo; Railpack or Dockerfile build runs automatically
+5. Watch deployment logs and confirm the container is running
+
+Public URL (v1): `https://{project}.{baseDomain}` for the primary web service when Domains auto-subdomains are on. Custom domains are v2.
 
 ## Deploy inputs
 
@@ -24,7 +27,7 @@ Deploying attaches a running container to your project's provisioned resources.
 
 ## Injected environment
 
-The running container always receives project credentials:
+Bound apps receive linked credentials at deploy time:
 
 ```ini
 DATABASE_URL=postgres://...
@@ -39,7 +42,7 @@ Your app should read these like any twelve-factor config.
 
 ## BuildKit requirement
 
-Source and Dockerfile deploys require BuildKit:
+Source and Dockerfile deploys require BuildKit (`scripts/install.sh` starts the container):
 
 ```bash
 export BUILDKIT_HOST=docker-container://buildkit
@@ -49,4 +52,4 @@ Without BuildKit, builds fail early with a clear error.
 
 ## Stopping a deployment
 
-Use the project page or API to stop the running container. The project's provisioned Postgres, Redis, and S3 resources remain until you destroy the project.
+Use the project page to stop the running container. Postgres, Redis, and S3 services remain until you destroy them or the project.

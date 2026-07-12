@@ -1,18 +1,20 @@
 # deplow
 
-Opinionated self-hosted project runtime: **one project = app + Postgres + Redis + S3 + secrets**, built with **Railpack or Dockerfile**, run on **local Docker under gVisor**, with **public URL via Caddy + cloudflared**, **git push-to-deploy**, and **scheduled Postgres backups**.
+Opinionated self-hosted project runtime: **one project = typed services (web, worker, postgres, redis) + bindings + S3**, built with **Railpack or Dockerfile**, run on **local Docker under gVisor**, with **public URLs via Caddy + cloudflared** (platform wildcard), per-service **git push-to-deploy**, and scheduled Postgres backups.
 
-Most apps only need a database, object storage, and a runtime. deplow provisions that bundle on a host you control — no spinning up hosted Postgres/Redis/S3 per project, and no hand-rolled backup cron.
+Launch bar: [docs/gtm.md](./docs/gtm.md) — **service-first stack + gVisor + wildcard Domains + git push**, not Coolify/Dokploy catalog sprawl. Custom domains and previews are v2; multi-node is v3.
 
-**Canonical docs:** [`docs/`](./docs/) — start with [philosophy](./docs/philosophy.md), [product](./docs/product.md), and [security](./docs/security.md).
+Most apps only need a database, object storage, and a runtime. deplow runs that stack on a host you control — no spinning up hosted Postgres/Redis/S3 per project, and no hand-rolled backup cron.
+
+**Canonical docs:** [`docs/`](./docs/) — start with [philosophy](./docs/philosophy.md), [product](./docs/product.md), [gtm](./docs/gtm.md), and [security](./docs/security.md).
 
 ```
-create project
-  → pin to local Docker node
-  → provision production-slot Postgres DB/user + Redis ACL + MinIO bucket
-  → encrypt credentials + secrets.yaml
-  → deploy (source / Dockerfile / Railpack / image) under gVisor
-  → proxy Host {slug}.{baseDomain} → app container
+create empty project (pin local Docker node)
+  → add web/worker services
+  → add postgres/redis services (dedicated containers)
+  → bind apps to data (DATABASE_URL / REDIS_URL)
+  → deploy each app service under gVisor
+  → proxy web services on *.{baseDomain}; workers remain private
   → scheduled Postgres backups → platform S3
 ```
 
@@ -21,7 +23,7 @@ create project
 | Layer         | Tech                                                       |
 | ------------- | ---------------------------------------------------------- |
 | Control plane | TanStack Start, oRPC, Better Auth, Drizzle + SQLite        |
-| Data plane    | Postgres 16, Redis 7, MinIO (docker compose)               |
+| Data plane    | Dedicated Postgres/Redis containers + shared MinIO         |
 | Proxy / edge  | **Caddy** reverse proxy + **cloudflared** (v1 edge)        |
 | Build         | **Railpack** (default) or **Dockerfile** + Docker BuildKit |
 | Runtime       | **Docker** + **gVisor (`runsc`)** for user apps            |
@@ -44,8 +46,15 @@ Core business logic is under `apps/web/src/lib/core/` and stays framework-agnost
 - **gVisor (`runsc`)** — default runtime for user apps ([install](https://gvisor.dev/docs/user_guide/install/); see [docs/secure-runtime.md](./docs/secure-runtime.md))
 - **Railpack** CLI on `PATH` ([releases](https://github.com/railwayapp/railpack/releases))
 - Node.js 22+ and pnpm 10
-- For public URLs: a domain + Cloudflare account (tunnel token)
+- For public HTTPS: a domain + Cloudflare account (tunnel token) — TLS at Cloudflare, not Let’s Encrypt on Caddy
 
+Preferred: let the installer install/verify BuildKit, Railpack, and gVisor:
+
+```bash
+bash scripts/install.sh   # or: pnpm install:host
+```
+
+Manual one-liners if you skip the installer:
 ```bash
 # BuildKit (once)
 docker run --rm --privileged -d --name buildkit moby/buildkit
@@ -64,28 +73,45 @@ railpack --version
 
 Recommended: enable `userns-remap: default` in `/etc/docker/daemon.json` (see [docs/secure-runtime.md](./docs/secure-runtime.md)).
 
-## Quick start
+## Quick start (VPS / local)
+
+**One-shot** (Docker + Node/pnpm already installed):
+
+```bash
+bash scripts/install.sh   # or: pnpm install:host
+pnpm dev                 # http://localhost:3000 — create user
+# Open Domains → set base domain → create project → Deploy
+```
+
+**Manual:**
 
 ```bash
 pnpm install
-pnpm infra:up          # Postgres, Redis, MinIO, Caddy proxy
+pnpm infra:up          # MinIO, Caddy, platform Redis
 pnpm db:push
-cp .env.example apps/web/.env   # fill secrets + optional DEPLOW_BASE_DOMAIN
+cp apps/web/.env.example apps/web/.env   # BETTER_AUTH_SECRET; Domains UI for base domain
 pnpm dev               # http://localhost:3000
-pnpm e2e               # API smoke (image deploy + backup + destroy)
+pnpm e2e               # requires pnpm infra:up && pnpm dev — service deploy + Caddy Host + backup + destroy
 ```
+
+`DEPLOW_BASE_DOMAIN` only seeds Domains on first boot; day-to-day changes are in the **Domains** tab.
 
 ## Public URLs (Caddy + cloudflared)
 
-deplow owns the local reverse proxy (**Caddy**). The v1 edge is **cloudflared**.
+deplow owns the local reverse proxy (**Caddy**). **Domains are configured in the app** (Domains tab), not by editing env for day-to-day changes. Edges only forward HTTP with the `Host` header intact. The v1 edge is **cloudflared**.
 
 ```text
 Internet → cloudflared → Caddy (Host: {slug}.{baseDomain}) → user app (gVisor)
 ```
 
-1. Set `DEPLOW_BASE_DOMAIN=apps.example.com` in your env.
-2. Create a Cloudflare Tunnel whose origin is the Caddy service (`http://caddy:80` on the compose network, or `http://127.0.0.1:8088` from the host).
-3. Point a **wildcard** DNS record `*.apps.example.com` at the tunnel **once**.
+**Stable origins:** `http://caddy:80` (compose network) · `http://127.0.0.1:8088` (host).
+
+1. Open **Domains**: set base domain (e.g. `apps.example.com`), protocol `https`, enable auto-assign subdomains.
+2. Create a Cloudflare Tunnel. Public hostname:
+   - Hostname: `*.apps.example.com`
+   - Path: `/`
+   - Service: `http://caddy:80` (cloudflared on compose profile `edge` shares Caddy’s default network)
+3. Point a **wildcard** DNS CNAME `*.apps.example.com` at the tunnel **once** (proxied).
 4. Start the edge profile:
 
 ```bash
@@ -93,15 +119,25 @@ export CLOUDFLARE_TUNNEL_TOKEN=...   # from Cloudflare Zero Trust
 docker compose --profile edge up -d
 ```
 
-Every new project gets `https://{slug}.{baseDomain}` without more DNS. Postgres and Redis are **never** exposed through the proxy.
+Every new web service gets `https://{slug}.{baseDomain}` (primary) or `https://{project}-{service}.{baseDomain}` without more DNS. Postgres and Redis are **never** exposed through the proxy.
 
-Route files live under `infra/caddy/routes/` (written on deploy/stop/destroy). See [docs/access.md](./docs/access.md).
+`DEPLOW_BASE_DOMAIN` / `DEPLOW_PUBLIC_URL_PROTOCOL` only **seed** the DB on first boot. After that, change domains in the UI.
+
+Local check: `curl -H "Host: {slug}.{baseDomain}" http://127.0.0.1:8088/`
+
+Hostnames are stored in `service_hostnames` (`auto` now; `custom` / `preview` later — **custom domains are v2**). Route files live under `infra/caddy/routes/`. See [docs/access.md](./docs/access.md) and [docs/gtm.md](./docs/gtm.md).
+
+**TLS:** terminates at Cloudflare on the tunnel. Caddy is HTTP-only on the host — there is no Let’s Encrypt on Caddy in v1.
 
 ## Git push-to-deploy
 
-Connect a GitHub or GitLab repo on the project page. Webhooks are signature-verified (`X-Hub-Signature-256` / `X-Gitlab-Token`). Push to the configured production branch clones, builds (Railpack/Dockerfile), deploys the production slot, and updates the proxy. Manual UI deploys still work.
+**Git (preferred):** Dashboard → **Integrations** → create/configure **GitHub App** (manifest) or **GitLab OAuth**, then **Connect** on a project. We auto-register the push webhook and clone private repos with short-lived installation/OAuth tokens. PAT paste remains under **Advanced** only. See [docs/git-oauth.md](./docs/git-oauth.md).
 
-Webhook endpoint: `POST /api/webhooks/git/{projectId}`.
+**MCP (Cursor / agents):** Dashboard → **Settings** → create an MCP token, then point Cursor at `{DEPLOW_PUBLIC_URL}/api/mcp` with `Authorization: Bearer …`. Prefer the `deploy_from_git` tool for end-to-end deploys. See [docs/mcp.md](./docs/mcp.md).
+
+Webhooks are signature-verified (`X-Hub-Signature-256` / `X-Gitlab-Token`). Push to the configured production branch clones, builds (Railpack/Dockerfile), deploys the production slot, and updates the proxy. Manual UI deploys still work.
+
+Webhook endpoint: `POST /api/webhooks/git/{serviceId}`.
 
 ## Environment
 
@@ -115,15 +151,23 @@ Webhook endpoint: `POST /api/webhooks/git/{projectId}`.
 | `DEPLOW_MINIO_*`                    | Platform MinIO                      | compose defaults                       |
 | `DEPLOW_BACKUP_BUCKET`              | Backup bucket name                  | `deplow-backups`                       |
 | `DEPLOW_BACKUP_DEFAULT_INTERVAL_MS` | Scheduled backup interval           | `86400000` (daily)                     |
+| `DEPLOW_BACKUP_RETAIN`              | Snapshots kept per project          | `7`                                    |
+| `DEPLOW_BACKUP_ALLOW_FAST`          | Allow sub-hour schedule intervals   | unset (`1` to enable)                  |
+| `DEPLOW_PITR_ENABLED`               | Enable PITR APIs / UI               | unset (`1` to enable)                  |
+| `PGBACKREST_CONFIG`                 | Path to pgBackRest conf             | unset (required when PITR is on)       |
+| `DEPLOW_PGBACKREST_IMAGE`           | Docker image if host binary missing | `woblerr/pgbackrest:2.58.0-alpine`     |
 | `DEPLOW_APP_RUNTIME`                | OCI runtime for user apps           | `runsc` (gVisor)                       |
 | `DEPLOW_APP_RUNTIME_REQUIRED`       | Fail deploy if runtime missing      | `true`                                 |
 | `DEPLOW_APP_MEMORY_MB` / `_CPUS`    | User app resource limits            | `512` / `1`                            |
-| `DEPLOW_BASE_DOMAIN`                | Platform public base domain         | empty (URL features off)               |
-| `DEPLOW_PUBLIC_URL_PROTOCOL`        | `https` or `http` for shown URLs    | `https`                                |
+| `DEPLOW_BASE_DOMAIN`                | Seeds platform base domain once     | empty / `apps.localhost` in dev        |
+| `DEPLOW_PUBLIC_URL_PROTOCOL`        | Seeds shown URL protocol once       | `https` / `http` for localhost         |
 | `DEPLOW_PROXY_ROUTES_DIR`           | Caddy route snippets directory      | `infra/caddy/routes`                   |
 | `CLOUDFLARE_TUNNEL_TOKEN`           | cloudflared tunnel token            | empty                                  |
 | `BUILDKIT_HOST`                     | For Railpack                        | `docker-container://buildkit`          |
 | `RAILPACK_BIN`                      | Railpack executable                 | `railpack`                             |
+| `DEPLOW_PUBLIC_URL`                 | Control plane public URL            | OAuth callbacks + webhook base         |
+| `DEPLOW_GITHUB_APP_*`               | GitHub App credentials (or UI)      | see Integrations / `docs/git-oauth.md` |
+| `DEPLOW_GITLAB_OAUTH_*`             | GitLab OAuth Application            | see Integrations / `docs/git-oauth.md` |
 
 Full template: [`.env.example`](./.env.example).
 
@@ -133,7 +177,7 @@ Full template: [`.env.example`](./.env.example).
 2. **Prebuilt image** — advanced path; pull/run registry image with project env injected
 3. **Git webhook** — push to production branch → clone → build → deploy
 
-Injected env on every deploy: `DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (Docker-network hosts, not laptop localhost).
+Every app service receives bound `DATABASE_URL` / `REDIS_URL` / `S3_*` (when linked) plus its service-specific environment. Web services receive a URL; workers run without proxy routes or published ports.
 
 User app containers run under **gVisor** with hardened defaults (dropped caps, no-new-privileges, readonly rootfs, resource limits). Platform services (Postgres/Redis/MinIO/Caddy) stay on runc. Compose deploys, SSH/Hetzner multi-host, preview deploys, and other DBs are **out of scope**.
 
@@ -141,6 +185,7 @@ User app containers run under **gVisor** with hardened defaults (dropped caps, n
 
 | Command                                       | Description                |
 | --------------------------------------------- | -------------------------- |
+| `bash scripts/install.sh` / `pnpm install:host` | Host bootstrap + infra   |
 | `pnpm dev`                                    | Web app on :3000           |
 | `pnpm check` / `pnpm test` / `pnpm typecheck` | Quality gates              |
 | `pnpm infra:up` / `infra:down`                | Platform containers        |
@@ -151,8 +196,8 @@ User app containers run under **gVisor** with hardened defaults (dropped caps, n
 
 | Service       | Host    |
 | ------------- | ------- |
-| Postgres      | `55432` |
-| Redis         | `56379` |
 | MinIO S3      | `59000` |
 | MinIO console | `59001` |
 | Caddy proxy   | `8088`  |
+
+Postgres and Redis run as **dedicated containers per project** (ephemeral localhost ports for operator tools; Docker DNS for apps).

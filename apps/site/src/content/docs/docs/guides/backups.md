@@ -1,44 +1,40 @@
 ---
 title: Backups
-description: On-demand and scheduled Postgres backups to the platform S3 bucket.
+description: Snapshots and PITR for project data services
 ---
 
-deplow backs up **Postgres only** — per-project database dumps stored in the platform backup bucket.
+deplow backs up **data services** (Postgres and Redis). Open a Postgres/Redis service and use its **Database** / **Backups** tabs — there is no project-level Database or Backups section.
 
-## On-demand backup
+Drivers expose a shared `BackupCapable` interface so the same UI works for each kind.
 
-Trigger a backup from the project page or via the oRPC `backups` API. deplow:
+## Snapshots
 
-1. Runs `pg_dump` against the project's database
-2. Uploads the artifact to MinIO (`DEPLOW_BACKUP_BUCKET`, default `deplow-backups`)
-3. Records status on the `backups` table
+On-demand or scheduled backups call each backup-capable resource:
 
-## Scheduled backups
+- **Postgres** — `pg_dump -Fc` of the dedicated project instance → MinIO
+- **Redis** — full-instance key export → MinIO
 
-Every project gets a schedule on create (default: daily). The scheduler runs in the web process using a simple interval — no separate worker required for v1.
+Retention: `DEPLOW_BACKUP_RETAIN` (default 7) per resource link.
 
-Configure the default interval globally:
+## Point-in-time recovery (PITR)
 
-```ini
-DEPLOW_BACKUP_DEFAULT_INTERVAL_MS=86400000
-```
-
-For demos, a shorter interval works:
-
-```ini
-DEPLOW_BACKUP_DEFAULT_INTERVAL_MS=10000
-```
-
-## Failure handling
-
-If a scheduled backup fails, the backup row is marked `failed` with an `errorMessage`. There is no notification system in v1 — check the project page or database for status.
-
-## Restore
-
-deplow does not yet provide one-click restore. Download the dump from MinIO and restore manually:
+PITR applies to the project’s **dedicated Postgres container** only (stanza = project id).
 
 ```bash
-psql "$DATABASE_URL" < backup.sql
+DEPLOW_PITR_ENABLED=1
+PGBACKREST_CONFIG=/absolute/path/to/infra/pgbackrest/pgbackrest.conf
 ```
 
-Use the project's `DATABASE_URL` from secrets or the dashboard.
+1. Copy `infra/pgbackrest/pgbackrest.conf.example` → `pgbackrest.conf` (or edit the checked-in local conf).
+2. Add a `[<project-id>]` stanza (user `p_<slug>`, database `d_<slug>`).
+3. Create the stanza against the data volume:
+
+```bash
+./infra/pgbackrest/ensure-stanza.sh <project-id> <project-slug>
+```
+
+Restore stops that container, restores its data volume to the target time, and starts it again — the whole instance for that project, not a single DB carved out of a shared cluster.
+
+Redis does not support PITR in v1 (use snapshots / export-import).
+
+The service **Backups** tab shows the recoverable window when PITR is enabled and offers **Restore to point in time**.

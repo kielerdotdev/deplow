@@ -32,27 +32,28 @@ const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 	}
 
 	.docs-header-link {
-		padding: 0.35rem 0.7rem;
+		padding: 0.4rem 0.75rem;
 		font-size: 0.8125rem;
 		font-weight: 500;
 		color: var(--sl-color-gray-3);
-		border-radius: 999px;
+		border-radius: 6px;
 		text-decoration: none;
 		white-space: nowrap;
 	}
 
 	.docs-header-link:hover {
-		color: var(--sl-color-text);
+		color: var(--sl-color-white);
 	}
 
+	/* Landing steel — not neon accent fill */
 	.docs-header-cta {
-		color: #fbf8f3;
-		background: #1c2333;
+		color: #f8fafc !important;
+		background: #1d4e7a;
+		border: 1px solid transparent;
 	}
 
 	.docs-header-cta:hover {
-		color: #fbf8f3;
-		background: #2a3347;
+		background: #163d5f;
 	}
 
 	@media (max-width: 50rem) {

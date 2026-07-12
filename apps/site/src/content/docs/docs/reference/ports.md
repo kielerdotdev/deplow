@@ -3,14 +3,15 @@ title: Platform ports
 description: Default host ports for compose-managed platform services.
 ---
 
-The bundled `docker-compose.yml` maps platform services to non-default host ports to avoid collisions with local development databases.
+The bundled `docker-compose.yml` maps platform services to non-default host ports to avoid collisions. **Postgres and Redis for your apps are not in compose** — they are dedicated containers created when you add those services to a project.
 
-| Service       | Host port | Purpose                                 |
-| ------------- | --------- | --------------------------------------- |
-| Postgres      | `55432`   | Platform Postgres for project databases |
-| Redis         | `56379`   | Platform Redis for project namespaces   |
-| MinIO S3      | `59000`   | S3-compatible API                       |
-| MinIO console | `59001`   | Web admin UI                            |
+| Service            | Host port | Purpose                                      |
+| ------------------ | --------- | -------------------------------------------- |
+| Platform Redis     | `56380`   | BullMQ queues for the control plane          |
+| MinIO S3           | `59000`   | S3-compatible API (per-project buckets)      |
+| MinIO console      | `59001`   | Web admin UI                                 |
+| Caddy proxy        | `8088`    | Hostname → app container (HTTP; TLS at edge) |
+| BuildKit           | —         | Privileged build daemon (no published port)  |
 
 ## Control plane
 
@@ -18,6 +19,10 @@ The bundled `docker-compose.yml` maps platform services to non-default host port
 | ------------------------ | ------ |
 | deplow web app           | `3000` |
 | deplow docs site (Astro) | `4321` |
+
+## App data services
+
+Dedicated Postgres and Redis containers publish ephemeral localhost ports for operator tools. Apps reach them over Docker DNS on the `deplow_default` network — not via the host ports above.
 
 ## Commands
 

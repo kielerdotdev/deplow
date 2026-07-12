@@ -104,7 +104,7 @@ describe("handleGitWebhook (shipped handler path)", () => {
       }),
     )
     expect(recordDelivery).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "success" }),
+      expect.objectContaining({ status: "accepted" }),
     )
   })
 

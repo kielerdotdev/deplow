@@ -19,29 +19,33 @@ hero:
 
 import { Card, CardGrid } from "@astrojs/starlight/components"
 
-deplow is an **opinionated self-hosted project runtime**. Most apps you deploy need a **database**, **object storage** (S3 / R2-shaped), and a **runtime** — that is about it. deplow provisions that bundle so you do not spin up hosted Postgres, Redis, or S3 per project, or hand-roll backups.
-
-One project means **one app** plus **Postgres**, **Redis**, **S3**, and **encrypted secrets** — deployed with **Railpack or a Dockerfile** onto **local Docker**, with **user apps sandboxed under gVisor**.
+deplow is an **opinionated self-hosted project runtime**. Most apps need a **database**, **object storage**, and a **runtime**. deplow runs that stack on a Docker host you control — with **gVisor** for user apps — so you skip hosted Postgres/Redis/S3 tabs and hand-rolled backup cron.
 
 ```text
-create project
-  → provision Postgres DB/user
-  → provision Redis ACL namespace
-  → provision MinIO bucket
-  → encrypt credentials + secrets.yaml
-  → deploy (prebuilt image | Dockerfile | Railpack) under gVisor
-  → scheduled Postgres backups → platform S3
+create empty project
+  → add web / worker / postgres / redis services
+  → bind apps to data (DATABASE_URL / REDIS_URL)
+  → deploy (image | Dockerfile | Railpack) under gVisor
+  → URL on *.{baseDomain} via Caddy + cloudflared
+  → scheduled Postgres backups → platform MinIO
 ```
+
+## Start here
+
+1. [Prerequisites](/docs/getting-started/prerequisites/) — Docker, gVisor, BuildKit, Railpack
+2. [Quick start](/docs/getting-started/quick-start/) — `bash scripts/install.sh` then `pnpm dev`
+3. [Domains & URLs](/docs/guides/domains/) — base domain + optional Cloudflare Tunnel
+4. [Deploy](/docs/guides/deploy/) — bind, build, run
 
 ## What you get
 
 <CardGrid stagger>
-  <Card title="Provisioned infra" icon="rocket">
-    Postgres database, Redis namespace, and MinIO bucket per project — created
-    automatically on a shared platform.
+  <Card title="Service-first stack" icon="rocket">
+    Dedicated Postgres and Redis containers per service, shared MinIO with
+    per-project buckets — add what you need, bind explicitly.
   </Card>
   <Card title="Build paths" icon="set-up">
-    Prebuilt image, Dockerfile build, or Railpack from source. Compose deploys
+    Prebuilt image, Dockerfile, or Railpack from source. Compose deploys
     are not supported.
   </Card>
   <Card title="Secure by default" icon="approve-check">
@@ -56,15 +60,6 @@ create project
 
 ## Explicitly out of scope
 
-deplow is not Dokploy or Coolify. The following are **not** supported in this version:
+See [Scope](/docs/concepts/scope/) for the full list. Short version: not Coolify/Dokploy. No MySQL/Mongo menu, no Compose deploy, no custom domains in v1 (platform wildcard only), no multi-server, no typed CLI.
 
-- MySQL, MongoDB, or databases beyond Postgres
-- Docker Compose as a first-class deploy path
-- Nixpacks, Paketo, or Heroku buildpacks
-- Custom domains, SSL, or reverse-proxy automation
-- Multi-server orchestration
-- Teams, RBAC, notifications, or a public API
-
-**v1** includes a platform proxy + cloudflared wildcard URLs and git **webhooks**. **Preview deployments** are planned for later — see repo `docs/sequencing.md`.
-
-Project principles live under `docs/` (`philosophy.md`, `security.md`, `data-plane.md`).
+**v1** includes Caddy + cloudflared wildcard URLs and git **webhooks**. Previews and custom domains are **v2**.

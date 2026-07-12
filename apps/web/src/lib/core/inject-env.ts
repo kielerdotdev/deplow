@@ -2,49 +2,35 @@ import type { ProjectCredentials } from "@deplow/shared"
 
 import type { PlatformConfig } from "./platform-config"
 
+/** Env for read-only containers: writable home under /tmp + disable CLI telemetry. */
+export function containerRuntimeEnv(
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  return {
+    HOME: "/tmp",
+    XDG_CONFIG_HOME: "/tmp/.config",
+    XDG_CACHE_HOME: "/tmp/.cache",
+    XDG_DATA_HOME: "/tmp/.local/share",
+    ASTRO_TELEMETRY_DISABLED: "1",
+    NEXT_TELEMETRY_DISABLED: "1",
+    ...extra,
+  }
+}
+
 /**
- * Env vars injected into app containers.
- * Uses Docker Compose DNS names + internal ports so containers on
- * `deplow_default` can reach Postgres/Redis/MinIO (not 127.0.0.1 host ports).
- * secrets.yaml keeps host-facing URLs for tools running on the host.
+ * Env vars injected into app containers from full project credentials (legacy).
+ * Prefer injectDeployEnvFromBindings for least-privilege.
  */
 export function injectDeployEnv(
   credentials: ProjectCredentials,
   config: PlatformConfig,
   extra: Record<string, string> = {},
 ): Record<string, string> {
-  const databaseUrl = `postgres://${encodeURIComponent(credentials.database.user)}:${encodeURIComponent(credentials.database.password)}@${config.postgresDockerHost}:${config.postgresDockerPort}/${credentials.database.database}`
-
-  let redisUrl: string
-  if (credentials.redis.url) {
-    redisUrl = rewriteUrlHost(
-      credentials.redis.url,
-      config.redisDockerHost,
-      config.redisDockerPort,
-    )
-  } else if (credentials.redis.password) {
-    // ACL username is not known without url; use password-only (default user won't work for ACL namespaces)
-    redisUrl = `redis://:${encodeURIComponent(credentials.redis.password)}@${config.redisDockerHost}:${config.redisDockerPort}`
-  } else {
-    redisUrl = `redis://${config.redisDockerHost}:${config.redisDockerPort}`
-  }
-
-  // Prefer ACL form from provisioner: redis://username:password@host:port
-  // rewrite only host/port
-  if (credentials.redis.url?.includes("://")) {
-    try {
-      const u = new URL(credentials.redis.url)
-      // Redis URLs may use redis://user:pass@host:port — URL parser works
-      u.hostname = config.redisDockerHost
-      u.port = String(config.redisDockerPort)
-      redisUrl = u.href.replace(/\/$/, "")
-    } catch {
-      // keep fallback
-    }
-  }
+  const databaseUrl = buildDatabaseUrl(credentials.database)
+  const redisUrl = buildRedisUrl(credentials.redis)
 
   return {
-    ...extra,
+    ...containerRuntimeEnv(extra),
     DATABASE_URL: databaseUrl,
     REDIS_URL: redisUrl,
     S3_ENDPOINT: config.minioDockerEndpoint,
@@ -55,7 +41,70 @@ export function injectDeployEnv(
   }
 }
 
-function rewriteUrlHost(url: string, host: string, port: number): string {
+export type BindingEnvInput = {
+  bindings: Array<{
+    envKey: string
+    url: string
+  }>
+  storage?: {
+    bucket: string
+    accessKeyId: string
+    secretAccessKey: string
+    region?: string
+  } | null
+}
+
+/** Build container env from explicit service bindings (+ optional project S3). */
+export function injectDeployEnvFromBindings(
+  input: BindingEnvInput,
+  config: PlatformConfig,
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  const env: Record<string, string> = { ...containerRuntimeEnv(extra) }
+  for (const b of input.bindings) {
+    env[b.envKey] = b.url
+  }
+  if (input.storage) {
+    env.S3_ENDPOINT = config.minioDockerEndpoint
+    env.S3_BUCKET = input.storage.bucket
+    env.S3_ACCESS_KEY = input.storage.accessKeyId
+    env.S3_SECRET_KEY = input.storage.secretAccessKey
+    env.S3_REGION = input.storage.region ?? config.minioRegion
+  }
+  return env
+}
+
+export function buildDatabaseUrl(creds: {
+  user: string
+  password: string
+  database: string
+  host: string
+  port: number
+}): string {
+  const { user, password, database, host, port } = creds
+  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
+}
+
+export function buildRedisUrl(creds: {
+  host: string
+  port: number
+  password?: string
+  url?: string
+}): string {
+  const { host, port, password, url } = creds
+
+  if (url?.includes("://")) {
+    return rewriteHost(url, host, port)
+  }
+
+  if (password) {
+    return `redis://:${encodeURIComponent(password)}@${host}:${port}`
+  }
+
+  return `redis://${host}:${port}`
+}
+
+function rewriteHost(url: string, host: string, port: number): string {
   try {
     const u = new URL(url)
     u.hostname = host

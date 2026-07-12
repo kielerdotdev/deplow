@@ -50,7 +50,8 @@ export function buildUserAppHostConfig(input: UserAppHostConfigInput): {
     SecurityOpt: ["no-new-privileges:true"],
     ReadonlyRootfs: readOnly,
     Tmpfs: {
-      "/tmp": "rw,noexec,nosuid,size=64m",
+      // Home/config/cache redirected here via HOME + XDG_* (see injectDeployEnv)
+      "/tmp": "rw,noexec,nosuid,size=128m",
     },
     Memory: input.runtime.memoryBytes,
     NanoCpus: input.runtime.nanoCpus,

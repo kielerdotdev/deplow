@@ -45,28 +45,16 @@ export class StorageProvisioner {
 
   async createBucket(projectSlug: string): Promise<StorageCredentials> {
     const bucket = sanitizeIdentifier(`prj-${projectSlug}`).replace(/_/g, "-")
-    try {
-      await this.client.send(new CreateBucketCommand({ Bucket: bucket }))
-    } catch (error) {
-      if (!isAlreadyExists(error)) throw error
-    }
+    await this.ensureBucketExists(bucket)
 
     const pair = this.generateAccessPair(projectSlug)
+    assertNotPlatformKeys(pair, this.config)
+
     await this.provisionMinioUser(
       pair.accessKeyId,
       pair.secretAccessKey,
       bucket,
     )
-
-    // Must not return platform root keys
-    if (
-      pair.accessKeyId === this.config.minioAccessKey ||
-      pair.secretAccessKey === this.config.minioSecretKey
-    ) {
-      throw new Error(
-        "Refusing to issue platform root MinIO credentials to a project",
-      )
-    }
 
     return {
       endpoint: this.config.minioPublicEndpoint,
@@ -78,45 +66,9 @@ export class StorageProvisioner {
   }
 
   async destroyBucket(bucket: string, accessKeyId?: string): Promise<void> {
-    let continuation: string | undefined
-    do {
-      const listed = await this.client.send(
-        new ListObjectsV2Command({
-          Bucket: bucket,
-          ContinuationToken: continuation,
-        }),
-      )
-      const objects = (listed.Contents ?? [])
-        .map((o) => (o.Key ? { Key: o.Key } : null))
-        .filter(Boolean) as { Key: string }[]
-      if (objects.length > 0) {
-        await this.client.send(
-          new DeleteObjectsCommand({
-            Bucket: bucket,
-            Delete: { Objects: objects },
-          }),
-        )
-      }
-      continuation = listed.IsTruncated
-        ? listed.NextContinuationToken
-        : undefined
-    } while (continuation)
-
-    try {
-      await this.client.send(new DeleteBucketCommand({ Bucket: bucket }))
-    } catch {
-      // ignore
-    }
-
-    if (accessKeyId && accessKeyId !== this.config.minioAccessKey) {
-      const policyName = `pol-${bucket}`.slice(0, 32)
-      await this.runMcScript(`
-        mc alias set local ${this.config.minioDockerEndpoint} ${this.config.minioAccessKey} ${this.config.minioSecretKey}
-        mc admin policy detach local ${policyName} --user ${accessKeyId} || true
-        mc admin user remove local ${accessKeyId} || true
-        mc admin policy remove local ${policyName} || true
-      `).catch(() => undefined)
-    }
+    await this.emptyBucket(bucket)
+    await this.deleteBucketQuiet(bucket)
+    await this.cleanupMinioUser(accessKeyId, bucket)
   }
 
   async putObject(
@@ -162,6 +114,66 @@ export class StorageProvisioner {
     }
   }
 
+  // ── internal helpers ──────────────────────────────────────────
+
+  private async ensureBucketExists(bucket: string): Promise<void> {
+    try {
+      await this.client.send(new CreateBucketCommand({ Bucket: bucket }))
+    } catch (error) {
+      if (!isAlreadyExists(error)) throw error
+    }
+  }
+
+  private async emptyBucket(bucket: string): Promise<void> {
+    let continuation: string | undefined
+    do {
+      const listed = await this.client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          ContinuationToken: continuation,
+        }),
+      )
+      const objects = (listed.Contents ?? [])
+        .map((o) => (o.Key ? { Key: o.Key } : null))
+        .filter(Boolean) as { Key: string }[]
+      if (objects.length > 0) {
+        await this.client.send(
+          new DeleteObjectsCommand({
+            Bucket: bucket,
+            Delete: { Objects: objects },
+          }),
+        )
+      }
+      continuation = listed.IsTruncated
+        ? listed.NextContinuationToken
+        : undefined
+    } while (continuation)
+  }
+
+  private async deleteBucketQuiet(bucket: string): Promise<void> {
+    try {
+      await this.client.send(new DeleteBucketCommand({ Bucket: bucket }))
+    } catch {
+      // bucket may already be gone
+    }
+  }
+
+  private async cleanupMinioUser(
+    accessKeyId?: string,
+    bucket?: string,
+  ): Promise<void> {
+    if (!accessKeyId || accessKeyId === this.config.minioAccessKey) return
+    if (!bucket) return
+
+    const policyName = `pol-${bucket}`.slice(0, 32)
+    await this.runMcScript(`
+      mc alias set local ${this.config.minioDockerEndpoint} ${this.config.minioAccessKey} ${this.config.minioSecretKey}
+      mc admin policy detach local ${policyName} --user ${accessKeyId} || true
+      mc admin user remove local ${accessKeyId} || true
+      mc admin policy remove local ${policyName} || true
+    `).catch(() => undefined)
+  }
+
   private async provisionMinioUser(
     accessKey: string,
     secretKey: string,
@@ -170,16 +182,7 @@ export class StorageProvisioner {
     const policyName = `pol-${bucket}`.slice(0, 32)
     const dir = mkdtempSync(path.join(tmpdir(), "deplow-minio-"))
     const policyPath = path.join(dir, "policy.json")
-    const policy = {
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Effect: "Allow",
-          Action: ["s3:*"],
-          Resource: [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`],
-        },
-      ],
-    }
+    const policy = buildBucketPolicy(bucket)
     writeFileSync(policyPath, JSON.stringify(policy))
 
     try {
@@ -220,23 +223,20 @@ export class StorageProvisioner {
       const child = spawn("docker", dockerArgs, { env: process.env })
       let stderr = ""
       let stdout = ""
-      child.stdout.on("data", (d: Buffer) => {
-        stdout += d.toString("utf8")
-      })
-      child.stderr.on("data", (d: Buffer) => {
-        stderr += d.toString("utf8")
-      })
+      child.stdout.on("data", (d: Buffer) => (stdout += d.toString("utf8")))
+      child.stderr.on("data", (d: Buffer) => (stderr += d.toString("utf8")))
       child.on("error", reject)
       child.on("close", (code) => {
-        if (code === 0) resolve()
-        else
-          reject(
-            new Error(`mc failed (${code}): ${stderr || stdout || "unknown"}`),
-          )
+        if (code === 0) return resolve()
+        reject(
+          new Error(`mc failed (${code}): ${stderr || stdout || "unknown"}`),
+        )
       })
     })
   }
 }
+
+// ── module-level helpers ─────────────────────────────────────────
 
 function isAlreadyExists(error: unknown): boolean {
   const name = (error as { name?: string }).name ?? ""
@@ -246,4 +246,31 @@ function isAlreadyExists(error: unknown): boolean {
     msg.includes("already") ||
     msg.includes("conflict")
   )
+}
+
+function buildBucketPolicy(bucket: string) {
+  return {
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Effect: "Allow",
+        Action: ["s3:*"],
+        Resource: [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`],
+      },
+    ],
+  }
+}
+
+function assertNotPlatformKeys(
+  pair: { accessKeyId: string; secretAccessKey: string },
+  config: PlatformConfig,
+): void {
+  if (
+    pair.accessKeyId === config.minioAccessKey ||
+    pair.secretAccessKey === config.minioSecretKey
+  ) {
+    throw new Error(
+      "Refusing to issue platform root MinIO credentials to a project",
+    )
+  }
 }

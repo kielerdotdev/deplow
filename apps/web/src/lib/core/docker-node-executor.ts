@@ -317,6 +317,162 @@ export class DockerNodeExecutor implements NodeExecutor {
     }
   }
 
+  async getContainerState(
+    nodeId: string,
+    serviceName: string,
+  ): Promise<{ running: boolean; restartCount: number; status: string }> {
+    const name = this.containerName(nodeId, serviceName)
+    try {
+      const inspect = await this.docker.getContainer(name).inspect()
+      return {
+        running: Boolean(inspect.State?.Running),
+        restartCount: Number(inspect.RestartCount ?? 0),
+        status: String(inspect.State?.Status ?? "unknown"),
+      }
+    } catch {
+      return { running: false, restartCount: 0, status: "missing" }
+    }
+  }
+
+  /**
+   * Check whether a TCP port is accepting connections inside the container.
+   * Railpack/runtime images often lack wget/nc and use dash as `sh` (no /dev/tcp).
+   * Distroless / static binaries (e.g. http-echo) have no shell — fall back to a
+   * host-side TCP probe against the container IP on the platform network.
+   */
+  async isPortListening(
+    nodeId: string,
+    serviceName: string,
+    port: number,
+  ): Promise<boolean> {
+    const script = [
+      `port=${Number(port)}`,
+      `hex=$(printf '%04X' "$port")`,
+      // /proc is always available; 0A = TCP_LISTEN
+      `if grep -h ":"$hex /proc/net/tcp /proc/net/tcp6 2>/dev/null | awk '$4=="0A"{found=1} END{exit !found}'; then exit 0; fi`,
+      // bash /dev/tcp (not available in dash)
+      `if command -v bash >/dev/null 2>&1; then bash -c "echo >/dev/tcp/127.0.0.1/$port" >/dev/null 2>&1 && exit 0; fi`,
+      // Node is present in Node/Railpack images
+      `if command -v node >/dev/null 2>&1; then node -e "require('net').connect($port,'127.0.0.1',()=>process.exit(0)).on('error',()=>process.exit(1))" >/dev/null 2>&1 && exit 0; fi`,
+      `command -v wget >/dev/null 2>&1 && wget -q -O- --timeout=1 http://127.0.0.1:$port/ >/dev/null 2>&1 && exit 0`,
+      `command -v curl >/dev/null 2>&1 && curl -sf --max-time 1 http://127.0.0.1:$port/ >/dev/null 2>&1 && exit 0`,
+      `command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 $port >/dev/null 2>&1 && exit 0`,
+      `exit 1`,
+    ].join("; ")
+    const code = await this.execInService(nodeId, serviceName, [
+      "sh",
+      "-c",
+      script,
+    ])
+    if (code === 0) return true
+    return this.probeContainerPort(nodeId, serviceName, port)
+  }
+
+  private async probeContainerPort(
+    nodeId: string,
+    serviceName: string,
+    port: number,
+  ): Promise<boolean> {
+    const name = this.containerName(nodeId, serviceName)
+    try {
+      const info = await this.docker.getContainer(name).inspect()
+      const networks = info.NetworkSettings?.Networks ?? {}
+      const ip =
+        networks[this.platformNetwork]?.IPAddress ||
+        Object.values(networks).find((n) => n?.IPAddress)?.IPAddress
+      if (!ip) return false
+      const net = await import("node:net")
+      return await new Promise<boolean>((resolve) => {
+        const socket = net.connect({ host: ip, port, timeout: 1500 }, () => {
+          socket.destroy()
+          resolve(true)
+        })
+        socket.on("error", () => resolve(false))
+        socket.on("timeout", () => {
+          socket.destroy()
+          resolve(false)
+        })
+      })
+    } catch {
+      return false
+    }
+  }
+
+  async httpGetInService(
+    nodeId: string,
+    serviceName: string,
+    port: number,
+    requestPath: string,
+  ): Promise<{ ok: boolean; status: number }> {
+    const path = requestPath.startsWith("/") ? requestPath : `/${requestPath}`
+    const url = `http://127.0.0.1:${port}${path}`
+    const script = [
+      `url=${JSON.stringify(url)}`,
+      `if command -v wget >/dev/null 2>&1; then`,
+      `  code=$(wget -q -S -O /dev/null --timeout=3 "$url" 2>&1 | awk '/HTTP\\//{print $2; exit}')`,
+      `  [ -n "$code" ] || exit 1`,
+      `  echo "$code"`,
+      `  exit 0`,
+      `fi`,
+      `if command -v curl >/dev/null 2>&1; then`,
+      `  curl -s -o /dev/null -w '%{http_code}' --max-time 3 "$url"`,
+      `  exit 0`,
+      `fi`,
+      `exit 1`,
+    ].join("\n")
+    const { code, stdout } = await this.execInServiceWithOutput(
+      nodeId,
+      serviceName,
+      ["sh", "-c", script],
+    )
+    if (code !== 0) return { ok: false, status: 0 }
+    const status = Number(stdout.trim().split("\n").pop() || "0")
+    return { ok: status >= 200 && status < 500, status }
+  }
+
+  private async execInService(
+    nodeId: string,
+    serviceName: string,
+    cmd: string[],
+  ): Promise<number> {
+    const { code } = await this.execInServiceWithOutput(
+      nodeId,
+      serviceName,
+      cmd,
+    )
+    return code
+  }
+
+  private async execInServiceWithOutput(
+    nodeId: string,
+    serviceName: string,
+    cmd: string[],
+  ): Promise<{ code: number; stdout: string }> {
+    const name = this.containerName(nodeId, serviceName)
+    try {
+      const container = this.docker.getContainer(name)
+      const exec = await container.exec({
+        Cmd: cmd,
+        AttachStdout: true,
+        AttachStderr: true,
+      })
+      const stream = await exec.start({ hijack: true, stdin: false })
+      const chunks: Buffer[] = []
+      await new Promise<void>((resolve, reject) => {
+        stream.on("data", (c: Buffer) => chunks.push(Buffer.from(c)))
+        stream.on("end", () => resolve())
+        stream.on("error", reject)
+      })
+      const inspect = await exec.inspect()
+      return {
+        code: inspect.ExitCode ?? 1,
+        stdout: demuxDockerLogs(Buffer.concat(chunks)),
+      }
+    } catch {
+      return { code: 1, stdout: "" }
+    }
+  }
+
   async removeProjectContainers(projectId: string): Promise<number> {
     const containers = await this.docker.listContainers({
       all: true,

@@ -1,9 +1,9 @@
 ---
 title: Architecture
-description: Control plane vs data plane, gVisor for user apps, and where business logic lives.
+description: Control plane, dedicated data services, gVisor for user apps, and where business logic lives.
 ---
 
-deplow splits responsibilities between a **control plane** (the web app) and a **data plane** (shared platform services). User apps are sandboxed separately from platform services.
+deplow splits responsibilities between a **control plane** (the web app + SQLite) and a **data plane** (dedicated Postgres/Redis containers per service, shared MinIO). User apps are sandboxed separately from platform glue.
 
 ## High-level diagram
 
@@ -11,22 +11,22 @@ deplow splits responsibilities between a **control plane** (the web app) and a *
 ┌─────────────────────────────────────────────────────────┐
 │  Control plane (@deplow/web)                            │
 │  TanStack Start · oRPC · Better Auth · Drizzle/SQLite   │
-│                                                         │
-│  ProvisioningService · BuildService · BackupService     │
-│  DockerNodeExecutor                                     │
+│  BullMQ on platform Redis · Caddy route writer          │
 └───────────────┬─────────────────────────────────────────┘
                 │ docker.sock (control plane only)
                 ▼
-┌─────────────────────────────────────────────────────────┐
-│  Per-project containers                                 │
-│  runtime: gVisor (runsc) · hardened HostConfig          │
-└───────────────┬─────────────────────────────────────────┘
-                │ credentials injected at deploy
+┌──────────────────────────────┐    ┌─────────────────────┐
+│  User apps (web / worker)    │    │  Platform glue      │
+│  runtime: gVisor (runsc)     │    │  MinIO · Caddy      │
+│  hardened HostConfig         │    │  BuildKit · plat.   │
+└───────────────┬──────────────┘    │  Redis (BullMQ)     │
+                │ bindings          └─────────────────────┘
                 ▼
-┌──────────────┬──────────────────┬─────────────────────┐
-│  Postgres 16 │  Redis 7         │  MinIO (S3)         │
-│  (runc)      │  (runc)          │  (runc)             │
-└──────────────┴──────────────────┴─────────────────────┘
+┌──────────────────────────────┐
+│  Data services (per project) │
+│  dedicated Postgres (runc)   │
+│  dedicated Redis (runc)      │
+└──────────────────────────────┘
 ```
 
 ## Monorepo packages
@@ -41,15 +41,15 @@ Core business logic lives in `apps/web/src/lib/core/` and stays **framework-agno
 
 ## Control plane storage
 
-Project metadata, deployments, backups, and encrypted credentials are stored in SQLite. Workload data (app DB rows, Redis keys, S3 objects) lives in the platform services.
+Project metadata, deployments, backups, and encrypted credentials are stored in SQLite. Workload data lives in **dedicated Postgres/Redis containers** and **MinIO buckets** — not in a shared multi-tenant Postgres.
 
 ## Runtime model
 
 - **Single Docker host** via `dockerode` and `docker.sock`
 - **User apps → gVisor (`runsc`)** with CapDrop ALL, no-new-privileges, readonly rootfs, memory/CPU limits
-- **Platform + builds → runc** (Postgres, Redis, MinIO, BuildKit / Railpack builds)
-- **One container per deployment** with injected env vars
+- **Data services + platform glue → runc** (dedicated Postgres/Redis, MinIO, Caddy, BuildKit)
+- **One container per app deployment** with env from **explicit bindings**
 - **No Compose deploy path** — images only (prebuilt, Dockerfile build, or Railpack build)
 - **`docker.sock` never mounted** into user app containers
 
-Security stance and install details: repo `docs/security.md` and `docs/secure-runtime.md`.
+Security stance and install details: [Security](/docs/concepts/security/) and repo `docs/secure-runtime.md`.

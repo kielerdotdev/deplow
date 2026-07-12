@@ -73,6 +73,7 @@ User apps join the platform compose network for DNS (`postgres` / `redis` / `min
 | `apps/web/src/lib/core/index.ts`                                   | Export any new types if needed                                                 |
 | `apps/web/.env.example` / root `.env.example`                      | Document new env vars                                                          |
 | `README.md` + `apps/site` docs                                     | Install: Docker, gVisor, userns-remap, compose                                 |
+| `scripts/install.sh` (`pnpm install:host`)                         | Bootstrap: BuildKit + Railpack + runsc install/verify + compose + db           |
 | Optional: `scripts/check-runtime.sh` or oRPC `nodes.status` detail | Report whether `runsc` is installed                                            |
 
 Do **not** put gVisor/`Runtime` on:

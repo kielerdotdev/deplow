@@ -1,65 +1,57 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi, beforeEach } from "vitest"
 
-import { createCaddyReloadOnChange, reloadCaddyProxy } from "./caddy-reload"
+import {
+  getLastCaddyReload,
+  probeCaddyProxy,
+  reloadCaddyProxy,
+  resetLastCaddyReload,
+} from "./caddy-reload"
 
-describe("reloadCaddyProxy", () => {
-  it("runs docker exec caddy reload with config path", async () => {
-    const runCommand = vi.fn<
-      (
-        cmd: string,
-        args: string[],
-      ) => Promise<{ code: number; stdout: string; stderr: string }>
-    >(async () => ({
+describe("caddy reload status tracking", () => {
+  beforeEach(() => {
+    resetLastCaddyReload()
+  })
+
+  it("records successful reload", async () => {
+    const runCommand = vi.fn(async () => ({
       code: 0,
       stdout: "",
       stderr: "",
     }))
-    const result = await reloadCaddyProxy({
-      containerName: "deplow-caddy",
-      runCommand,
-    })
+    const result = await reloadCaddyProxy({ runCommand })
     expect(result.ok).toBe(true)
-    expect(runCommand).toHaveBeenCalledWith("docker", [
-      "exec",
-      "deplow-caddy",
-      "caddy",
-      "reload",
-      "--config",
-      "/etc/caddy/Caddyfile",
-      "--adapter",
-      "caddyfile",
-    ])
+    expect(getLastCaddyReload()?.ok).toBe(true)
+    expect(getLastCaddyReload()?.message).toBe("caddy reloaded")
   })
 
-  it("returns ok:false without throwing when reload fails", async () => {
-    const runCommand = vi.fn<
-      (
-        cmd: string,
-        args: string[],
-      ) => Promise<{ code: number; stdout: string; stderr: string }>
-    >(async () => ({
+  it("records failed reload without throwing", async () => {
+    const runCommand = vi.fn(async () => ({
       code: 1,
       stdout: "",
-      stderr: "container not found",
+      stderr: "No such container",
     }))
     const result = await reloadCaddyProxy({ runCommand })
     expect(result.ok).toBe(false)
-    expect(result.message).toContain("container not found")
+    expect(result.message).toContain("No such container")
+    expect(getLastCaddyReload()?.ok).toBe(false)
   })
 
-  it("createCaddyReloadOnChange invokes reload", async () => {
-    const runCommand = vi.fn<
-      (
-        cmd: string,
-        args: string[],
-      ) => Promise<{ code: number; stdout: string; stderr: string }>
-    >(async () => ({
+  it("probes caddy reachability via docker exec", async () => {
+    const runCommand = vi.fn(async () => ({
       code: 0,
-      stdout: "",
+      stdout: "deplow proxy",
       stderr: "",
     }))
-    const onChange = createCaddyReloadOnChange({ runCommand })
-    await onChange()
-    expect(runCommand).toHaveBeenCalled()
+    const probe = await probeCaddyProxy({ runCommand })
+    expect(probe.reachable).toBe(true)
+    expect(runCommand).toHaveBeenCalledWith(
+      "docker",
+      expect.arrayContaining([
+        "exec",
+        "deplow-caddy",
+        "wget",
+        "http://127.0.0.1:80/deplow-health",
+      ]),
+    )
   })
 })

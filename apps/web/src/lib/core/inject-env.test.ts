@@ -1,27 +1,29 @@
 import { describe, expect, it } from "vitest"
 
-import { injectDeployEnv } from "./inject-env"
+import type { ProjectCredentials } from "@deplow/shared"
+
+import { injectDeployEnv, injectDeployEnvFromBindings } from "./inject-env"
 import { loadPlatformConfig } from "./platform-config"
 
 describe("injectDeployEnv", () => {
-  it("rewrites hosts to docker DNS names, not 127.0.0.1 host ports", () => {
+  it("uses dedicated container hosts from credentials", () => {
     const config = loadPlatformConfig()
     const env = injectDeployEnv(
       {
         database: {
-          host: "127.0.0.1",
-          port: 55432,
+          host: "deplow-pg-demo",
+          port: 5432,
           database: "d_demo",
           user: "p_demo",
           password: "secret",
-          url: "postgres://p_demo:secret@127.0.0.1:55432/d_demo",
+          url: "postgres://p_demo:secret@127.0.0.1:40123/d_demo",
         },
         redis: {
-          host: "127.0.0.1",
-          port: 56379,
+          host: "deplow-redis-demo",
+          port: 6379,
           password: "rpass",
-          namespace: "demo",
-          url: "redis://u_demo:rpass@127.0.0.1:56379",
+          namespace: "u_demo",
+          url: "redis://:rpass@127.0.0.1:40124",
         },
         storage: {
           endpoint: "http://127.0.0.1:59000",
@@ -30,20 +32,42 @@ describe("injectDeployEnv", () => {
           secretAccessKey: "supersecretkey",
           region: "us-east-1",
         },
-      },
+      } satisfies ProjectCredentials,
       config,
     )
 
-    expect(env.DATABASE_URL).toContain("@postgres:5432/")
+    expect(env.DATABASE_URL).toContain("@deplow-pg-demo:5432/")
     expect(env.DATABASE_URL).not.toContain("127.0.0.1")
-    expect(env.DATABASE_URL).not.toContain("55432")
-    expect(env.REDIS_URL).toContain("@redis:6379")
+    expect(env.REDIS_URL).toContain("@deplow-redis-demo:6379")
     expect(env.REDIS_URL).not.toContain("127.0.0.1")
     expect(env.S3_ENDPOINT).toBe("http://minio:9000")
     expect(env.S3_BUCKET).toBe("prj-demo")
     expect(env.S3_ACCESS_KEY).toBe("prjdemoabc")
     expect(env.S3_SECRET_KEY).toBe("supersecretkey")
-    // Must not reuse platform root keys in this fixture
     expect(env.S3_ACCESS_KEY).not.toBe(config.minioAccessKey)
+    expect(env.HOME).toBe("/tmp")
+    expect(env.ASTRO_TELEMETRY_DISABLED).toBe("1")
+  })
+})
+
+describe("injectDeployEnvFromBindings", () => {
+  it("only injects bound env keys", () => {
+    const config = loadPlatformConfig()
+    const env = injectDeployEnvFromBindings(
+      {
+        bindings: [
+          {
+            envKey: "REDIS_URL",
+            url: "redis://:x@deplow-redis-demo:6379",
+          },
+        ],
+        storage: null,
+      },
+      config,
+      { SERVICE_NAME: "api" },
+    )
+    expect(env.REDIS_URL).toContain("deplow-redis-demo")
+    expect(env.DATABASE_URL).toBeUndefined()
+    expect(env.SERVICE_NAME).toBe("api")
   })
 })

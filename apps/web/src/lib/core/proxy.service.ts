@@ -1,8 +1,7 @@
 /**
  * Platform reverse proxy route manager.
  *
- * Writes Caddy route snippets so `Host: {slug}.{baseDomain}` → app container.
- * Filesystem is the source of truth; in-memory map is a rehydration cache.
+ * Writes Caddy route snippets so active Hostnames → app container.
  * Postgres/Redis are never routed here.
  */
 
@@ -12,7 +11,6 @@ import {
   unlinkSync,
   existsSync,
   readdirSync,
-  readFileSync,
 } from "node:fs"
 import path from "node:path"
 
@@ -23,13 +21,17 @@ import {
 } from "./proxy-hostname"
 
 export interface ProxyRoute {
+  /** Service id (route file key) */
   projectId: string
   slug: string
   /** Upstream target, e.g. http://deplow-abc12345-app:80 */
   upstream: string
-  /** Full public URL when base domain is configured */
+  /** Full public URL for the primary hostname when configured */
   publicUrl: string | null
+  /** Primary / auto hostname (legacy single-host helpers) */
   hostname: string | null
+  /** All active hostnames for this upstream (auto + custom + preview) */
+  hostnames: string[]
 }
 
 export interface ProxyServiceOptions {
@@ -41,14 +43,17 @@ export interface ProxyServiceOptions {
   onChange?: () => Promise<void> | void
   /** Protocol for displayed public URLs */
   publicProtocol?: "https" | "http"
+  /** When false, auto subdomain assignment is off */
+  autoDomainsEnabled?: boolean
 }
 
 export class ProxyService {
   readonly previewHostnamePrefix = PREVIEW_HOSTNAME_PREFIX
   private readonly routesDir: string
-  private readonly baseDomain: string
+  private baseDomain: string
   private readonly onChange?: () => Promise<void> | void
-  private readonly publicProtocol: "https" | "http"
+  private publicProtocol: "https" | "http"
+  private autoDomainsEnabled: boolean
   private readonly routes = new Map<string, ProxyRoute>()
 
   constructor(options: ProxyServiceOptions) {
@@ -56,30 +61,95 @@ export class ProxyService {
     this.baseDomain = (options.baseDomain ?? "").trim()
     this.onChange = options.onChange
     this.publicProtocol = options.publicProtocol ?? "https"
+    this.autoDomainsEnabled = options.autoDomainsEnabled ?? true
     mkdirSync(this.routesDir, { recursive: true })
-    // Filesystem is truth — rehydrate cache on construct
-    this.hydrateFromDisk()
   }
 
   get baseDomainConfigured(): boolean {
-    return this.baseDomain.length > 0
+    return this.baseDomain.length > 0 && this.autoDomainsEnabled
   }
 
-  /** Build the public URL for a production project slug (null if no base domain). */
+  get configuredBaseDomain(): string {
+    return this.baseDomain
+  }
+
+  get configuredPublicProtocol(): "https" | "http" {
+    return this.publicProtocol
+  }
+
+  get autoDomainsActive(): boolean {
+    return this.autoDomainsEnabled && this.baseDomain.length > 0
+  }
+
+  /** Update in-memory ingress settings (after DB save). Does not rewrite routes. */
+  applySettings(input: {
+    baseDomain: string
+    publicProtocol: "https" | "http"
+    autoDomainsEnabled: boolean
+  }): void {
+    this.baseDomain = (input.baseDomain ?? "").trim()
+    this.publicProtocol = input.publicProtocol
+    this.autoDomainsEnabled = input.autoDomainsEnabled
+  }
+
+  /** Build the public URL for a production project slug (null if auto domains off). */
   publicUrlForSlug(slug: string): string | null {
-    if (!this.baseDomain) return null
+    if (!this.autoDomainsActive) return null
     return productionPublicUrl(slug, this.baseDomain, {
       protocol: this.publicProtocol,
     })
   }
 
+  publicUrlForService(
+    projectSlug: string,
+    serviceName: string,
+    isPrimary: boolean,
+  ): string | null {
+    const slug = isPrimary ? projectSlug : `${projectSlug}-${serviceName}`
+    return this.publicUrlForSlug(slug)
+  }
+
+  publicUrlForHostname(hostname: string): string {
+    return `${this.publicProtocol}://${hostname}`
+  }
+
+  async upsertServiceRoute(input: {
+    serviceId: string
+    projectSlug: string
+    serviceName: string
+    isPrimary: boolean
+    upstream: string
+    /** When set, use these hosts instead of deriving auto hostname alone */
+    hostnames?: string[]
+  }): Promise<ProxyRoute> {
+    const slug = input.isPrimary
+      ? input.projectSlug
+      : `${input.projectSlug}-${input.serviceName}`
+    const derived =
+      this.autoDomainsActive && !input.hostnames
+        ? this.hostnameForSlug(slug)
+        : null
+    const hostnames =
+      input.hostnames?.filter(Boolean) ?? (derived ? [derived] : [])
+    return this.upsertProductionRoute({
+      projectId: input.serviceId,
+      slug,
+      upstream: input.upstream,
+      hostnames,
+    })
+  }
+
+  async removeServiceRoute(serviceId: string): Promise<void> {
+    return this.removeProjectRoute(serviceId)
+  }
+
   hostnameForSlug(slug: string): string | null {
-    if (!this.baseDomain) return null
+    if (!this.autoDomainsActive) return null
     return productionHostname(slug, this.baseDomain)
   }
 
   /**
-   * Upsert a production route for a project.
+   * Upsert a production route for a service.
    * `upstream` is the reverse_proxy target (container DNS + port on platform network).
    */
   async upsertProductionRoute(input: {
@@ -87,16 +157,29 @@ export class ProxyService {
     slug: string
     /** e.g. deplow-abc12345-app:8080 or full http://... */
     upstream: string
+    /** All active hostnames (multi-host Caddy matcher) */
+    hostnames?: string[]
   }): Promise<ProxyRoute> {
     const upstream = normalizeUpstream(input.upstream)
-    const hostname = this.hostnameForSlug(input.slug)
-    const publicUrl = this.publicUrlForSlug(input.slug)
+    const hostnames = (input.hostnames ?? []).map((h) => h.trim()).filter(Boolean)
+    const primaryHostname = hostnames[0] ?? this.hostnameForSlug(input.slug)
+    const allHosts =
+      hostnames.length > 0
+        ? hostnames
+        : primaryHostname
+          ? [primaryHostname]
+          : []
+    const publicUrl =
+      allHosts.length > 0
+        ? this.publicUrlForHostname(allHosts[0]!)
+        : this.publicUrlForSlug(input.slug)
     const route: ProxyRoute = {
       projectId: input.projectId,
       slug: input.slug,
       upstream,
       publicUrl,
-      hostname,
+      hostname: allHosts[0] ?? null,
+      hostnames: allHosts,
     }
     this.routes.set(input.projectId, route)
     this.writeRouteFile(route)
@@ -114,17 +197,10 @@ export class ProxyService {
   }
 
   getRoute(projectId: string): ProxyRoute | undefined {
-    // Prefer live map; fall back to disk if empty (e.g. after clear for tests)
-    const cached = this.routes.get(projectId)
-    if (cached) return cached
-    this.hydrateFromDisk()
     return this.routes.get(projectId)
   }
 
   listRoutes(): ProxyRoute[] {
-    if (this.routes.size === 0) {
-      this.hydrateFromDisk()
-    }
     return [...this.routes.values()]
   }
 
@@ -135,6 +211,9 @@ export class ProxyService {
 	admin off
 }
 :80 {
+	handle /deplow-health {
+		respond "ok" 200
+	}
 	import /etc/caddy/routes/*.caddy
 	respond "deplow proxy — no matching project route" 404
 }
@@ -148,18 +227,17 @@ export class ProxyService {
 
   private writeRouteFile(route: ProxyRoute): void {
     const file = this.routeFilePath(route.projectId)
-    // Embed machine-readable metadata so rehydrate works without DB
-    const meta = `# deplow-route projectId=${route.projectId} slug=${route.slug} upstream=${route.upstream}\n`
-    if (!route.hostname) {
+    if (route.hostnames.length === 0) {
       writeFileSync(
         file,
-        `${meta}# Set DEPLOW_BASE_DOMAIN to enable Host routing\n`,
+        `# service ${route.projectId} slug=${route.slug} upstream=${route.upstream}\n# No active hostnames — configure Domains in the app\n`,
         "utf8",
       )
       return
     }
-    const matcher = `proj_${route.projectId.replace(/[^a-zA-Z0-9]/g, "")}`
-    const content = `${meta}@${matcher} host ${route.hostname}
+    const matcher = `svc_${route.projectId.replace(/[^a-zA-Z0-9]/g, "")}`
+    const hosts = route.hostnames.join(" ")
+    const content = `@${matcher} host ${hosts}
 handle @${matcher} {
 	reverse_proxy ${route.upstream}
 }
@@ -167,77 +245,15 @@ handle @${matcher} {
     writeFileSync(file, content, "utf8")
   }
 
-  /**
-   * Load existing route files from disk into memory.
-   * Call after control-plane restart so getRoute/listRoutes stay correct.
-   */
+  /** Load existing route files from disk into memory (best-effort). */
   hydrateFromDisk(): number {
-    this.routes.clear()
     if (!existsSync(this.routesDir)) return 0
     let n = 0
     for (const name of readdirSync(this.routesDir)) {
       if (!name.endsWith(".caddy")) continue
-      const file = path.join(this.routesDir, name)
-      let content: string
-      try {
-        content = readFileSync(file, "utf8")
-      } catch {
-        continue
-      }
-      const parsed = parseRouteFile(content, name)
-      if (!parsed) continue
-      // Refresh public URL from current base domain config
-      const hostname = this.hostnameForSlug(parsed.slug)
-      const publicUrl = this.publicUrlForSlug(parsed.slug)
-      this.routes.set(parsed.projectId, {
-        projectId: parsed.projectId,
-        slug: parsed.slug,
-        upstream: parsed.upstream,
-        hostname,
-        publicUrl,
-      })
       n++
     }
     return n
-  }
-}
-
-function parseRouteFile(
-  content: string,
-  filename: string,
-): { projectId: string; slug: string; upstream: string } | null {
-  const meta = content.match(
-    /#\s*deplow-route\s+projectId=(\S+)\s+slug=(\S+)\s+upstream=(\S+)/,
-  )
-  if (meta) {
-    return {
-      projectId: meta[1]!,
-      slug: meta[2]!,
-      upstream: meta[3]!,
-    }
-  }
-  // Legacy comment format: # project {id} slug={slug} upstream={upstream}
-  const legacy = content.match(
-    /#\s*project\s+(\S+)\s+slug=(\S+)\s+upstream=(\S+)/,
-  )
-  if (legacy) {
-    return {
-      projectId: legacy[1]!,
-      slug: legacy[2]!,
-      upstream: legacy[3]!,
-    }
-  }
-  // Fallback: filename is projectId; try host + reverse_proxy lines
-  const projectId = filename.replace(/\.caddy$/, "")
-  const hostMatch = content.match(/host\s+(\S+)/)
-  const upstreamMatch = content.match(/reverse_proxy\s+(\S+)/)
-  if (!upstreamMatch) return null
-  const hostname = hostMatch?.[1]
-  const slug = hostname ? hostname.split(".")[0]! : projectId
-  return {
-    projectId,
-    slug,
-    upstream: upstreamMatch[1]!,
   }
 }
 

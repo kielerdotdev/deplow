@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "@tanstack/react-router"
 import {
   CheckCircle2Icon,
   Code2Icon,
@@ -39,6 +40,7 @@ type ProjectGit = {
   branch?: string | null
   repoUrl?: string | null
   webhookUrl?: string | null
+  webhookManaged?: boolean
   lastDeliveryStatus?: string | null
   lastDeliveryAt?: string | null
   lastDeliveryError?: string | null
@@ -65,6 +67,10 @@ export type ProjectSettingsProps = {
     provider: "github" | "gitlab"
     repoUrl: string
     branch: string
+    fullName?: string
+    authMethod?: "github_app" | "oauth" | "pat" | "platform"
+    installationId?: string
+    accessToken?: string
   }) => void
   onDisconnect: () => void
   onDeploy: () => void
@@ -261,8 +267,9 @@ function ConnectedSource({
       {showWebhook && git?.webhookUrl ? (
         <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-3">
           <SettingsHint>
-            Add this URL as a push webhook in your repo settings. Use the secret
-            shown when you first connected (reconnect to rotate).
+            {git?.webhookManaged
+              ? "Webhook is managed by deplow. Copy the URL only if you need to re-add it manually."
+              : "Add this URL as a push webhook in your repo settings. Use the secret shown when connect could not register the hook automatically."}
           </SettingsHint>
           <div className="flex flex-wrap items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-md bg-muted px-2 py-1.5 font-mono text-xs">
@@ -285,7 +292,6 @@ function ConnectedSource({
 
 function ConnectSourceForm({
   pending,
-  gitProvider,
   setGitProvider,
   setGitRepoUrl,
   setGitBranch,
@@ -310,20 +316,20 @@ function ConnectSourceForm({
       provider: selection.provider,
       repoUrl: selection.cloneUrl,
       branch: selection.branch || "main",
+      fullName: selection.fullName,
+      authMethod: selection.authMethod,
+      installationId: selection.installationId,
+      accessToken: selection.accessToken,
     })
   }
 
   return (
     <div className="space-y-4">
       <SettingsHint>
-        Pick a repository from your account. We list them via a personal access
-        token — then one click connects push-to-deploy.
+        Connect GitHub or GitLab once, pick a repo, and we register the push
+        webhook for you.
       </SettingsHint>
-      <RepoSelector
-        provider={gitProvider}
-        onProviderChange={setGitProvider}
-        onChange={handleSelect}
-      />
+      <RepoSelector onChange={handleSelect} />
       <Button
         disabled={pending || !selection?.cloneUrl}
         onClick={handleConnect}
@@ -386,21 +392,21 @@ function NetworkingBlock({
         ) : (
           <div className="space-y-3 rounded-lg border border-dashed border-border/80 p-3">
             <SettingsHint>
-              Set{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
-                DEPLOW_BASE_DOMAIN
-              </code>{" "}
-              and point a wildcard at cloudflared once. After deploy, this app
-              is served at{" "}
+              Public URLs come from the platform Domains settings (base domain +
+              auto subdomains). After deploy, this app is served at{" "}
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
                 https://{projectSlug}.{"{baseDomain}"}
               </code>
               .
             </SettingsHint>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" disabled>
+              <Button
+                variant="outline"
+                size="sm"
+                render={<Link to="/domains" />}
+              >
                 <GlobeIcon data-icon="inline-start" />
-                Domain pending config
+                Open Domains
               </Button>
             </div>
           </div>

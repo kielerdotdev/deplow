@@ -4,6 +4,9 @@
 	admin 0.0.0.0:2019
 }
 :80 {
+	handle /deplow-health {
+		respond "ok" 200
+	}
 	import /etc/caddy/routes/*.caddy
 	respond "deplow proxy — no matching project route" 404
 }

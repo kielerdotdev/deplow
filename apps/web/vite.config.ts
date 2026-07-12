@@ -12,10 +12,10 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
   ssr: {
-    external: ["better-sqlite3", "dockerode", "pg", "ioredis"],
+    external: ["better-sqlite3", "dockerode", "pg", "ioredis", "bullmq"],
   },
   optimizeDeps: {
-    exclude: ["better-sqlite3", "dockerode"],
+    exclude: ["better-sqlite3", "dockerode", "bullmq"],
   },
   server: {
     port: 3000,

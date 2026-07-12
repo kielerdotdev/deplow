@@ -8,10 +8,7 @@ export const createProjectInputSchema = z.object({
     .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, {
       message: "Use lowercase letters, numbers, and hyphens",
     }),
-  /** Optional git repository URL to connect after create */
-  gitRepoUrl: z.string().url().optional().or(z.literal("")),
-  /** @deprecated escape hatch — hidden from happy-path UI */
-  spawnBuildServer: z.boolean().optional().default(false),
+  organizationId: z.string().min(1).optional(),
 })
 
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>
@@ -29,8 +26,18 @@ export const gitProviderSchema = z.enum(["github", "gitlab"])
 
 export type GitProvider = z.infer<typeof gitProviderSchema>
 
+/** How the project authenticates clone / provider API */
+export const gitAuthMethodSchema = z.enum([
+  "github_app",
+  "oauth",
+  "pat",
+  "platform",
+])
+
+export type GitAuthMethod = z.infer<typeof gitAuthMethodSchema>
+
 export const connectGitInputSchema = z.object({
-  projectId: z.string().min(1),
+  serviceId: z.string().min(1),
   provider: gitProviderSchema,
   repoUrl: z.string().url(),
   branch: z
@@ -41,18 +48,59 @@ export const connectGitInputSchema = z.object({
     .default("main"),
   /** Optional; generated if omitted */
   webhookSecret: z.string().min(8).max(256).optional(),
+  /** owner/repo — used for provider API (hooks, install scope) */
+  repoFullName: z.string().min(1).max(256).optional(),
+  authMethod: gitAuthMethodSchema.optional(),
+  /** GitHub App installation id when authMethod is github_app */
+  installationId: z.string().min(1).optional(),
+  /**
+   * Advanced: project-scoped PAT (encrypted server-side). Prefer OAuth/App.
+   * Never returned to the client after connect.
+   */
+  accessToken: z.string().min(1).optional(),
+  /** When true (default), attempt to create the remote webhook via API */
+  autoWebhook: z.boolean().optional().default(true),
 })
 
 export type ConnectGitInput = z.infer<typeof connectGitInputSchema>
 
 export const listGitReposInputSchema = z.object({
   provider: gitProviderSchema,
-  /** PAT — if omitted, server uses DEPLOW_GITHUB_TOKEN / DEPLOW_GITLAB_TOKEN */
+  /** Advanced PAT — if omitted, uses linked OAuth/App or platform token */
   token: z.string().min(1).optional(),
   query: z.string().max(200).optional(),
+  /** Prefer this GitHub App installation when listing */
+  installationId: z.string().min(1).optional(),
 })
 
 export type ListGitReposInput = z.infer<typeof listGitReposInputSchema>
+
+export const gitProviderLinkSchema = z.object({
+  provider: gitProviderSchema,
+  login: z.string().nullable().optional(),
+  avatarUrl: z.string().nullable().optional(),
+  githubInstallationId: z.string().nullable().optional(),
+  connected: z.boolean(),
+})
+
+export type GitProviderLink = z.infer<typeof gitProviderLinkSchema>
+
+export const gitConnectionStatusSchema = z.object({
+  githubAppConfigured: z.boolean(),
+  gitlabOAuthConfigured: z.boolean(),
+  links: z.array(gitProviderLinkSchema),
+  installUrl: z.string().nullable().optional(),
+})
+
+export type GitConnectionStatus = z.infer<typeof gitConnectionStatusSchema>
+
+export const startGitOAuthInputSchema = z.object({
+  provider: gitProviderSchema,
+  /** Absolute or path return URL after OAuth (validated against public origin) */
+  returnTo: z.string().max(512).optional(),
+})
+
+export type StartGitOAuthInput = z.infer<typeof startGitOAuthInputSchema>
 
 export const gitRemoteRepoSchema = z.object({
   id: z.string(),
@@ -95,8 +143,12 @@ export const projectGitStatusSchema = z.object({
   connected: z.boolean(),
   provider: gitProviderSchema.nullable().optional(),
   repoUrl: z.string().nullable().optional(),
+  repoFullName: z.string().nullable().optional(),
   branch: z.string().nullable().optional(),
   webhookUrl: z.string().nullable().optional(),
+  authMethod: gitAuthMethodSchema.nullable().optional(),
+  /** True when remote webhook was registered by deplow */
+  webhookManaged: z.boolean().optional(),
   lastDeliveryAt: z.string().nullable().optional(),
   lastDeliveryStatus: z.string().nullable().optional(),
   lastDeliveryError: z.string().nullable().optional(),

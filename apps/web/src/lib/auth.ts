@@ -4,29 +4,46 @@ import { tanstackStartCookies } from "better-auth/tanstack-start"
 
 import { db } from "@deplow/db"
 import * as schema from "@deplow/db/auth-schema"
+import { createPersonalOrganization } from "@/lib/access"
+import { env } from "@/lib/env"
 
-function getBaseUrl() {
-  return (
-    process.env.BETTER_AUTH_URL ??
-    process.env.APP_URL ??
-    "http://localhost:3000"
-  )
-}
-
-const isDev = process.env.NODE_ENV !== "production"
+const isDev = env.isDev
 
 export const auth = betterAuth({
   appName: "Deplow",
-  baseURL: getBaseUrl(),
-  secret: process.env.BETTER_AUTH_SECRET,
+  baseURL: env.betterAuthUrl,
+  secret: env.betterAuthSecret,
   // Vite binds on all interfaces; allow LAN / Tailscale origins in dev.
-  trustedOrigins: isDev ? ["*"] : [getBaseUrl()],
+  trustedOrigins: isDev ? ["*"] : [env.betterAuthUrl],
   database: drizzleAdapter(db, {
     provider: "sqlite",
     schema,
   }),
   emailAndPassword: {
     enabled: true,
+  },
+  user: {
+    additionalFields: {
+      instanceAdmin: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+        input: false,
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (created) => {
+          await createPersonalOrganization({
+            userId: created.id,
+            name: created.name,
+            email: created.email,
+          })
+        },
+      },
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 30,

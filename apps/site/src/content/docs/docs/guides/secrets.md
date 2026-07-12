@@ -1,9 +1,9 @@
 ---
 title: Secrets & env
-description: How credentials are encrypted, exported, and injected into deployments.
+description: How credentials are encrypted, bound, and injected into deployments.
 ---
 
-Project credentials are sensitive. deplow encrypts them at rest and injects them only at deploy time.
+Project credentials are sensitive. deplow encrypts them at rest and injects them at deploy time **only through explicit service bindings** (plus lazy project S3 when provisioned).
 
 ## Encryption
 
@@ -18,18 +18,24 @@ Set a dedicated secrets key in production:
 DEPLOW_SECRETS_KEY=<random-32+-byte-secret>
 ```
 
+## Bindings (least privilege)
+
+Apps do **not** automatically receive every project credential. Create a binding from a consumer (web/worker) to a provider (postgres/redis) so the platform injects the right env key — typically `DATABASE_URL` or `REDIS_URL`.
+
+S3 credentials (`S3_*`) are injected when the project’s MinIO bucket has been provisioned (lazy, often for backups).
+
 ## Downloadable secrets.yaml
 
-Export `secrets.yaml` from the project page for local development or CI. The format mirrors injected deploy env vars so you can run the same app outside deplow with identical config.
+Export `secrets.yaml` from the project page for local development or CI. The format mirrors bound deploy env vars so you can run the same app outside deplow with identical config.
 
-## Injected variables
+## Common injected variables
 
-On every deploy, these are set on the container:
+When bound / provisioned, deploys may receive:
 
 | Variable        | Description                                   |
 | --------------- | --------------------------------------------- |
-| `DATABASE_URL`  | Postgres connection string for the project DB |
-| `REDIS_URL`     | Redis connection URL with project isolation   |
+| `DATABASE_URL`  | Postgres connection string (via binding)      |
+| `REDIS_URL`     | Redis connection URL (via binding)            |
 | `S3_ENDPOINT`   | MinIO endpoint URL                            |
 | `S3_BUCKET`     | Project bucket name                           |
 | `S3_ACCESS_KEY` | Bucket access key                             |
@@ -38,5 +44,5 @@ On every deploy, these are set on the container:
 ## Best practices
 
 - Do not commit `secrets.yaml` to version control
-- Rotate platform MinIO keys if a project is compromised
+- Bind only the keys each service needs
 - Destroy projects you no longer need — teardown removes isolated resources

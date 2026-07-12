@@ -63,6 +63,7 @@ describe("ProxyService route files", () => {
       upstream: "deplow-deadbeef-app:80",
     })
     expect(route.hostname).toBe("demo.apps.example.com")
+    expect(route.hostnames).toEqual(["demo.apps.example.com"])
     expect(route.publicUrl).toBe("https://demo.apps.example.com")
     expect(route.upstream).toBe("http://deplow-deadbeef-app:80")
     expect(onChange).toHaveBeenCalledTimes(1)
@@ -96,30 +97,38 @@ describe("ProxyService route files", () => {
     expect(onChange).toHaveBeenCalledTimes(2)
   })
 
-  it("rehydrates routes from disk after control-plane restart", async () => {
+  it("exposes primary vs named web hostnames under base domain", async () => {
     dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
-    const writer = new ProxyService({
+    const proxy = new ProxyService({
       routesDir: dir,
-      baseDomain: "apps.example.com",
-    })
-    await writer.upsertProductionRoute({
-      projectId: "restart-me",
-      slug: "demo",
-      upstream: "deplow-deadbeef-app:80",
-    })
-
-    // Simulate new process: fresh service, same routes dir
-    const reloaded = new ProxyService({
-      routesDir: dir,
-      baseDomain: "apps.example.com",
+      baseDomain: "apps.kilr.dk",
       publicProtocol: "https",
     })
-    const route = reloaded.getRoute("restart-me")
-    expect(route).toBeDefined()
-    expect(route!.slug).toBe("demo")
-    expect(route!.upstream).toContain("deplow-deadbeef-app")
-    expect(route!.hostname).toBe("demo.apps.example.com")
-    expect(route!.publicUrl).toBe("https://demo.apps.example.com")
-    expect(reloaded.listRoutes()).toHaveLength(1)
+    expect(proxy.baseDomainConfigured).toBe(true)
+    expect(proxy.configuredBaseDomain).toBe("apps.kilr.dk")
+    expect(proxy.publicUrlForService("acme", "web", true)).toBe(
+      "https://acme.apps.kilr.dk",
+    )
+    expect(proxy.publicUrlForService("acme", "api", false)).toBe(
+      "https://acme-api.apps.kilr.dk",
+    )
+  })
+
+  it("writes multi-host Caddy matcher when hostnames provided", async () => {
+    dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    const proxy = new ProxyService({
+      routesDir: dir,
+      baseDomain: "apps.example.com",
+    })
+    await proxy.upsertProductionRoute({
+      projectId: "svc1",
+      slug: "demo",
+      upstream: "c:80",
+      hostnames: ["demo.apps.example.com", "www.customer.com"],
+    })
+    const content = readFileSync(path.join(dir, "svc1.caddy"), "utf8")
+    expect(content).toContain(
+      "host demo.apps.example.com www.customer.com",
+    )
   })
 })

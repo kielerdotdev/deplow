@@ -1,14 +1,10 @@
 import type { CreateProjectInput, ProjectCredentials } from "@deplow/shared"
 
 import { encryptString } from "./crypto"
-import { PostgresProvisioner } from "./infra/postgres"
-import { RedisProvisioner } from "./infra/redis"
+import { DataServiceRegistry } from "./data-services"
 import { StorageProvisioner } from "./infra/storage"
 import type { PlatformConfig } from "./platform-config"
 import { SecretsService } from "./secrets.service"
-import { productionSlot, slotResourceName } from "./slot"
-import type { ServerSpawner } from "./spawners/base"
-import { getServerSpawner } from "./spawners/factory"
 
 export interface CreateProjectResult {
   projectId: string
@@ -27,21 +23,18 @@ export interface DestroyProjectInput {
 }
 
 /**
- * Provisions default project resources: production-slot Postgres + Redis + S3 + secrets.
- * Resource names derive from the production slot (preview slots later).
+ * Legacy bundled provisioner — prefer ResourceLinkService per-link path.
+ * Still used by tests; creates dedicated PG/Redis + shared S3.
  */
 export class ProvisioningService {
-  private readonly postgres: PostgresProvisioner
-  private readonly redis: RedisProvisioner
+  private readonly registry: DataServiceRegistry
   private readonly storage: StorageProvisioner
 
   constructor(
     private readonly config: PlatformConfig,
     private readonly secretsService = new SecretsService(),
-    private readonly spawners: Record<string, ServerSpawner> = {},
   ) {
-    this.postgres = new PostgresProvisioner(config)
-    this.redis = new RedisProvisioner(config)
+    this.registry = new DataServiceRegistry(config)
     this.storage = new StorageProvisioner(config)
   }
 
@@ -50,19 +43,24 @@ export class ProvisioningService {
   ): Promise<CreateProjectResult> {
     const projectId = input.projectId ?? crypto.randomUUID()
     const slug = input.name
-    // v1: always provision the production slot (see docs/data-plane.md)
-    const slot = productionSlot(projectId, slug)
-    const resourceName = slotResourceName(slot)
 
-    const dbCreds = await this.postgres.createDatabase(resourceName)
-    const redisCreds = await this.redis.createNamespace(resourceName)
+    const database = await this.registry.get("postgres").provision({
+      projectId,
+      projectSlug: slug,
+      resourceLinkId: crypto.randomUUID(),
+    })
+    const redis = await this.registry.get("redis").provision({
+      projectId,
+      projectSlug: slug,
+      resourceLinkId: crypto.randomUUID(),
+    })
     await this.storage.ensureBackupBucket()
-    const storageCreds = await this.storage.createBucket(resourceName)
+    const storage = await this.storage.createBucket(slug)
 
     const credentials: ProjectCredentials = {
-      database: dbCreds,
-      redis: redisCreds,
-      storage: storageCreds,
+      database: database as ProjectCredentials["database"],
+      redis: redis as ProjectCredentials["redis"],
+      storage,
       slotKind: "production",
     }
 
@@ -72,18 +70,6 @@ export class ProvisioningService {
       this.config.secretsEncryptionKey,
     )
 
-    let spawnedServerId: string | undefined
-    if (input.spawnBuildServer) {
-      const spawner = getServerSpawner(this.spawners, "docker")
-      const server = await spawner.spawn({
-        name: `${slug}-build`,
-        serverType: "docker-alpine",
-        ttlMinutes: 30,
-        labels: { projectId, slug },
-      })
-      spawnedServerId = server.id
-    }
-
     return {
       projectId,
       name: input.name,
@@ -91,25 +77,50 @@ export class ProvisioningService {
       secrets,
       credentials,
       credentialsEncrypted,
-      spawnedServerId,
+      spawnedServerId: undefined,
     }
   }
 
   async destroyProject(input: DestroyProjectInput): Promise<void> {
-    const slot = productionSlot(input.projectId, input.slug)
-    const resourceName = slotResourceName(slot)
-    if (input.credentials) {
-      await this.postgres.dropDatabase(resourceName).catch(() => undefined)
-      await this.redis.destroyNamespace(resourceName).catch(() => undefined)
-      await this.storage
-        .destroyBucket(
-          input.credentials.storage.bucket,
-          input.credentials.storage.accessKeyId,
-        )
-        .catch(() => undefined)
-    } else {
-      await this.postgres.dropDatabase(resourceName).catch(() => undefined)
-      await this.redis.destroyNamespace(resourceName).catch(() => undefined)
+    const { projectId, slug, credentials } = input
+    await safeDrop(
+      this.registry.get("postgres").destroy({
+        projectId,
+        projectSlug: slug,
+        resourceLinkId: "",
+        credentials: credentials?.database ?? null,
+      }),
+      "postgres",
+    )
+    await safeDrop(
+      this.registry.get("redis").destroy({
+        projectId,
+        projectSlug: slug,
+        resourceLinkId: "",
+        credentials: credentials?.redis ?? null,
+      }),
+      "redis",
+    )
+
+    if (credentials) {
+      await safeDrop(
+        this.storage.destroyBucket(
+          credentials.storage.bucket,
+          credentials.storage.accessKeyId,
+        ),
+        "storage",
+      )
     }
+  }
+}
+
+async function safeDrop(
+  promise: Promise<unknown>,
+  label: string,
+): Promise<void> {
+  try {
+    await promise
+  } catch (error) {
+    console.error(`Failed to destroy ${label}:`, error)
   }
 }

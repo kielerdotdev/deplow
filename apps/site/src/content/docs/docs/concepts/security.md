@@ -10,7 +10,8 @@ Security is a first-class product feature in deplow — not an optional appendix
 | Layer                 | Behavior                                                                              |
 | --------------------- | ------------------------------------------------------------------------------------- |
 | **User apps**         | Run under **gVisor (`runsc`)** by default                                             |
-| **Platform services** | Postgres, Redis, MinIO stay on ordinary **runc**                                      |
+| **Data services**     | Dedicated Postgres/Redis containers stay on ordinary **runc**                         |
+| **Platform glue**     | MinIO, Caddy, BuildKit, platform Redis (BullMQ) on **runc**                           |
 | **Builds**            | Railpack / BuildKit / `docker build` use runc (not gVisor)                            |
 | **HostConfig**        | CapDrop ALL, `no-new-privileges`, readonly rootfs (+ `/tmp` tmpfs), memory/CPU limits |
 | **Docker socket**     | Available to the control plane only — **never** mounted into user apps                |

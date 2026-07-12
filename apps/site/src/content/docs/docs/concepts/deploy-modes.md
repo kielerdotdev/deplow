@@ -7,7 +7,7 @@ deplow supports exactly three deploy paths. The builder picks one based on your 
 
 ## 1. Prebuilt image
 
-Provide a registry image reference (e.g. `nginx:alpine`, `ghcr.io/org/app:tag`). deplow pulls the image and runs it with project env injected.
+Provide a registry image reference (e.g. `nginx:alpine`, `ghcr.io/org/app:tag`). deplow pulls the image and runs it with **bound** env injected.
 
 **Use when:** you already publish container images from CI.
 
