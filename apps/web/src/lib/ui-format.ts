@@ -23,6 +23,22 @@ export function formatDateTime(iso: string | Date | null | undefined): string {
   })
 }
 
+/** Relative time for status lines ("12s ago"). Falls back to formatDateTime. */
+export function formatRelativeTime(
+  iso: string | Date | null | undefined,
+  nowMs = Date.now(),
+): string {
+  if (iso == null || iso === "") return "—"
+  const d = iso instanceof Date ? iso : new Date(iso)
+  if (Number.isNaN(d.getTime())) return "—"
+  const delta = Math.max(0, Math.floor((nowMs - d.getTime()) / 1000))
+  if (delta < 60) return `${delta}s ago`
+  if (delta < 3600) return `${Math.floor(delta / 60)}m ago`
+  if (delta < 86_400) return `${Math.floor(delta / 3600)}h ago`
+  if (delta < 86_400 * 14) return `${Math.floor(delta / 86_400)}d ago`
+  return formatDateTime(iso)
+}
+
 /** owner/repo from https://github.com/owner/repo.git */
 export function repoShortName(url: string | null | undefined): string | null {
   if (!url) return null
