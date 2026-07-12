@@ -76,7 +76,6 @@ function CreateProjectDialogBody({
   onOpenChange: (open: boolean) => void
 }) {
   const router = useRouter()
-  const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState("")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -102,13 +101,6 @@ function CreateProjectDialogBody({
       setPending(false)
     }
   }
-
-  const createButton = (
-    <Button size="sm" onClick={openCreate}>
-      <PlusIcon data-icon="inline-start" />
-      New project
-    </Button>
-  )
 
   return (
     <ActionDialog
