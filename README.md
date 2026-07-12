@@ -60,22 +60,44 @@ Recommended: enable `userns-remap: default` in `/etc/docker/daemon.json` (see [d
 
 ## Quick start (VPS / production)
 
-**Pull-only (recommended) — no git clone, no Node:**
+**One command. That’s the install.**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | bash
-# Open http://localhost:3000 — create user → Domains → Deploy
-
-# Later, upgrade the control plane (preserves data volumes):
-curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | bash -s update
-
-# Pin a release tag:
-# DEPLOW_VERSION=v1.2.3 curl -sSL …/install.sh | bash
+curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
 ```
 
-Installs under `/opt/deplow` by default (`DEPLOW_HOME` to override). Image: `ghcr.io/kielerdotdev/deplow` (built by GitHub Actions on `main` / tags; **linux/amd64**).
+Private repo / before the `install` release exists:
 
-**From a repo checkout** (uses in-tree `deploy/` assets, data under `deploy-data/`):
+```bash
+sudo bash deploy/install.sh
+# or: gh api repos/kielerdotdev/deplow/contents/deploy/install.sh --jq .content | base64 -d | sudo bash
+```
+
+The installer:
+
+- installs Docker (if missing) + Compose
+- installs gVisor (`runsc`) for sandboxed app deploys
+- starts BuildKit
+- bundles MinIO for object storage / backups
+- generates secrets and detects your public URL
+- pulls `ghcr.io/kielerdotdev/deplow` and starts the stack
+- prints the URL — open it, create the first user, set Domains
+
+```bash
+# Upgrade later (preserves volumes + .env):
+curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash -s update
+
+# Private GHCR package:
+#   GHCR_TOKEN=ghp_… curl -sSL …/install.sh | sudo -E bash
+# Pin a release:
+#   DEPLOW_VERSION=v1.2.3 curl -sSL …/install.sh | sudo bash
+# External S3 (skip bundled MinIO):
+#   DEPLOW_BUNDLE_MINIO=0 DEPLOW_S3_PROVIDER=r2 … curl -sSL …/install.sh | sudo -E bash
+```
+
+Installs under `/opt/deplow` (`DEPLOW_HOME` to override). Image: `ghcr.io/kielerdotdev/deplow` (**linux/amd64**, built on `main` / tags).
+
+**From a repo checkout** (uses in-tree `deploy/` assets):
 
 ```bash
 bash scripts/deploy.sh          # or: pnpm deploy

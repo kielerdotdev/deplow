@@ -86,6 +86,27 @@ jobs:
           fi
           docker run --rm --entrypoint docker "$IMAGE" --version
           docker run --rm --entrypoint railpack "$IMAGE" --version
+          docker run --rm --entrypoint ls "$IMAGE" /opt/deplow-assets/docker-compose.yml /opt/deplow-assets/Caddyfile
+
+      - name: Publish install assets (main)
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: install
+          name: Install scripts
+          body: |
+            Always-current VPS install assets from `main`.
+
+            ```bash
+            curl -sSL https://github.com/${{ github.repository }}/releases/download/install/install.sh | sudo bash
+            ```
+          files: |
+            deploy/install.sh
+            deploy/docker-compose.yml
+            deploy/Caddyfile
+            deploy/.env.example
+          fail_on_unmatched_files: true
+          make_latest: false
 
       - name: Upload deploy assets on tag
         if: startsWith(github.ref, 'refs/tags/v')
