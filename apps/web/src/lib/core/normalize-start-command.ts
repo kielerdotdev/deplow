@@ -112,7 +112,7 @@ function resolveLeafCommand(command: string, scripts: Scripts): string {
   return trimmed
 }
 
-function isDevServerCommand(command: string): boolean {
+export function isDevServerCommand(command: string): boolean {
   const c = command.toLowerCase()
   return (
     /\b(astro|next|nuxt|remix|vite)\s+dev\b/.test(c) ||
@@ -123,6 +123,45 @@ function isDevServerCommand(command: string): boolean {
     /\byarn\s+(?:run\s+)?dev\b/.test(c) ||
     /\bpnpm\s+(?:run\s+)?dev\b/.test(c)
   )
+}
+
+/**
+ * Parse Dockerfile CMD/ENTRYPOINT instructions into shell-ish command strings
+ * (last instruction wins for `isDevOrientedDockerfile`).
+ */
+export function extractDockerfileCommands(dockerfileText: string): string[] {
+  const cmds: string[] = []
+  for (const rawLine of dockerfileText.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith("#")) continue
+    const match = line.match(/^(CMD|ENTRYPOINT)\s+(.+)$/i)
+    if (!match) continue
+    const rest = match[2]!.trim()
+    if (rest.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(rest) as unknown
+        if (Array.isArray(parsed)) {
+          cmds.push(parsed.map(String).join(" "))
+          continue
+        }
+      } catch {
+        // fall through — keep raw for heuristic matching
+      }
+    }
+    cmds.push(rest)
+  }
+  return cmds
+}
+
+/**
+ * True when the image's final CMD/ENTRYPOINT is a local-dev server
+ * (e.g. `CMD npm run dev` / `next dev`). Those images need a writable
+ * rootfs and are unsuitable for deplow's read-only app runtime.
+ */
+export function isDevOrientedDockerfile(dockerfileText: string): boolean {
+  const cmds = extractDockerfileCommands(dockerfileText)
+  if (!cmds.length) return false
+  return isDevServerCommand(cmds[cmds.length - 1]!)
 }
 
 function looksLikeAstro(leaf: string, scripts: Scripts): boolean {

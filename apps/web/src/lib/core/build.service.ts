@@ -2,7 +2,10 @@ import { spawn } from "node:child_process"
 import { existsSync, readFileSync, renameSync } from "node:fs"
 import path from "node:path"
 
-import { normalizeProductionStartCommand } from "./normalize-start-command"
+import {
+  isDevOrientedDockerfile,
+  normalizeProductionStartCommand,
+} from "./normalize-start-command"
 
 export type BuildStrategy = "dockerfile" | "railpack" | "image"
 export type BuildStrategyOverride = "auto" | "railpack" | "dockerfile"
@@ -127,7 +130,7 @@ export class BuildService {
       contextPath,
       input.dockerfilePath,
     )
-    const strategy = selectBuildStrategy({
+    let strategy = selectBuildStrategy({
       sourcePath: contextPath,
       hasDockerfile:
         Boolean(dockerfileAbs) || detectDockerfile(contextPath, null),
@@ -135,6 +138,27 @@ export class BuildService {
       dockerfilePath: dockerfileAbs,
     })
     const image = this.imageTag(input.projectSlug, input.deploymentId)
+
+    // Local-dev Dockerfiles (CMD npm run dev / next dev) fail under our
+    // read-only rootfs — prefer Railpack unless the user forced dockerfile.
+    if (
+      strategy === "dockerfile" &&
+      input.strategyOverride !== "dockerfile" &&
+      dockerfileAbs &&
+      existsSync(dockerfileAbs)
+    ) {
+      try {
+        const dfText = readFileSync(dockerfileAbs, "utf8")
+        if (isDevOrientedDockerfile(dfText)) {
+          input.onLog?.(
+            "=== note ===\nDockerfile CMD looks like a local-dev server (e.g. npm run dev / next dev). Using Railpack for a production build instead. Set build strategy to Dockerfile to force the file as-is.\n\n",
+          )
+          strategy = "railpack"
+        }
+      } catch {
+        // keep dockerfile strategy if unreadable
+      }
+    }
 
     if (strategy === "dockerfile") {
       return this.buildWithDockerfile(
@@ -185,7 +209,7 @@ export class BuildService {
     const result = await this.runCommand(
       this.dockerBin,
       args,
-      undefined,
+      { ...process.env, DOCKER_BUILDKIT: "1" },
       onLog,
     )
     if (result.code !== 0) {

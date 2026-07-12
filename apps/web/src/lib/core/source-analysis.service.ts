@@ -21,6 +21,7 @@ import path from "node:path"
 import type { GitCloneAuth } from "./git-clone-auth"
 import { GitService } from "./git.service"
 import {
+  isDevOrientedDockerfile,
   isRailpackCaddyCommand,
   normalizeProductionStartCommand,
 } from "./normalize-start-command"
@@ -327,6 +328,26 @@ export async function analyzeDirectory(
       } else if (scopedDockerfiles.length > 1) {
         needsChoice = "dockerfile"
         errors.push("Multiple Dockerfiles found—select one.")
+      }
+    }
+  }
+
+  // Auto mode: skip local-dev Dockerfiles (CMD npm run dev / next dev) so
+  // Railpack produces a production image for the read-only app runtime.
+  if (
+    strategy === "dockerfile" &&
+    override !== "dockerfile" &&
+    dockerfilePath
+  ) {
+    const abs = resolveUnder(sourcePath, dockerfilePath)
+    if (existsSync(abs)) {
+      try {
+        if (isDevOrientedDockerfile(readFileSync(abs, "utf8"))) {
+          strategy = null
+          dockerfilePath = null
+        }
+      } catch {
+        // keep dockerfile strategy
       }
     }
   }

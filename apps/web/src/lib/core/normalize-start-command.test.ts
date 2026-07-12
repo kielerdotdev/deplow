@@ -4,7 +4,7 @@ import path from "node:path"
 
 import { describe, expect, it } from "vitest"
 
-import { normalizeProductionStartCommand } from "./normalize-start-command"
+import { normalizeProductionStartCommand, isDevOrientedDockerfile } from "./normalize-start-command"
 
 describe("normalizeProductionStartCommand", () => {
   it("rewrites astro dev via package start script", () => {
@@ -73,5 +73,34 @@ describe("normalizeProductionStartCommand", () => {
         "caddy run --config /Caddyfile --adapter caddyfile 2>&1",
       ),
     ).toBeNull()
+  })
+
+  it("detects local-dev Dockerfiles", () => {
+    expect(
+      isDevOrientedDockerfile(`
+FROM node:14
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD npm run dev
+`),
+    ).toBe(true)
+    expect(
+      isDevOrientedDockerfile(`
+FROM node:20-alpine
+WORKDIR /app
+COPY . .
+RUN npm ci && npm run build
+CMD ["npm", "start"]
+`),
+    ).toBe(false)
+    expect(
+      isDevOrientedDockerfile(`
+FROM node:20
+CMD ["next", "dev"]
+`),
+    ).toBe(true)
   })
 })

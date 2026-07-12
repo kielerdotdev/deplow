@@ -258,6 +258,73 @@ describe("BuildService.buildFromSource", () => {
       fs.rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it("falls back to railpack when Dockerfile CMD is a local-dev server", async () => {
+    const calls: string[][] = []
+    const service = new BuildService({
+      railpackBin: "railpack",
+      runCommand: async (cmd, args) => {
+        calls.push([cmd, ...args])
+        return { code: 0, stdout: "ok", stderr: "" }
+      },
+    })
+    const fs = await import("node:fs")
+    const path = await import("node:path")
+    const os = await import("node:os")
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-dev-df-"))
+    fs.writeFileSync(
+      path.join(dir, "Dockerfile"),
+      "FROM node:14\nWORKDIR /app\nCOPY . .\nCMD npm run dev\n",
+    )
+    fs.writeFileSync(
+      path.join(dir, "package.json"),
+      JSON.stringify({
+        scripts: { dev: "next dev", build: "next build", start: "next start" },
+      }),
+    )
+    try {
+      const result = await service.buildFromSource({
+        sourcePath: dir,
+        projectSlug: "demo",
+        deploymentId: "dep-dev",
+      })
+      expect(result.strategy).toBe("railpack")
+      expect(calls[0]?.[0]).toBe("railpack")
+      expect(calls.some((c) => c[0] === "docker")).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("keeps dockerfile strategy when override forces it despite dev CMD", async () => {
+    const calls: string[][] = []
+    const service = new BuildService({
+      runCommand: async (cmd, args) => {
+        calls.push([cmd, ...args])
+        return { code: 0, stdout: "built", stderr: "" }
+      },
+    })
+    const fs = await import("node:fs")
+    const path = await import("node:path")
+    const os = await import("node:os")
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-force-df-"))
+    fs.writeFileSync(
+      path.join(dir, "Dockerfile"),
+      "FROM node:14\nCMD npm run dev\n",
+    )
+    try {
+      const result = await service.buildFromSource({
+        sourcePath: dir,
+        projectSlug: "demo",
+        deploymentId: "dep-force",
+        strategyOverride: "dockerfile",
+      })
+      expect(result.strategy).toBe("dockerfile")
+      expect(calls[0]?.[0]).toBe("docker")
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 describe("prepareRailpackNodeLockfiles", () => {
