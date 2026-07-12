@@ -2,10 +2,10 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
 const AVATAR_TONES = [
-  "bg-primary/12 text-primary",
-  "bg-info/12 text-info",
-  "bg-success/12 text-success",
-  "bg-chart-4/20 text-foreground",
+  "bg-foreground/8 text-foreground",
+  "bg-muted text-foreground",
+  "bg-secondary text-secondary-foreground",
+  "bg-accent text-accent-foreground",
 ] as const
 
 export function orgInitials(name: string): string {
@@ -67,7 +67,7 @@ export function RoleBadge({
   const isOwner = role === "owner"
   return (
     <Badge
-      variant={isOwner ? "info" : "secondary"}
+      variant={isOwner ? "secondary" : "outline"}
       className={cn("capitalize", className)}
     >
       {role}

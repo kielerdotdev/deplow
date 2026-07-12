@@ -2,7 +2,11 @@ import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
 import { and, eq } from "@deplow/db"
-import { createProjectInputSchema } from "@deplow/shared"
+import { createProjectInputSchema, deriveProjectStatus, type ProjectStatus } from "@deplow/shared"
+import {
+  listProjectEnvSecretsInputSchema,
+  saveProjectEnvSecretsInputSchema,
+} from "@deplow/shared"
 
 import {
   assertProjectAccess,
@@ -22,6 +26,7 @@ import {
   getBackupTargets,
   getPostgresCredentials,
   getProjectCredentials,
+  getProjectEnvSecrets,
   getRedisCredentials,
   getResourceTarget,
   pitrService,
@@ -32,11 +37,16 @@ import {
   resourceLinks,
   resourceLinkService,
   scheduleProjectBackups,
+  saveProjectEnvSecrets,
   services,
 } from "@/lib/services"
 import { removeAllHostnames } from "@/lib/service-hostnames"
 
 import { authedProcedure } from "./middleware"
+import {
+  maskProjectEnvEntries,
+  recordToEntries,
+} from "@/lib/core/project-secrets.service"
 
 function throwBackupError(error: unknown): never {
   if (error instanceof ORPCError) throw error
@@ -165,7 +175,10 @@ async function detail(row: typeof projects.$inferSelect) {
     id: row.id,
     name: row.name,
     slug: row.slug,
-    status: row.status,
+    status: deriveProjectStatus(
+      row.status as ProjectStatus,
+      serviceRows.map((s) => s.status),
+    ),
     nodeId: row.nodeId,
     publicUrl:
       primary?.publicUrl ??
@@ -349,6 +362,41 @@ export const secrets = authedProcedure
         },
       ),
       masked: true,
+    }
+  })
+
+export const envSecrets = authedProcedure
+  .input(listProjectEnvSecretsInputSchema)
+  .handler(async ({ context, input }) => {
+    await loadAccessibleProject(input.id, context.session!)
+    const record = await getProjectEnvSecrets(input.id)
+    const entries = recordToEntries(record)
+    if (input.reveal) {
+      console.info(
+        `[audit] envSecrets.reveal project=${input.id} user=${context.session!.user.id}`,
+      )
+      return { entries, masked: false }
+    }
+    return { entries: maskProjectEnvEntries(entries), masked: true }
+  })
+
+export const saveEnvSecrets = authedProcedure
+  .input(saveProjectEnvSecretsInputSchema)
+  .handler(async ({ context, input }) => {
+    await loadAccessibleProject(input.id, context.session!)
+    try {
+      const record = await saveProjectEnvSecrets(input.id, input.entries)
+      console.info(
+        `[audit] envSecrets.save project=${input.id} user=${context.session!.user.id} count=${Object.keys(record).length}`,
+      )
+      return {
+        entries: recordToEntries(record),
+        masked: false,
+      }
+    } catch (error) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: error instanceof Error ? error.message : String(error),
+      })
     }
   })
 

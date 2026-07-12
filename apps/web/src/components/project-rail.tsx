@@ -3,7 +3,6 @@ import {
   KeyRoundIcon,
   LayoutGridIcon,
   RocketIcon,
-  ScrollTextIcon,
   Settings2Icon,
 } from "lucide-react"
 
@@ -12,7 +11,6 @@ import { cn } from "@/lib/utils"
 export type ProjectSection =
   | "overview"
   | "deployments"
-  | "logs"
   | "settings"
   | "secrets"
 
@@ -23,7 +21,6 @@ const items: {
 }[] = [
   { id: "overview", label: "Overview", icon: LayoutGridIcon },
   { id: "deployments", label: "Deployments", icon: RocketIcon },
-  { id: "logs", label: "Logs", icon: ScrollTextIcon },
   { id: "settings", label: "Settings", icon: Settings2Icon },
   { id: "secrets", label: "Secrets", icon: KeyRoundIcon },
 ]
@@ -38,7 +35,7 @@ export function ProjectRail({ value, onChange, className }: ProjectRailProps) {
   return (
     <nav
       className={cn(
-        "surface-panel flex shrink-0 gap-1 overflow-x-auto p-1.5 sm:w-44 sm:flex-col sm:overflow-visible",
+        "flex shrink-0 gap-0.5 overflow-x-auto rounded-xl border border-border/50 bg-card p-1 sm:w-44 sm:flex-col sm:overflow-visible",
         className,
       )}
       aria-label="Project sections"
@@ -59,7 +56,7 @@ export function ProjectRail({ value, onChange, className }: ProjectRailProps) {
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
           >
-            <item.icon className="size-4 shrink-0" />
+            <item.icon className="size-3.5 shrink-0 opacity-70" />
             <span className="truncate">{item.label}</span>
           </button>
         )

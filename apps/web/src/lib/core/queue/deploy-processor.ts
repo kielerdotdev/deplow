@@ -25,6 +25,7 @@ import {
   deployments,
   dockerNodeExecutor,
   getProjectCredentials,
+  getProjectEnvSecrets,
   getServiceDeployEnv,
   gitService,
   platformConfig,
@@ -185,6 +186,7 @@ export async function processDeployJob(data: DeployJobData): Promise<void> {
     const serviceEnv = service.envJson
       ? (JSON.parse(service.envJson) as Record<string, string>)
       : {}
+    const projectEnv = await getProjectEnvSecrets(project.id)
     const containerPort =
       (data.options?.containerPort as number | undefined) ??
       service.containerPort
@@ -195,6 +197,7 @@ export async function processDeployJob(data: DeployJobData): Promise<void> {
       : await getProjectCredentials(project.id)
 
     const baseExtra = {
+      ...projectEnv,
       ...serviceEnv,
       ...((data.options?.env as Record<string, string> | undefined) ?? {}),
       SERVICE_NAME: service.name,

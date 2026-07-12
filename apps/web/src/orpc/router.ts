@@ -48,6 +48,8 @@ export const router = {
     create: projects.create,
     destroy: projects.destroy,
     secrets: projects.secrets,
+    envSecrets: projects.envSecrets,
+    saveEnvSecrets: projects.saveEnvSecrets,
     backup: projects.backup,
     listBackups: projects.listBackups,
     backupSchedule: projects.backupSchedule,

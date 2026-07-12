@@ -223,6 +223,8 @@ export type { GitCloneAuth } from "./git-clone-auth"
 export {
   resolveProjectCloneAuth,
   resolveUserListToken,
+  STALE_GITHUB_CREDS_MESSAGE,
+  STALE_GITLAB_CREDS_MESSAGE,
 } from "./git-credentials"
 export type {
   ProjectGitAuthRow,

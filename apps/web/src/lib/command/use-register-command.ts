@@ -11,6 +11,8 @@ export function useRegisterCommand(
   commands: CommandRegistration | CommandRegistration[] | null | undefined,
 ) {
   const registry = useCommandRegistryOptional()
+  const register = registry?.register
+  const unregister = registry?.unregister
   const list = !commands ? [] : Array.isArray(commands) ? commands : [commands]
   const performRefs = useRef(new Map<string, CommandRegistration["perform"]>())
 
@@ -35,10 +37,10 @@ export function useRegisterCommand(
     .join(";")
 
   useEffect(() => {
-    if (!registry || list.length === 0) return
+    if (!register || !unregister || list.length === 0) return
 
     for (const command of list) {
-      registry.register({
+      register({
         ...command,
         perform: () => {
           const fn = performRefs.current.get(command.id)
@@ -49,9 +51,9 @@ export function useRegisterCommand(
 
     const ids = list.map((c) => c.id)
     return () => {
-      for (const id of ids) registry.unregister(id)
+      for (const id of ids) unregister(id)
     }
-    // signature captures field changes; registry methods are stable
+    // register/unregister are stable; signature captures field changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registry, signature])
+  }, [register, unregister, signature])
 }

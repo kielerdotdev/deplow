@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import {
   BoxIcon,
-  DatabaseIcon,
-  HardDriveIcon,
   PlusIcon,
   RocketIcon,
   Trash2Icon,
-  WorkflowIcon,
 } from "lucide-react"
 import { z } from "zod"
 
@@ -16,15 +13,16 @@ import { AddServiceDialog } from "@/components/add-service-dialog"
 import { AppShell } from "@/components/app-shell"
 import { CommandAction } from "@/components/command-action"
 import { EmptyState } from "@/components/empty-state"
-import { PageSection } from "@/components/page-section"
+import { ProjectSecretsPanel } from "@/components/project-secrets-panel"
 import { ProjectRail, type ProjectSection } from "@/components/project-rail"
-import { ServiceCard } from "@/components/service-card"
+import { ProjectTopology } from "@/components/project-topology"
+import { ServiceDeleteDialog } from "@/components/service-delete-dialog"
+import { PageContent, SettingsPanel } from "@/components/page-layout"
 import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { getSession } from "@/lib/auth.functions"
 import {
   parseProjectSection,
@@ -59,11 +57,15 @@ function ProjectPage() {
   const router = useRouter()
   const [addOpen, setAddOpen] = useState(false)
   const [deployServiceId, setDeployServiceId] = useState<string | null>(null)
+  const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const selectedService = project.services.find(
     (service) => service.id === deployServiceId,
+  )
+  const serviceToDelete = project.services.find(
+    (service) => service.id === deleteServiceId,
   )
 
   function setSection(next: ProjectSection) {
@@ -110,8 +112,6 @@ function ProjectPage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      title={project.name}
-      description={`${project.services.length} service${project.services.length === 1 ? "" : "s"}`}
       actions={
         <>
           <CommandAction
@@ -190,83 +190,25 @@ function ProjectPage() {
           />
         ))}
 
+      <PageContent width="wide">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <ProjectRail value={section} onChange={setSection} />
 
         <div className="min-w-0 flex-1 space-y-6">
           {section === "overview" ? (
             <>
-              <PageSection
-                icon={BoxIcon}
-                title="Services"
-                description="Each service has its own page, lifecycle, and configuration."
-              >
-                {project.services.length ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {project.services.map((service) => {
-                      const latest = deployments.find(
-                        (deployment) => deployment.serviceId === service.id,
-                      )
-                      const isApp =
-                        service.type === "web" || service.type === "worker"
-                      return (
-                        <ServiceCard
-                          key={service.id}
-                          projectId={project.id}
-                          serviceId={service.id}
-                          name={service.name}
-                          type={service.type}
-                          isPrimary={service.isPrimary}
-                          containerPort={service.containerPort}
-                          status={latest?.status ?? service.status}
-                          publicUrl={service.publicUrl}
-                          errorMessage={service.errorMessage}
-                          pending={pending}
-                          hasDeployment={Boolean(latest)}
-                          onDeploy={
-                            isApp
-                              ? () => setDeployServiceId(service.id)
-                              : undefined
-                          }
-                          onLogs={
-                            isApp
-                              ? () =>
-                                  void router.navigate({
-                                    to: "/projects/$projectId/services/$serviceId",
-                                    params: {
-                                      projectId: project.id,
-                                      serviceId: service.id,
-                                    },
-                                    search: { tab: "logs" },
-                                  })
-                              : undefined
-                          }
-                        />
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="surface-panel overflow-hidden">
-                    <EmptyState
-                      icon={BoxIcon}
-                      title="No services"
-                      description="Add a web app, worker, Postgres, or Redis service."
-                      action={
-                        <Button onClick={() => setAddOpen(true)}>
-                          Add service
-                        </Button>
-                      }
-                    />
-                  </div>
-                )}
-              </PageSection>
-
-              <PageSection
-                icon={DatabaseIcon}
-                title="Data services"
-                description="Postgres and Redis are first-class services. Bind them explicitly to apps."
-              >
-                <div className="mb-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold tracking-[-0.03em]">
+                    {project.name}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {project.services.length} service
+                    {project.services.length === 1 ? "" : "s"} — apps, Data services,
+                    explicit bindings
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -284,54 +226,52 @@ function ProjectPage() {
                     Add Redis
                   </Button>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {project.resourceLinks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground sm:col-span-3">
-                      No data services yet.
-                    </p>
-                  ) : (
-                    project.resourceLinks.map((link) => {
-                      const Icon =
-                        link.kind === "postgres"
-                          ? DatabaseIcon
-                          : link.kind === "redis"
-                            ? WorkflowIcon
-                            : HardDriveIcon
-                      return (
-                        <button
-                          key={link.id}
-                          type="button"
-                          className="surface-panel flex items-center justify-between gap-3 p-4 text-left hover:bg-muted/40"
-                          onClick={() =>
-                            void router.navigate({
-                              to: "/projects/$projectId/services/$serviceId",
-                              params: {
-                                projectId: project.id,
-                                serviceId: link.id,
-                              },
-                            })
-                          }
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="icon-well size-9">
-                              <Icon className="size-4" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium capitalize">
-                                {link.kind}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {link.source}
-                              </p>
-                            </div>
-                          </div>
-                          <StatusBadge status={link.status} />
-                        </button>
-                      )
+              </div>
+
+              {project.services.length ? (
+                <ProjectTopology
+                  projectId={project.id}
+                  services={project.services}
+                  deployments={deployments}
+                  pending={pending}
+                  onAddService={() => setAddOpen(true)}
+                  onOpen={(serviceId) =>
+                    void router.navigate({
+                      to: "/projects/$projectId/services/$serviceId",
+                      params: {
+                        projectId: project.id,
+                        serviceId,
+                      },
                     })
-                  )}
+                  }
+                  onDeploy={(serviceId) => setDeployServiceId(serviceId)}
+                  onLogs={(serviceId) =>
+                    void router.navigate({
+                      to: "/projects/$projectId/services/$serviceId",
+                      params: {
+                        projectId: project.id,
+                        serviceId,
+                      },
+                      search: { tab: "logs" },
+                    })
+                  }
+                  onDelete={(serviceId) => setDeleteServiceId(serviceId)}
+                />
+              ) : (
+                <div className="surface-panel overflow-hidden">
+                  <EmptyState
+                    icon={BoxIcon}
+                    title="No services"
+                    description="Add a web app, worker, Postgres, or Redis service."
+                    action={
+                      <Button onClick={() => setAddOpen(true)}>
+                        Add service
+                      </Button>
+                    }
+                  />
                 </div>
-              </PageSection>
+              )}
+
             </>
           ) : null}
 
@@ -379,17 +319,8 @@ function ProjectPage() {
             </div>
           ) : null}
 
-          {section === "logs" ? (
-            <div className="surface-panel p-4">
-              <p className="text-sm text-muted-foreground">
-                Logs are scoped to each service. Open a service and use its Logs
-                tab.
-              </p>
-            </div>
-          ) : null}
-
           {section === "secrets" ? (
-            <SecretsPanel projectId={project.id} />
+            <ProjectSecretsPanel projectId={project.id} />
           ) : null}
 
           {section === "settings" ? (
@@ -402,6 +333,7 @@ function ProjectPage() {
           ) : null}
         </div>
       </div>
+      </PageContent>
 
       <AddServiceDialog
         open={addOpen}
@@ -424,6 +356,27 @@ function ProjectPage() {
         onClose={() => setDeployServiceId(null)}
         onDeployed={refresh}
         onError={setError}
+      />
+
+      <ServiceDeleteDialog
+        service={serviceToDelete ?? null}
+        open={Boolean(serviceToDelete)}
+        onOpenChange={(open) => !open && setDeleteServiceId(null)}
+        pending={pending}
+        onConfirm={async () => {
+          if (!serviceToDelete) return
+          setPending(true)
+          setError(null)
+          try {
+            await client.services.destroy({ id: serviceToDelete.id })
+            setDeleteServiceId(null)
+            await refresh()
+          } catch (cause) {
+            setError(cause instanceof Error ? cause.message : String(cause))
+          } finally {
+            setPending(false)
+          }
+        }}
       />
     </AppShell>
   )
@@ -504,56 +457,6 @@ function DeployServiceDialog({
   )
 }
 
-function SecretsPanel({ projectId }: { projectId: string }) {
-  const [masked, setMasked] = useState(true)
-  const [yaml, setYaml] = useState("")
-  const [loading, setLoading] = useState(true)
-
-  async function load(reveal: boolean) {
-    setLoading(true)
-    try {
-      const result = await client.projects.secrets({ id: projectId, reveal })
-      setYaml(
-        result.secretsYaml ||
-          "No credentials yet. Add Postgres/Redis first.",
-      )
-      setMasked(result.masked)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void load(false)
-  }, [projectId])
-
-  return (
-    <div className="surface-panel p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold">Connection secrets</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Masked by default. Reveal is audited on the server.
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={loading}
-          onClick={() => void load(masked)}
-        >
-          {masked ? "Reveal" : "Mask"}
-        </Button>
-      </div>
-      <ScrollArea className="h-64 rounded-lg border border-border bg-muted/20">
-        <pre className="p-4 font-mono text-xs whitespace-pre-wrap">
-          {loading ? "Loading…" : yaml}
-        </pre>
-      </ScrollArea>
-    </div>
-  )
-}
-
 function ProjectSettingsPanel({
   project,
   onError,
@@ -576,35 +479,34 @@ function ProjectSettingsPanel({
   const [confirm, setConfirm] = useState("")
 
   return (
-    <div className="space-y-6">
-      <div className="surface-panel space-y-3 p-5 text-sm">
-        <h3 className="font-semibold">Project</h3>
-        <p>
-          <span className="text-muted-foreground">Name:</span> {project.name}
-        </p>
-        <p>
-          <span className="text-muted-foreground">Slug:</span>{" "}
-          <span className="font-mono">{project.slug}</span>
-        </p>
-        <p>
-          <span className="text-muted-foreground">Backup interval:</span>{" "}
-          {Math.round(project.backupIntervalMs / 3_600_000)}h
-        </p>
-        <p>
-          <span className="text-muted-foreground">Node:</span>{" "}
-          {project.nodeId ?? "unassigned"}
-        </p>
-      </div>
-      <div className="surface-panel space-y-3 p-5">
-        <h3 className="text-sm font-semibold text-destructive">Danger zone</h3>
-        <p className="text-xs text-muted-foreground">
-          Destroying a project removes all services, data containers, and
-          backups for this project.
-        </p>
-        <Button variant="destructive" onClick={() => setDestroyOpen(true)}>
+    <div className="space-y-4">
+      <SettingsPanel title="Project">
+        <div className="space-y-2 text-sm">
+          <p>
+            <span className="text-muted-foreground">Name:</span> {project.name}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Slug:</span>{" "}
+            <span className="font-mono">{project.slug}</span>
+          </p>
+          <p>
+            <span className="text-muted-foreground">Backup interval:</span>{" "}
+            {Math.round(project.backupIntervalMs / 3_600_000)}h
+          </p>
+          <p>
+            <span className="text-muted-foreground">Node:</span>{" "}
+            {project.nodeId ?? "unassigned"}
+          </p>
+        </div>
+      </SettingsPanel>
+      <SettingsPanel
+        title="Danger zone"
+        description="Destroying a project removes all services, data containers, and backups for this project."
+      >
+        <Button size="sm" variant="destructive" onClick={() => setDestroyOpen(true)}>
           Destroy project
         </Button>
-      </div>
+      </SettingsPanel>
       <ActionDialog
         open={destroyOpen}
         onOpenChange={setDestroyOpen}

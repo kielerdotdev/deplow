@@ -20,6 +20,8 @@ import {
 import {
   resolveProjectCloneAuth,
   resolveUserListToken,
+  STALE_GITHUB_CREDS_MESSAGE,
+  STALE_GITLAB_CREDS_MESSAGE,
   type ResolveGitAuthDeps,
 } from "./git-credentials"
 import { GitService } from "./git.service"
@@ -393,6 +395,140 @@ describe("git oauth e2e flow (mocked)", () => {
     await expect(
       resolveUserListToken({ userId: "u1", provider: "github" }, deps),
     ).rejects.toThrow(/Connect GitHub|PAT|DEPLOW_GITHUB_TOKEN/)
+  })
+
+  it("fails gracefully when stored GitHub OAuth token cannot be decrypted", async () => {
+    const stale = encryptString("gho_stale", "other-secrets-key")
+    const deps: ResolveGitAuthDeps = {
+      decrypt: (p) => decryptString(p, SECRET),
+      encrypt: (p) => encryptString(p, SECRET),
+      loadGitHubAppConfig: async () => null,
+      loadGitLabOAuthConfig: async () => null,
+      loadUserLink: async () => ({
+        provider: "github",
+        accessTokenEncrypted: stale,
+        refreshTokenEncrypted: null,
+        expiresAt: null,
+        githubInstallationId: null,
+      }),
+    }
+    await expect(
+      resolveUserListToken({ userId: "u1", provider: "github" }, deps),
+    ).rejects.toThrow(STALE_GITHUB_CREDS_MESSAGE)
+  })
+
+  it("falls back to platform token when stored OAuth token cannot be decrypted", async () => {
+    const stale = encryptString("gho_stale", "other-secrets-key")
+    const deps: ResolveGitAuthDeps = {
+      decrypt: (p) => decryptString(p, SECRET),
+      encrypt: (p) => encryptString(p, SECRET),
+      loadGitHubAppConfig: async () => null,
+      loadGitLabOAuthConfig: async () => null,
+      loadUserLink: async () => ({
+        provider: "github",
+        accessTokenEncrypted: stale,
+        refreshTokenEncrypted: null,
+        expiresAt: null,
+        githubInstallationId: null,
+      }),
+      platformGithubToken: "ghp_platform",
+    }
+    const list = await resolveUserListToken(
+      { userId: "u1", provider: "github" },
+      deps,
+    )
+    expect(list.source).toBe("platform")
+    expect(list.token).toBe("ghp_platform")
+  })
+
+  it("uses GitHub App when OAuth token is stale but installation is linked", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      privateKeyEncoding: { type: "pkcs8", format: "pem" },
+      publicKeyEncoding: { type: "spki", format: "pem" },
+    })
+    const stale = encryptString("gho_stale", "other-secrets-key")
+    const fetchImpl = mockFetch([
+      {
+        match: (u, init) =>
+          u.includes("/app/installations/99/access_tokens") &&
+          init?.method === "POST",
+        response: () =>
+          jsonResponse({
+            token: "ghs_install_token_abc",
+            expires_at: new Date(Date.now() + 3600_000).toISOString(),
+          }),
+      },
+    ])
+    const deps: ResolveGitAuthDeps = {
+      decrypt: (p) => decryptString(p, SECRET),
+      encrypt: (p) => encryptString(p, SECRET),
+      loadGitHubAppConfig: async () => ({
+        appId: "42",
+        clientId: "Iv1.client",
+        clientSecret: "secret",
+        privateKey,
+      }),
+      loadGitLabOAuthConfig: async () => null,
+      loadUserLink: async () => ({
+        provider: "github",
+        accessTokenEncrypted: stale,
+        refreshTokenEncrypted: null,
+        expiresAt: null,
+        githubInstallationId: "99",
+      }),
+      fetchImpl,
+    }
+    const list = await resolveUserListToken(
+      { userId: "u1", provider: "github" },
+      deps,
+    )
+    expect(list.source).toBe("github_app")
+    expect(list.token).toBe("ghs_install_token_abc")
+  })
+
+  it("fails gracefully when stored GitLab OAuth token cannot be decrypted", async () => {
+    const stale = encryptString("glpat-stale", "other-secrets-key")
+    const deps: ResolveGitAuthDeps = {
+      decrypt: (p) => decryptString(p, SECRET),
+      encrypt: (p) => encryptString(p, SECRET),
+      loadGitHubAppConfig: async () => null,
+      loadGitLabOAuthConfig: async () => null,
+      loadUserLink: async () => ({
+        provider: "gitlab",
+        accessTokenEncrypted: stale,
+        refreshTokenEncrypted: null,
+        expiresAt: null,
+        githubInstallationId: null,
+      }),
+    }
+    await expect(
+      resolveUserListToken({ userId: "u1", provider: "gitlab" }, deps),
+    ).rejects.toThrow(STALE_GITLAB_CREDS_MESSAGE)
+  })
+
+  it("skips undecryptable project PAT when resolving clone auth", async () => {
+    const stale = encryptString("ghp_stale", "other-secrets-key")
+    const deps: ResolveGitAuthDeps = {
+      decrypt: (p) => decryptString(p, SECRET),
+      encrypt: (p) => encryptString(p, SECRET),
+      loadGitHubAppConfig: async () => null,
+      loadGitLabOAuthConfig: async () => null,
+      loadUserLink: async () => null,
+      platformGithubToken: "ghp_platform",
+    }
+    const auth = await resolveProjectCloneAuth(
+      {
+        gitProvider: "github",
+        gitRepoUrl: "https://github.com/acme/api.git",
+        gitAuthMethod: "pat",
+        gitInstallationId: null,
+        gitAccessTokenEncrypted: stale,
+        ownerId: "u1",
+      },
+      deps,
+    )
+    expect(auth?.token).toBe("ghp_platform")
   })
 
   it("real git clone of public repo (network)", async () => {

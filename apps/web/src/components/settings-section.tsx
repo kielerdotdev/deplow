@@ -1,36 +1,33 @@
 import type { LucideIcon } from "lucide-react"
 
+import { SettingsPanel } from "@/components/page-layout"
 import { cn } from "@/lib/utils"
 
-/** Railway-style settings block: left rail icon + titled content. */
 export function SettingsSection({
-  icon: Icon,
+  icon,
   title,
+  description,
   action,
   children,
   className,
 }: {
   icon: LucideIcon
   title: string
+  description?: string
   action?: React.ReactNode
   children: React.ReactNode
   className?: string
 }) {
   return (
-    <section className={cn("surface-panel flex gap-4 p-4 md:p-5", className)}>
-      <div className="hidden shrink-0 sm:block">
-        <div className="icon-well size-9">
-          <Icon className="size-4" />
-        </div>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-          {action ? <div className="shrink-0">{action}</div> : null}
-        </div>
-        {children}
-      </div>
-    </section>
+    <SettingsPanel
+      icon={icon}
+      title={title}
+      description={description}
+      action={action}
+      className={cn("space-y-0", className)}
+    >
+      <div className="flex flex-col gap-4">{children}</div>
+    </SettingsPanel>
   )
 }
 

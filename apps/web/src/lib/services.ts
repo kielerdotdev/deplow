@@ -33,6 +33,7 @@ import {
   buildRedisUrl,
   type BindingEnvInput,
   decryptString,
+  encryptString,
   DockerNodeExecutor,
   GitService,
   PitrService,
@@ -49,6 +50,10 @@ import {
   reclaimStaleOperations,
   startQueueWorkers,
 } from "@/lib/core"
+import {
+  entriesToRecord,
+  mergeProjectEnvSave,
+} from "@/lib/core/project-secrets.service"
 import { env } from "@/lib/env"
 
 const config = loadPlatformConfig()
@@ -337,8 +342,12 @@ export async function getProjectCredentials(
     .select()
     .from(resourceLinks)
     .where(eq(resourceLinks.projectId, projectId))
-  const assembled = resourceLinkService.assemble(links)
-  if (assembled) return assembled
+  try {
+    const assembled = resourceLinkService.assemble(links)
+    if (assembled) return assembled
+  } catch {
+    // undecryptable legacy resource_links — treat as no credentials
+  }
 
   if (!project?.credentialsEncrypted) return null
   try {
@@ -348,6 +357,48 @@ export async function getProjectCredentials(
   } catch {
     return null
   }
+}
+
+export async function getProjectEnvSecrets(
+  projectId: string,
+): Promise<Record<string, string>> {
+  const [project] = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, projectId))
+  if (!project?.projectSecretsEncrypted) return {}
+  try {
+    return JSON.parse(
+      decryptString(
+        project.projectSecretsEncrypted,
+        config.secretsEncryptionKey,
+      ),
+    ) as Record<string, string>
+  } catch {
+    return {}
+  }
+}
+
+export async function saveProjectEnvSecrets(
+  projectId: string,
+  entries: Array<{ key: string; value: string }>,
+): Promise<Record<string, string>> {
+  const existing = await getProjectEnvSecrets(projectId)
+  const merged = mergeProjectEnvSave(existing, entries)
+  const nextEntries = entries.map(({ key }) => ({
+    key,
+    value: merged[key] ?? "",
+  }))
+  const record = entriesToRecord(nextEntries)
+  const encrypted =
+    Object.keys(record).length === 0
+      ? null
+      : encryptString(JSON.stringify(record), config.secretsEncryptionKey)
+  await db
+    .update(projects)
+    .set({ projectSecretsEncrypted: encrypted })
+    .where(eq(projects.id, projectId))
+  return record
 }
 
 /**

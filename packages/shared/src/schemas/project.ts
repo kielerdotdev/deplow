@@ -16,6 +16,8 @@ export type CreateProjectInput = z.infer<typeof createProjectInputSchema>
 export const projectStatusSchema = z.enum([
   "provisioning",
   "ready",
+  "degraded",
+  "stopped",
   "error",
   "destroying",
 ])

@@ -1,13 +1,14 @@
 import { Link } from "@tanstack/react-router"
 import { ArrowRightIcon, PlusIcon } from "lucide-react"
 
+import { ProjectContextMenu } from "@/components/project-context-menu"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type DashboardCardProps = {
   title: string
   count?: number
-  href?: "/integrations" | "/nodes" | "/"
+  href?: "/" | "/domains" | "/integrations" | "/nodes"
   onAdd?: () => void
   children: React.ReactNode
   className?: string
@@ -29,12 +30,12 @@ export function DashboardCard({
     <section
       className={cn("surface-panel flex flex-col overflow-hidden", className)}
     >
-      <header className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <header className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
         <h2 className="text-sm font-semibold tracking-tight text-foreground">
           {title}
         </h2>
         {typeof count === "number" ? (
-          <span className="inline-flex size-5 items-center justify-center rounded-full bg-muted text-[11px] font-medium text-muted-foreground">
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-muted px-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">
             {count}
           </span>
         ) : null}
@@ -76,10 +77,16 @@ type DashboardRowProps = {
   | {
       to: "/projects/$projectId"
       params: { projectId: string }
+      projectMenu?: {
+        projectName: string
+        serviceCount?: number
+        onDelete: () => void
+        pending?: boolean
+      }
       onClick?: never
     }
   | {
-      to: "/integrations" | "/nodes"
+      to: "/domains" | "/integrations" | "/nodes"
       params?: never
       onClick?: never
     }
@@ -114,10 +121,10 @@ export function DashboardRow(props: DashboardRowProps) {
   )
 
   const className =
-    "flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-muted/50"
+    "flex w-full items-center gap-3 border-b border-border/60 px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-muted/35"
 
   if (props.to === "/projects/$projectId") {
-    return (
+    const link = (
       <Link
         to="/projects/$projectId"
         params={props.params}
@@ -126,6 +133,32 @@ export function DashboardRow(props: DashboardRowProps) {
         {content}
       </Link>
     )
+
+    if (props.projectMenu) {
+      return (
+        <ProjectContextMenu
+          project={{
+            id: props.params.projectId,
+            name: props.projectMenu.projectName,
+            serviceCount: props.projectMenu.serviceCount,
+          }}
+          pending={props.projectMenu.pending}
+          onDelete={props.projectMenu.onDelete}
+          triggerClassName="block w-full"
+          render={
+            <Link
+              to="/projects/$projectId"
+              params={props.params}
+              className={className}
+            />
+          }
+        >
+          {content}
+        </ProjectContextMenu>
+      )
+    }
+
+    return link
   }
 
   if (props.to) {
@@ -155,12 +188,14 @@ type StatBlockProps = {
 
 export function StatBlock({ label, value, hint }: StatBlockProps) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1 border-r border-border px-4 py-4 last:border-r-0">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+    <div className="flex min-w-0 flex-1 flex-col gap-0.5 border-r border-border/50 px-4 py-3.5 last:border-r-0">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-xl font-semibold tracking-tight tabular-nums text-foreground">
         {value}
       </p>
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {hint ? (
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   )
 }

@@ -38,7 +38,6 @@ const SECTION_LABELS: Record<(typeof PROJECT_SECTION_IDS)[number], string> = {
   database: "Database",
   backups: "Backups",
   deployments: "Deployments",
-  logs: "Logs",
   settings: "Settings",
   secrets: "Secrets",
 }
