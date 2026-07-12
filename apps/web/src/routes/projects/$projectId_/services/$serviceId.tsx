@@ -282,12 +282,8 @@ function ServicePage() {
   ]
 
   return (
-    <AppShell
-      user={session.user}
-      title={service.name}
-      description={`${project.name} · ${service.type}`}
-    >
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <AppShell user={session.user}>
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-2">
             <Link
@@ -299,7 +295,7 @@ function ServicePage() {
               Back to project
             </Link>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">
+              <h1 className="text-xl font-semibold tracking-[-0.03em]">
                 {service.name}
               </h1>
               <StatusBadge status={service.status} />

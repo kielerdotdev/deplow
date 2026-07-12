@@ -77,7 +77,12 @@ export class ResourceLinkService {
     const result: Partial<ProjectCredentials> = {}
     for (const link of links) {
       if (!link.credentialsEncrypted) continue
-      const credentials = this.decrypt(link.credentialsEncrypted)
+      let credentials: ResourceCredentials
+      try {
+        credentials = this.decrypt(link.credentialsEncrypted)
+      } catch {
+        continue
+      }
       if (link.kind === "postgres") {
         result.database = credentials as DatabaseCredentials
       } else if (link.kind === "redis") {

@@ -12,6 +12,7 @@ import {
 import { AppShell } from "@/components/app-shell"
 import { CommandAction } from "@/components/command-action"
 import { IntegrationCard } from "@/components/integration-card"
+import { PageContent, PageHeader } from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -220,9 +221,11 @@ function IntegrationsPage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      title="Integrations"
-      description="Connect Git once. Projects reuse it for clone and deploy webhooks."
     >
+      <PageHeader
+        title="Integrations"
+        description="Connect Git once. Projects reuse it for clone and deploy webhooks."
+      />
       {!status.githubAppConfigured ? (
         <CommandAction
           id="integrations.github.create-app"
@@ -288,7 +291,7 @@ function IntegrationsPage() {
         </Alert>
       ) : null}
 
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
+      <PageContent width="narrow">
         <IntegrationCard
           title="GitHub"
           icon={PlugIcon}
@@ -298,6 +301,7 @@ function IntegrationsPage() {
             !status.githubAppConfigured ? (
               <Button
                 size="sm"
+                variant="outline"
                 disabled={pending}
                 onClick={() => void createGitHubApp()}
               >
@@ -307,6 +311,7 @@ function IntegrationsPage() {
               <>
                 <Button
                   size="sm"
+                  variant="outline"
                   disabled={pending}
                   onClick={() => void connect("github")}
                 >
@@ -421,6 +426,7 @@ function IntegrationsPage() {
               <>
                 <Button
                   size="sm"
+                  variant="outline"
                   disabled={pending}
                   onClick={() => void connect("gitlab")}
                 >
@@ -502,6 +508,7 @@ function IntegrationsPage() {
               <Button
                 type="submit"
                 size="sm"
+                variant="outline"
                 disabled={pending || !gitlabClientId || !gitlabSecret}
               >
                 Save
@@ -509,7 +516,7 @@ function IntegrationsPage() {
             </form>
           ) : null}
         </IntegrationCard>
-      </div>
+      </PageContent>
     </AppShell>
   )
 }

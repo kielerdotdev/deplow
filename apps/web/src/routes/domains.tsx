@@ -5,6 +5,7 @@ import type { ProxyIngressStatus } from "@deplow/shared"
 
 import { AppShell } from "@/components/app-shell"
 import { CommandAction } from "@/components/command-action"
+import { PageContent, PageHeader, SettingsPanel } from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -67,21 +68,32 @@ function DomainsForm({ proxy }: { proxy: ProxyIngressStatus }) {
 
   return (
     <div className="space-y-4">
-      <div className="surface-panel overflow-hidden">
-        <div className="border-b border-border/60 px-5 py-4">
-          <h2 className="text-sm font-semibold tracking-tight">
-            Platform domain
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+      <SettingsPanel
+        title="Platform domain"
+        description={
+          <>
             Auto subdomains for web services. Point a wildcard at your edge once
             (cloudflared, Tailscale Serve, or Netbird) →{" "}
             <code className="font-mono">{proxy.caddyOrigin}</code> or{" "}
             <code className="font-mono">{proxy.hostOrigin}</code>. Custom
             domains and preview hostnames come later.
-          </p>
-        </div>
-
-        <div className="grid gap-4 px-5 py-4 sm:grid-cols-2">
+          </>
+        }
+        footer={
+          <>
+            <Button size="sm" disabled={pending} onClick={() => void save()}>
+              {pending ? "Saving…" : "Save domains"}
+            </Button>
+            {saved ? (
+              <span className="text-xs text-muted-foreground">Saved</span>
+            ) : null}
+            {error ? (
+              <span className="text-xs text-destructive">{error}</span>
+            ) : null}
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="base-domain">Base domain</Label>
             <Input
@@ -130,29 +142,18 @@ function DomainsForm({ proxy }: { proxy: ProxyIngressStatus }) {
             </label>
           </div>
         </div>
+      </SettingsPanel>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-border/60 px-5 py-3">
-          <Button size="sm" disabled={pending} onClick={() => void save()}>
-            {pending ? "Saving…" : "Save domains"}
-          </Button>
-          {saved ? (
-            <span className="text-xs text-muted-foreground">Saved</span>
-          ) : null}
-          {error ? (
-            <span className="text-xs text-destructive">{error}</span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="surface-panel overflow-hidden">
-        <div className="border-b border-border/60 px-5 py-4">
-          <h2 className="text-sm font-semibold tracking-tight">Proxy status</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+      <SettingsPanel
+        title="Proxy status"
+        description={
+          <>
             Caddy health and Cloudflare tunnel token (compose profile{" "}
             <code className="font-mono">edge</code>).
-          </p>
-        </div>
-        <div className="grid gap-3 px-5 py-4 text-sm sm:grid-cols-2">
+          </>
+        }
+      >
+        <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <div className="text-xs text-muted-foreground">Caddy</div>
             <div className="mt-0.5">
@@ -176,25 +177,23 @@ function DomainsForm({ proxy }: { proxy: ProxyIngressStatus }) {
           </div>
         </div>
         {proxyWarn ? (
-          <div className="border-t border-border/60 px-5 py-3">
-            <Alert variant="destructive">
-              <AlertTitle>Proxy misconfigured</AlertTitle>
-              <AlertDescription>
-                Base domain is set, but Caddy is not healthy. Start with{" "}
-                <code className="font-mono text-xs">pnpm infra:up</code>
-                {proxy.lastReloadOk === false && proxy.lastReloadMessage
-                  ? ` Last reload: ${proxy.lastReloadMessage}`
-                  : null}
-              </AlertDescription>
-            </Alert>
-          </div>
+          <Alert variant="destructive" className="mt-4">
+            <AlertTitle>Proxy misconfigured</AlertTitle>
+            <AlertDescription>
+              Base domain is set, but Caddy is not healthy. Start with{" "}
+              <code className="font-mono text-xs">pnpm infra:up</code>
+              {proxy.lastReloadOk === false && proxy.lastReloadMessage
+                ? ` Last reload: ${proxy.lastReloadMessage}`
+                : null}
+            </AlertDescription>
+          </Alert>
         ) : null}
         {proxy.lastReloadOk === true && proxy.lastReloadAt ? (
-          <div className="border-t border-border/60 px-5 py-2 text-xs text-muted-foreground">
+          <p className="mt-4 text-xs text-muted-foreground">
             Last Caddy reload ok at {proxy.lastReloadAt}
-          </div>
+          </p>
         ) : null}
-      </div>
+      </SettingsPanel>
     </div>
   )
 }
@@ -210,9 +209,11 @@ function DomainsPage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      title="Domains"
-      description="Platform base domain and auto subdomain assignment for web services"
     >
+      <PageHeader
+        title="Domains"
+        description="Platform base domain and auto subdomain assignment for web services"
+      />
       <CommandAction
         id="domains.save-focus"
         label="Focus domain settings"
@@ -223,7 +224,7 @@ function DomainsPage() {
         }}
       />
       {needsOnboarding ? (
-        <div className="mx-auto mb-4 w-full max-w-3xl px-4 sm:px-6">
+        <PageContent width="narrow">
           <Alert>
             <AlertTitle>Set a base domain to unlock public URLs</AlertTitle>
             <AlertDescription>
@@ -237,12 +238,14 @@ function DomainsPage() {
               <code className="font-mono text-xs">DEPLOW_BASE_DOMAIN</code>.
             </AlertDescription>
           </Alert>
-        </div>
+        </PageContent>
       ) : null}
-      <DomainsForm
-        key={`${proxy.baseDomain}:${proxy.publicProtocol}:${proxy.autoDomainsEnabled}`}
-        proxy={proxy}
-      />
+      <PageContent width="narrow">
+        <DomainsForm
+          key={`${proxy.baseDomain}:${proxy.publicProtocol}:${proxy.autoDomainsEnabled}`}
+          proxy={proxy}
+        />
+      </PageContent>
     </AppShell>
   )
 }

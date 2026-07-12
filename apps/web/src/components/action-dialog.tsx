@@ -80,7 +80,7 @@ export const ActionDialog = memo(function ActionDialog({
         </DialogHeader>
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4",
+            "min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4",
             bodyClassName,
           )}
         >

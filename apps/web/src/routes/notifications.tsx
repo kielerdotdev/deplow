@@ -2,6 +2,7 @@ import { useState } from "react"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
+import { PageContent, PageHeader, SettingsPanel } from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -71,27 +72,29 @@ function NotificationsForm({ webhook }: { webhook: WebhookSettings }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 px-4 sm:px-6">
-      <div className="surface-panel overflow-hidden">
-        <div className="border-b border-border/60 px-5 py-4">
-          <h2 className="text-sm font-semibold tracking-tight">
-            Operator webhook
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            One HTTPS endpoint for deploy and provision failures (optional
-            success). Not a Slack/Discord hub — POST JSON only.
-          </p>
-        </div>
-
-        <div className="space-y-4 px-5 py-4">
-          {error ? (
-            <Alert variant="destructive">
-              <AlertTitle>Save failed</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+    <SettingsPanel
+      title="Operator webhook"
+      description="One HTTPS endpoint for deploy and provision failures (optional success). Not a Slack/Discord hub — POST JSON only."
+      footer={
+        <>
+          <Button size="sm" disabled={pending} onClick={() => void save()}>
+            {pending ? "Saving…" : "Save"}
+          </Button>
+          {saved ? (
+            <span className="text-xs text-muted-foreground">Saved</span>
           ) : null}
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {error ? (
+          <Alert variant="destructive">
+            <AlertTitle>Save failed</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
-          <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm">
             <Checkbox
               checked={enabled}
               onCheckedChange={(v) => setEnabled(v === true)}
@@ -158,24 +161,14 @@ function NotificationsForm({ webhook }: { webhook: WebhookSettings }) {
                 Clear stored secret
               </label>
             ) : null}
-            <p className="text-xs text-muted-foreground">
-              When set, requests include{" "}
-              <code className="font-mono">X-Deplow-Signature</code> (sha256
-              HMAC).
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button disabled={pending} onClick={() => void save()}>
-              {pending ? "Saving…" : "Save"}
-            </Button>
-            {saved ? (
-              <span className="text-xs text-muted-foreground">Saved</span>
-            ) : null}
-          </div>
+          <p className="text-xs text-muted-foreground">
+            When set, requests include{" "}
+            <code className="font-mono">X-Deplow-Signature</code> (sha256
+            HMAC).
+          </p>
         </div>
       </div>
-    </div>
+    </SettingsPanel>
   )
 }
 
@@ -188,13 +181,17 @@ function NotificationsPage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      title="Notifications"
-      description="Thin failure webhook for operators"
     >
-      <NotificationsForm
-        key={`${webhook.enabled}:${webhook.url}:${webhook.hasSecret}`}
-        webhook={webhook}
+      <PageHeader
+        title="Notifications"
+        description="Thin failure webhook for operators"
       />
+      <PageContent width="narrow">
+        <NotificationsForm
+          key={`${webhook.enabled}:${webhook.url}:${webhook.hasSecret}`}
+          webhook={webhook}
+        />
+      </PageContent>
     </AppShell>
   )
 }

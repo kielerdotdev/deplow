@@ -14,4 +14,9 @@ describe("StatusBadge", () => {
     render(<StatusBadge status="failed" />)
     expect(screen.getByText("failed")).toBeTruthy()
   })
+
+  it("renders degraded status", () => {
+    render(<StatusBadge status="degraded" />)
+    expect(screen.getByText("degraded")).toBeTruthy()
+  })
 })

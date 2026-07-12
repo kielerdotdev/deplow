@@ -6,22 +6,21 @@ import {
 } from "@tanstack/react-router"
 import {
   Building2Icon,
-  CheckIcon,
-  CopyIcon,
   Trash2Icon,
   UserPlusIcon,
   UsersIcon,
 } from "lucide-react"
 
 import { ActionDialog } from "@/components/action-dialog"
+import { CopyField } from "@/components/copy-field"
 import { AppShell } from "@/components/app-shell"
 import { EmptyState } from "@/components/empty-state"
-import { OrgAvatar, PersonAvatar, RoleBadge } from "@/components/org-ui"
+import { RoleBadge } from "@/components/org-ui"
 import {
-  SettingsField,
-  SettingsHint,
-  SettingsSection,
-} from "@/components/settings-section"
+  PageContent,
+  PageHeader,
+  SettingsPanel,
+} from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,7 +28,6 @@ import { Label } from "@/components/ui/label"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
 import { loadShellContext } from "@/lib/shell-context"
-import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/organization")({
   loader: async () => {
@@ -81,7 +79,6 @@ function InviteMemberDialogBody({
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<"member" | "owner">("member")
   const [inviteLink, setInviteLink] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -107,12 +104,6 @@ function InviteMemberDialogBody({
     } finally {
       setPending(false)
     }
-  }
-
-  async function copyInvite(url: string) {
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1600)
   }
 
   return (
@@ -153,24 +144,7 @@ function InviteMemberDialogBody({
           <p className="text-sm text-muted-foreground">
             Invite created. Copy this link and send it to your teammate.
           </p>
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-            <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-foreground">
-              {inviteLink}
-            </code>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void copyInvite(inviteLink)}
-            >
-              {copied ? (
-                <CheckIcon data-icon="inline-start" />
-              ) : (
-                <CopyIcon data-icon="inline-start" />
-              )}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-          </div>
+          <CopyField value={inviteLink} />
         </div>
       ) : (
         <form
@@ -250,35 +224,26 @@ function OrganizationPage() {
     }
   }
 
+  const inviteButton = isOwner ? (
+    <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
+      <UserPlusIcon data-icon="inline-start" />
+      Invite
+    </Button>
+  ) : null
+
   return (
     <AppShell
       user={session.user}
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      accountHome
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-        <header className="flex flex-wrap items-start gap-4">
-          <OrgAvatar name={org.name} id={org.id} size="lg" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                {org.name}
-              </h1>
-              <RoleBadge role={org.role} />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-mono text-[13px]">{org.slug}</span>
-              <span className="mx-2 text-border">·</span>
-              {members.length} {members.length === 1 ? "member" : "members"}
-              {invites.length > 0
-                ? ` · ${invites.length} pending invite${invites.length === 1 ? "" : "s"}`
-                : null}
-            </p>
-          </div>
-        </header>
+      <PageHeader
+        title="Team"
+        description="Members and organization settings"
+      />
 
+      <PageContent width="narrow">
         {error ? (
           <Alert variant="destructive">
             <AlertTitle>Something went wrong</AlertTitle>
@@ -286,191 +251,185 @@ function OrganizationPage() {
           </Alert>
         ) : null}
 
-        <SettingsSection
+        <SettingsPanel
           icon={UsersIcon}
           title="Members"
-          action={
-            isOwner ? (
-              <Button size="sm" onClick={() => setInviteOpen(true)}>
-                <UserPlusIcon data-icon="inline-start" />
-                Invite
-              </Button>
-            ) : null
-          }
+          description="Everyone here can view and operate projects in this organization."
+          action={inviteButton}
+          flush
         >
-          <SettingsHint>
-            Everyone here can view and operate projects in this organization.
-            Owners can invite people and change settings.
-          </SettingsHint>
-
           {members.length === 0 ? (
             <EmptyState
               icon={UsersIcon}
               title="No members yet"
               description="Invite a teammate to collaborate on projects."
               size="sm"
-              className="rounded-xl border border-border/70"
-              action={
-                isOwner ? (
-                  <Button size="sm" onClick={() => setInviteOpen(true)}>
-                    <UserPlusIcon data-icon="inline-start" />
-                    Invite
-                  </Button>
-                ) : undefined
-              }
+              action={inviteButton ?? undefined}
             />
           ) : (
-            <ul className="overflow-hidden rounded-xl border border-border/80">
-              {members.map((member, index) => (
+            <ul className="divide-y divide-border">
+              {members.map((member) => (
                 <li
                   key={member.id}
-                  className={cn(
-                    "flex items-center gap-3 px-3.5 py-3",
-                    index > 0 && "border-t border-border/70",
-                  )}
+                  className="flex items-center justify-between gap-3 px-5 py-2.5"
                 >
-                  <PersonAvatar name={member.name} email={member.email} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium">
-                        {member.name}
-                      </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {member.name}
                       {member.userId === session.user.id ? (
-                        <span className="text-[11px] text-muted-foreground">
-                          you
+                        <span className="ml-1.5 font-normal text-muted-foreground">
+                          (you)
                         </span>
                       ) : null}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {member.email}
-                    </div>
+                    </p>
                   </div>
-                  <RoleBadge role={member.role} />
-                  {isOwner && member.userId !== session.user.id ? (
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      disabled={pending}
-                      aria-label={`Remove ${member.name}`}
-                      onClick={async () => {
-                        setPending(true)
-                        setError(null)
-                        try {
-                          await client.organizations.removeMember({
-                            organizationId: org.id,
-                            userId: member.userId,
-                          })
-                          await router.invalidate()
-                        } catch (e) {
-                          setError(
-                            e instanceof Error ? e.message : String(e),
-                          )
-                        } finally {
-                          setPending(false)
-                        }
-                      }}
-                    >
-                      <Trash2Icon className="size-3.5" />
-                    </Button>
-                  ) : null}
+                  <div className="flex shrink-0 items-center gap-1">
+                    <RoleBadge role={member.role} />
+                    {isOwner && member.userId !== session.user.id ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={async () => {
+                          setPending(true)
+                          setError(null)
+                          try {
+                            await client.organizations.removeMember({
+                              organizationId: org.id,
+                              userId: member.userId,
+                            })
+                            await router.invalidate()
+                          } catch (e) {
+                            setError(
+                              e instanceof Error ? e.message : String(e),
+                            )
+                          } finally {
+                            setPending(false)
+                          }
+                        }}
+                      >
+                        <Trash2Icon className="size-3.5" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
           )}
 
           {isOwner && invites.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Pending invites
-              </p>
-              <ul className="overflow-hidden rounded-xl border border-border/80">
-                {invites.map((invite, index) => (
+            <div className="border-t border-border/60 px-5 py-4">
+              <p className="mb-2 text-sm font-medium">Pending invites</p>
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {invites.map((invite) => (
                   <li
                     key={invite.id}
-                    className={cn(
-                      "flex items-center gap-3 px-3.5 py-3",
-                      index > 0 && "border-t border-border/70",
-                    )}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
                         {invite.email}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
+                      </p>
+                      <p className="text-xs text-muted-foreground">
                         Expires{" "}
                         {new Date(invite.expiresAt).toLocaleDateString()}
-                      </div>
+                      </p>
                     </div>
-                    <RoleBadge role={invite.role} />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={async () => {
-                        setPending(true)
-                        try {
-                          await client.organizations.revokeInvite({
-                            id: invite.id,
-                          })
-                          await router.invalidate()
-                        } catch (e) {
-                          setError(
-                            e instanceof Error ? e.message : String(e),
-                          )
-                        } finally {
-                          setPending(false)
-                        }
-                      }}
-                    >
-                      Revoke
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <RoleBadge role={invite.role} />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={async () => {
+                          setPending(true)
+                          try {
+                            await client.organizations.revokeInvite({
+                              id: invite.id,
+                            })
+                            await router.invalidate()
+                          } catch (e) {
+                            setError(
+                              e instanceof Error ? e.message : String(e),
+                            )
+                          } finally {
+                            setPending(false)
+                          }
+                        }}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
             </div>
           ) : null}
-        </SettingsSection>
+        </SettingsPanel>
 
-        <SettingsSection icon={Building2Icon} title="General">
-          <SettingsHint>
-            {isOwner
+        <SettingsPanel
+          icon={Building2Icon}
+          title="General"
+          description={
+            isOwner
               ? "Displayed name and URL-safe slug for this organization."
-              : "Only owners can rename this organization."}
-          </SettingsHint>
-          <form className="grid gap-4" onSubmit={saveOrg}>
-            <SettingsField label="Name">
+              : "Only owners can rename this organization."
+          }
+          footer={
+            isOwner ? (
+              <>
+                <Button
+                  type="submit"
+                  form="org-general-form"
+                  size="sm"
+                  disabled={pending}
+                >
+                  {pending ? "Saving…" : "Save changes"}
+                </Button>
+                {saved ? (
+                  <span className="text-xs text-muted-foreground">Saved</span>
+                ) : null}
+              </>
+            ) : undefined
+          }
+        >
+          <form
+            id="org-general-form"
+            className="grid gap-4"
+            onSubmit={saveOrg}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Name</Label>
               <Input
+                id="org-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={!isOwner || pending}
               />
-            </SettingsField>
-            <SettingsField
-              label="Slug"
-              description="Used in identifiers. Prefer lowercase letters, numbers, and hyphens."
-            >
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="org-slug">Slug</Label>
               <Input
+                id="org-slug"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 disabled={!isOwner || pending}
                 className="font-mono text-sm"
               />
-            </SettingsField>
-            {isOwner ? (
-              <div className="flex items-center gap-3">
-                <Button type="submit" disabled={pending}>
-                  {pending ? "Saving…" : "Save changes"}
-                </Button>
-                {saved ? (
-                  <span className="text-xs text-success">Saved</span>
-                ) : null}
-              </div>
-            ) : null}
+              <p className="text-xs text-muted-foreground">
+                Used in identifiers. Prefer lowercase letters, numbers, and
+                hyphens.
+              </p>
+            </div>
           </form>
-        </SettingsSection>
-      </div>
+        </SettingsPanel>
+      </PageContent>
 
       <InviteMemberDialog
         open={inviteOpen}

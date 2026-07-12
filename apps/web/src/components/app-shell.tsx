@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router"
 import {
   BellIcon,
-  BoxIcon,
   ChevronsUpDownIcon,
   GlobeIcon,
   KeyRoundIcon,
@@ -17,6 +16,7 @@ import {
   CommandPalette,
   CommandPaletteTrigger,
 } from "@/components/command-palette"
+import { DeplowLogo } from "@/components/deplow-logo"
 import {
   OrgSwitcher,
   type OrgOption,
@@ -49,7 +49,6 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { authClient } from "@/lib/auth-client"
 import { CommandProvider } from "@/lib/command"
-import { cn } from "@/lib/utils"
 
 type AppShellProps = {
   user: {
@@ -59,11 +58,7 @@ type AppShellProps = {
   instanceAdmin?: boolean
   organizations?: OrgOption[]
   activeOrganization?: OrgOption | null
-  title?: string
-  description?: string
   actions?: React.ReactNode
-  /** Cloudflare-style account home: large hero title in content, minimal chrome */
-  accountHome?: boolean
   children: React.ReactNode
 }
 
@@ -120,10 +115,7 @@ export function AppShell({
   instanceAdmin = false,
   organizations = [],
   activeOrganization = null,
-  title,
-  description,
   actions,
-  accountHome,
   children,
 }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -149,9 +141,9 @@ export function AppShell({
           />
           <Sidebar
             collapsible="icon"
-            className="border-r border-sidebar-border bg-sidebar"
+            className="border-r border-sidebar-border/70 bg-sidebar"
           >
-          <SidebarHeader className="gap-2 border-b border-sidebar-border/80 pb-2">
+          <SidebarHeader className="gap-1.5 border-b border-sidebar-border/70 pb-2">
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -159,18 +151,16 @@ export function AppShell({
                   render={<Link to="/" />}
                   className="data-[slot=sidebar-menu-button]:p-1.5!"
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                    <BoxIcon className="size-4" />
-                  </div>
+                  <DeplowLogo size={22} className="text-foreground" />
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold tracking-tight">
+                    <span className="truncate font-semibold tracking-[-0.03em]">
                       deplow
                     </span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
-            {organizations.length > 0 ? (
+            {organizations.length > 1 ? (
               <OrgSwitcher
                 organizations={organizations}
                 active={activeOrganization}
@@ -199,7 +189,7 @@ export function AppShell({
             </SidebarGroup>
             {instanceAdmin ? (
               <SidebarGroup>
-                <SidebarGroupLabel>System</SidebarGroupLabel>
+                <SidebarGroupLabel>Platform</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {systemNav.map((item) => (
@@ -294,44 +284,15 @@ export function AppShell({
         </Sidebar>
 
         <SidebarInset className="min-w-0 overflow-x-hidden bg-background">
-          <header
-            className={cn(
-              "sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur-sm",
-              accountHome && "border-transparent",
-            )}
-          >
-            <SidebarTrigger className="-ml-1" />
-            {!accountHome ? (
-              <div className="min-w-0 flex-1">
-                {title ? (
-                  <>
-                    <h1 className="truncate text-sm font-semibold leading-tight tracking-tight">
-                      {title}
-                    </h1>
-                    {description ? (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {description}
-                      </p>
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-            ) : (
-              <div className="flex-1" />
-            )}
+          <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/90 px-4 backdrop-blur-md md:px-6">
+            <SidebarTrigger className="-ml-0.5" />
+            <div className="flex-1" />
             <CommandPaletteTrigger className="mr-1" />
             {actions ? (
-              <div className="flex shrink-0 items-center gap-2">{actions}</div>
+              <div className="flex shrink-0 items-center gap-1.5">{actions}</div>
             ) : null}
           </header>
-          <div
-            className={cn(
-              "animate-content-in flex min-w-0 flex-1 flex-col overflow-x-hidden",
-              accountHome
-                ? "gap-6 p-4 md:gap-8 md:px-8 md:pb-10 md:pt-2"
-                : "gap-6 p-4 md:p-6",
-            )}
-          >
+          <div className="animate-content-in flex min-w-0 flex-1 flex-col gap-6 overflow-x-hidden p-4 md:px-6 md:py-5">
             {children}
           </div>
         </SidebarInset>

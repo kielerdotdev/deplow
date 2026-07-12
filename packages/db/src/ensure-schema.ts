@@ -141,6 +141,10 @@ const PROJECTS_EXTRA_COLUMNS: Array<{ name: string; sql: string }> = [
     name: "bindings_migrated_at",
     sql: "ALTER TABLE projects ADD COLUMN bindings_migrated_at integer",
   },
+  {
+    name: "project_secrets_encrypted",
+    sql: "ALTER TABLE projects ADD COLUMN project_secrets_encrypted text",
+  },
 ]
 
 const DEPLOYMENTS_EXTRA_COLUMNS: Array<{ name: string; sql: string }> = [

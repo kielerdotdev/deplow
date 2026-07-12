@@ -8,6 +8,7 @@ type BadgeVariant =
   | "outline"
   | "success"
   | "info"
+  | "warning"
 
 const statusVariant: Record<string, BadgeVariant> = {
   ready: "success",
@@ -31,18 +32,20 @@ const statusVariant: Record<string, BadgeVariant> = {
   failed: "destructive",
   error: "destructive",
   rejected: "destructive",
-  stopped: "outline",
+  stopped: "warning",
+  degraded: "warning",
   destroying: "secondary",
   ignored: "outline",
 }
 
 const statusDot: Record<BadgeVariant, string> = {
   default: "bg-primary-foreground/80",
-  secondary: "bg-muted-foreground",
-  destructive: "bg-destructive",
-  outline: "bg-muted-foreground",
-  success: "bg-success",
-  info: "bg-info animate-pulse",
+  secondary: "bg-muted-foreground/70",
+  destructive: "bg-destructive/75",
+  outline: "bg-muted-foreground/60",
+  success: "bg-success/75",
+  info: "bg-info/75 animate-pulse",
+  warning: "bg-warning/75",
 }
 
 /** Map internal status codes to calm UX labels. */
@@ -57,6 +60,7 @@ const statusLabel: Record<string, string> = {
   running: "online",
   failed: "failed",
   stopped: "stopped",
+  degraded: "degraded",
   ready: "ready",
   online: "online",
   provisioning: "provisioning",

@@ -20,6 +20,12 @@ export type GitProviderLinkRow = {
   githubInstallationId: string | null
 }
 
+export const STALE_GITHUB_CREDS_MESSAGE =
+  "Stored GitHub connection could not be read. Reconnect GitHub under Integrations, or paste a PAT under Advanced."
+
+export const STALE_GITLAB_CREDS_MESSAGE =
+  "Stored GitLab connection could not be read. Reconnect GitLab under Integrations, or paste a PAT under Advanced."
+
 export type ResolveGitAuthDeps = {
   decrypt: (payload: string) => string
   encrypt: (plaintext: string) => string
@@ -39,6 +45,14 @@ export type ResolveGitAuthDeps = {
   platformGithubToken?: string
   platformGitlabToken?: string
   fetchImpl?: typeof fetch
+}
+
+function safeDecrypt(deps: ResolveGitAuthDeps, encrypted: string): string | null {
+  try {
+    return deps.decrypt(encrypted)
+  } catch {
+    return null
+  }
 }
 
 // ── resolveProjectCloneAuth ──────────────────────────────────────
@@ -90,11 +104,9 @@ async function tryProjectPat(
   username: string,
 ): Promise<GitCloneAuth | null> {
   if (!project.gitAccessTokenEncrypted) return null
-  return {
-    token: deps.decrypt(project.gitAccessTokenEncrypted),
-    username,
-    host,
-  }
+  const token = safeDecrypt(deps, project.gitAccessTokenEncrypted)
+  if (!token) return null
+  return { token, username, host }
 }
 
 async function tryGitHubApp(
@@ -135,6 +147,7 @@ async function tryUserLink(
   if (!link?.accessTokenEncrypted) return null
 
   const token = await maybeRefreshGitLabToken(project, deps, link)
+  if (!token) return null
   return { token, username, host }
 }
 
@@ -142,9 +155,10 @@ async function maybeRefreshGitLabToken(
   project: ProjectGitAuthRow,
   deps: ResolveGitAuthDeps,
   link: GitProviderLinkRow,
-): Promise<string> {
+): Promise<string | null> {
   const provider = (project.gitProvider as "github" | "gitlab") || "github"
-  const token = deps.decrypt(link.accessTokenEncrypted!)
+  const token = safeDecrypt(deps, link.accessTokenEncrypted!)
+  if (!token) return null
 
   if (provider !== "gitlab") return token
   if (!link.refreshTokenEncrypted) return token
@@ -154,9 +168,12 @@ async function maybeRefreshGitLabToken(
   const gl = await deps.loadGitLabOAuthConfig()
   if (!gl) return token
 
+  const refreshToken = safeDecrypt(deps, link.refreshTokenEncrypted)
+  if (!refreshToken) return token
+
   const refreshed = await refreshGitLabToken({
     config: gl,
-    refreshToken: deps.decrypt(link.refreshTokenEncrypted),
+    refreshToken,
     fetchImpl: deps.fetchImpl,
   })
   await deps.updateUserLinkTokens?.({
@@ -235,10 +252,13 @@ async function resolveGithubListToken(
   }
 
   if (link?.accessTokenEncrypted) {
-    return {
-      token: deps.decrypt(link.accessTokenEncrypted),
-      source: "oauth",
-      installationId: link.githubInstallationId ?? undefined,
+    const token = safeDecrypt(deps, link.accessTokenEncrypted)
+    if (token) {
+      return {
+        token,
+        source: "oauth",
+        installationId: link.githubInstallationId ?? undefined,
+      }
     }
   }
 
@@ -247,7 +267,9 @@ async function resolveGithubListToken(
   }
 
   throw new Error(
-    "Connect GitHub (OAuth / App install), paste a PAT under Advanced, or set DEPLOW_GITHUB_TOKEN on the server.",
+    link?.accessTokenEncrypted
+      ? STALE_GITHUB_CREDS_MESSAGE
+      : "Connect GitHub (OAuth / App install), paste a PAT under Advanced, or set DEPLOW_GITHUB_TOKEN on the server.",
   )
 }
 
@@ -260,15 +282,17 @@ async function resolveGitlabListToken(
 }> {
   const link = await deps.loadUserLink(input.userId, "gitlab")
   if (link?.accessTokenEncrypted) {
-    return {
-      token: deps.decrypt(link.accessTokenEncrypted),
-      source: "oauth",
+    const token = safeDecrypt(deps, link.accessTokenEncrypted)
+    if (token) {
+      return { token, source: "oauth" }
     }
   }
   if (deps.platformGitlabToken) {
     return { token: deps.platformGitlabToken, source: "platform" }
   }
   throw new Error(
-    "Connect GitLab (OAuth), paste a PAT under Advanced, or set DEPLOW_GITLAB_TOKEN on the server.",
+    link?.accessTokenEncrypted
+      ? STALE_GITLAB_CREDS_MESSAGE
+      : "Connect GitLab (OAuth), paste a PAT under Advanced, or set DEPLOW_GITLAB_TOKEN on the server.",
   )
 }

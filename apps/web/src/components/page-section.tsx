@@ -20,25 +20,27 @@ export function PageSection({
   className,
 }: PageSectionProps) {
   return (
-    <section className={cn("space-y-4", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
+    <section className={cn("space-y-3", className)}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
           {Icon ? (
-            <div className="icon-well size-9 shrink-0">
-              <Icon className="size-4" />
+            <div className="icon-well mt-0.5 size-7 shrink-0">
+              <Icon className="size-3.5" />
             </div>
           ) : null}
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+            <h2 className="text-[13px] font-semibold tracking-tight">
+              {title}
+            </h2>
             {description ? (
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-0.5 max-w-xl text-[12px] leading-relaxed text-muted-foreground">
                 {description}
               </p>
             ) : null}
           </div>
         </div>
         {actions ? (
-          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          <div className="flex shrink-0 items-center gap-1.5">{actions}</div>
         ) : null}
       </div>
       {children}

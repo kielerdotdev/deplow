@@ -3,7 +3,6 @@ import type { ProjectSection } from "@/components/project-rail"
 export const PROJECT_SECTION_IDS = [
   "overview",
   "deployments",
-  "logs",
   "settings",
   "secrets",
 ] as const satisfies readonly ProjectSection[]

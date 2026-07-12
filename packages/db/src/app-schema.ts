@@ -119,6 +119,8 @@ export const projects = sqliteTable(
     lastBackupAt: integer("last_backup_at", { mode: "timestamp_ms" }),
     /** Lazy-provisioned S3 bucket credentials (MinIO/R2 adapter; not a user-facing service) */
     storageCredentialsEncrypted: text("storage_credentials_encrypted"),
+    /** User-managed project env secrets (encrypted JSON object) */
+    projectSecretsEncrypted: text("project_secrets_encrypted"),
     bindingsMigratedAt: integer("bindings_migrated_at", {
       mode: "timestamp_ms",
     }),

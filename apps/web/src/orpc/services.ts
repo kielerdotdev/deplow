@@ -25,6 +25,8 @@ import {
   listRemoteBranches,
   listRemoteRepos,
   normalizeRepoUrl,
+  STALE_GITHUB_CREDS_MESSAGE,
+  STALE_GITLAB_CREDS_MESSAGE,
   toPublicAnalysis,
 } from "@/lib/core"
 import { resolveListTokenForUser } from "@/lib/git-auth"
@@ -644,11 +646,31 @@ export const disconnectGit = authedProcedure
     return { ok: true as const }
   })
 
-function throwGitListError(error: unknown): never {
+function throwGitListError(
+  error: unknown,
+  provider?: "github" | "gitlab",
+): never {
   if (error instanceof ORPCError) throw error
-  throw new ORPCError("BAD_REQUEST", {
-    message: error instanceof Error ? error.message : String(error),
-  })
+  const raw =
+    error instanceof Error ? error.message : String(error)
+  const message = mapGitCredentialErrorMessage(raw, provider)
+  throw new ORPCError("BAD_REQUEST", { message })
+}
+
+function mapGitCredentialErrorMessage(
+  message: string,
+  provider?: "github" | "gitlab",
+): string {
+  if (
+    message.includes("Unsupported state or unable to authenticate data") ||
+    message.includes("bad decrypt") ||
+    message.includes("Invalid authentication tag")
+  ) {
+    return provider === "gitlab"
+      ? STALE_GITLAB_CREDS_MESSAGE
+      : STALE_GITHUB_CREDS_MESSAGE
+  }
+  return message
 }
 
 export const listGitRepos = authedProcedure
@@ -689,7 +711,7 @@ export const listGitRepos = authedProcedure
         installationId: auth.installationId,
       }
     } catch (error) {
-      throwGitListError(error)
+      throwGitListError(error, input.provider)
     }
   })
 
@@ -710,7 +732,7 @@ export const listGitBranches = authedProcedure
         }),
       }
     } catch (error) {
-      throwGitListError(error)
+      throwGitListError(error, input.provider)
     }
   })
 

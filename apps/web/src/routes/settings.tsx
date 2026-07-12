@@ -5,6 +5,7 @@ import { CheckIcon, CopyIcon, KeyRoundIcon, Trash2Icon } from "lucide-react"
 import { AppShell } from "@/components/app-shell"
 import { CommandAction } from "@/components/command-action"
 import { EmptyState } from "@/components/empty-state"
+import { PageContent, PageHeader } from "@/components/page-layout"
 import { SettingsField, SettingsSection } from "@/components/settings-section"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -84,21 +85,22 @@ function SettingsPage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      title="Settings"
-      description="Operator tokens for Cursor and other MCP clients."
     >
-      <CommandAction
-        id="settings.focus-mcp"
-        label="Focus MCP token name"
-        group="Actions"
-        mode="action"
-        keywords={["mcp", "token", "cursor", "settings"]}
-        onSelect={() => {
-          document.getElementById("mcp-token-name")?.focus()
-        }}
+      <PageHeader
+        title="Settings"
+        description="Operator tokens for Cursor and other MCP clients."
       />
-
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <PageContent width="narrow">
+        <CommandAction
+          id="settings.focus-mcp"
+          label="Focus MCP token name"
+          group="Actions"
+          mode="action"
+          keywords={["mcp", "token", "cursor", "settings"]}
+          onSelect={() => {
+            document.getElementById("mcp-token-name")?.focus()
+          }}
+        />
         {error ? (
           <Alert variant="destructive">
             <AlertTitle>Something went wrong</AlertTitle>
@@ -176,6 +178,7 @@ function SettingsPage() {
               </div>
               <Button
                 type="button"
+                size="sm"
                 disabled={pending || !name.trim()}
                 onClick={() => void createToken()}
               >
@@ -244,7 +247,7 @@ function SettingsPage() {
             </pre>
           </SettingsField>
         </SettingsSection>
-      </div>
+      </PageContent>
     </AppShell>
   )
 }

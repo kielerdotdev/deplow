@@ -6,6 +6,7 @@ import { ActionDialog } from "@/components/action-dialog"
 import { AppShell } from "@/components/app-shell"
 import { CommandAction } from "@/components/command-action"
 import { EmptyState } from "@/components/empty-state"
+import { PageContent, PageHeader, SettingsPanel } from "@/components/page-layout"
 import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -120,7 +121,7 @@ function NodesPage() {
   const [ensureOpen, setEnsureOpen] = useState(false)
 
   const ensureButton = (
-    <Button size="sm" onClick={() => setEnsureOpen(true)}>
+    <Button size="sm" variant="outline" onClick={() => setEnsureOpen(true)}>
       <PlusIcon data-icon="inline-start" />
       Add node
     </Button>
@@ -139,104 +140,112 @@ function NodesPage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      title="Nodes"
-      description="Hosts that build and run project apps — user containers under gVisor by default"
-      actions={nodes.length > 0 ? ensureButton : undefined}
     >
-      <CommandAction
-        id="nodes.ensure-local"
-        label="Add local node"
-        keywords={["register", "docker", "ensure"]}
-        icon={ServerIcon}
-        onSelect={() => setEnsureOpen(true)}
+      <PageHeader
+        title="Nodes"
+        description="Hosts that build and run project apps — user containers under gVisor by default"
+        actions={nodes.length > 0 ? ensureButton : undefined}
       />
-      {runtimeMissing ? (
-        <Alert variant="destructive">
-          <ShieldIcon />
-          <AlertTitle>gVisor runtime missing</AlertTitle>
-          <AlertDescription>
-            User apps require <code className="font-mono text-xs">runsc</code>{" "}
-            on this host. Install gVisor, run{" "}
-            <code className="font-mono text-xs">sudo runsc install</code>,
-            restart Docker, then redeploy. See README / docs (secure runtime).
-            Temporary escape hatch:{" "}
-            <code className="font-mono text-xs">DEPLOW_APP_RUNTIME=runc</code>.
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <PageContent width="wide">
+        <CommandAction
+          id="nodes.ensure-local"
+          label="Add local node"
+          keywords={["register", "docker", "ensure"]}
+          icon={ServerIcon}
+          onSelect={() => setEnsureOpen(true)}
+        />
+        {runtimeMissing ? (
+          <Alert variant="destructive">
+            <ShieldIcon />
+            <AlertTitle>gVisor runtime missing</AlertTitle>
+            <AlertDescription>
+              User apps require <code className="font-mono text-xs">runsc</code>{" "}
+              on this host. Install gVisor, run{" "}
+              <code className="font-mono text-xs">sudo runsc install</code>,
+              restart Docker, then redeploy. See README / docs (secure runtime).
+              Temporary escape hatch:{" "}
+              <code className="font-mono text-xs">DEPLOW_APP_RUNTIME=runc</code>.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-      {nodes.length === 0 ? (
-        <div className="surface-panel surface-glow overflow-hidden">
-          <EmptyState
-            icon={ServerIcon}
-            title="No nodes yet"
-            description="Register this machine so projects can build images and run sandboxed app containers (gVisor by default)."
-            action={
-              <Button onClick={() => setEnsureOpen(true)}>
-                <ServerIcon data-icon="inline-start" />
-                Add local node
-              </Button>
+        {nodes.length === 0 ? (
+          <SettingsPanel
+            title="Nodes"
+            description="Register this machine so projects can build images and run sandboxed app containers."
+          >
+            <EmptyState
+              variant="compact"
+              icon={ServerIcon}
+              title="No nodes yet"
+              description="Register this machine so projects can build images and run sandboxed app containers (gVisor by default)."
+              action={
+                <Button size="sm" variant="outline" onClick={() => setEnsureOpen(true)}>
+                  <ServerIcon data-icon="inline-start" />
+                  Add local node
+                </Button>
+              }
+            />
+          </SettingsPanel>
+        ) : (
+          <SettingsPanel
+            title="Registered nodes"
+            description={
+              <>
+                Single local Docker Engine host in this release. User apps use the
+                configured OCI runtime (default <code className="font-mono">runsc</code>{" "}
+                / gVisor); platform services stay on runc.
+              </>
             }
-          />
-        </div>
-      ) : (
-        <div className="surface-panel overflow-hidden">
-          <div className="border-b border-border/60 px-5 py-4">
-            <h2 className="text-sm font-semibold tracking-tight">
-              Registered nodes
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Single local Docker Engine host in this release. User apps use the
-              configured OCI runtime (default <code>runsc</code> / gVisor);
-              platform services stay on runc.
-            </p>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Provider</TableHead>
-                <TableHead>Host</TableHead>
-                <TableHead>App runtime</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {nodes.map((node) => (
-                <TableRow key={node.id}>
-                  <TableCell className="font-medium">{node.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {node.provider}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {node.host}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm">
-                        {runtimeLabel(node.appRuntime)}
-                      </span>
-                      {node.appRuntime && node.appRuntimeAvailable === false ? (
-                        <span className="text-xs text-destructive">
-                          not installed on daemon
-                        </span>
-                      ) : node.appRuntime &&
-                        node.appRuntimeAvailable === true ? (
-                        <span className="text-xs text-muted-foreground">
-                          available
-                        </span>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={node.status} />
-                  </TableCell>
+            flush
+          >
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Provider</TableHead>
+                  <TableHead>Host</TableHead>
+                  <TableHead>App runtime</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              </TableHeader>
+              <TableBody>
+                {nodes.map((node) => (
+                  <TableRow key={node.id}>
+                    <TableCell className="font-medium">{node.name}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {node.provider}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {node.host}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm">
+                          {runtimeLabel(node.appRuntime)}
+                        </span>
+                        {node.appRuntime && node.appRuntimeAvailable === false ? (
+                          <span className="text-xs text-destructive">
+                            not installed on daemon
+                          </span>
+                        ) : node.appRuntime &&
+                          node.appRuntimeAvailable === true ? (
+                          <span className="text-xs text-muted-foreground">
+                            available
+                          </span>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={node.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </SettingsPanel>
+        )}
+      </PageContent>
 
       <EnsureNodeDialog open={ensureOpen} onOpenChange={setEnsureOpen} />
     </AppShell>

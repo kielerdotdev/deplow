@@ -19,7 +19,7 @@ describe("UI shell structure", () => {
     expect(src).toContain('title: "Home"')
     expect(src).toContain('title: "Team"')
     expect(src).toContain('title: "Nodes"')
-    expect(src).toContain("System")
+    expect(src).toContain("Platform")
     expect(src).toContain("instanceAdmin")
     expect(src).toContain("OrgSwitcher")
     expect(src).toContain("Sign out")
@@ -152,19 +152,26 @@ describe("UI shell structure", () => {
     expect(src).not.toContain('id: "database"')
     expect(src).not.toContain('id: "backups"')
     expect(src).not.toContain('id: "git"')
+    expect(src).not.toContain('id: "logs"')
   })
 
   it("home is an account overview with projects card", () => {
     const src = readFileSync(path.join(root, "routes/index.tsx"), "utf8")
     expect(src).toContain("New project")
+    expect(src).toContain("EmptyState")
     expect(src).toContain("ActionDialog")
     expect(src).toContain("DashboardCard")
-    expect(src).toContain("accountHome")
+    expect(src).toContain("PageHeader")
+    expect(src).toContain("PageContent")
+    expect(src).not.toContain("accountHome")
     expect(src).not.toContain("gitRepoUrl")
     expect(src).not.toContain("spawnBuildServer")
     expect(src).not.toContain("Checkbox")
     expect(src).not.toContain("StatTile")
+    expect(src).not.toContain("panelTab")
+    expect(src).not.toContain("panel-tab")
     expect(src).toContain("publicUrl")
+    expect(src).toContain("Recent")
   })
 
   it("nodes use empty state and add-node dialog", () => {
@@ -182,7 +189,7 @@ describe("UI shell structure", () => {
     expect(src).toContain("Auto-assign subdomains")
   })
 
-  it("app shell nav includes Team, Settings, and System gates", () => {
+  it("app shell nav includes Team, Settings, and Platform gates", () => {
     const src = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
     expect(src).toContain('to: "/organization"')
     expect(src).toContain("Team")
@@ -193,6 +200,39 @@ describe("UI shell structure", () => {
     expect(src).toContain('to: "/settings"')
     expect(src).toContain("Settings")
     expect(src).toContain("instanceAdmin")
+  })
+
+  it("platform pages use shared page layout primitives", () => {
+    for (const file of [
+      "routes/integrations.tsx",
+      "routes/domains.tsx",
+      "routes/notifications.tsx",
+      "routes/nodes.tsx",
+      "routes/settings.tsx",
+      "routes/organization.tsx",
+    ]) {
+      const src = readFileSync(path.join(root, file), "utf8")
+      expect(src).toContain("PageHeader")
+      expect(src).toContain("PageContent")
+    }
+    const domains = readFileSync(path.join(root, "routes/domains.tsx"), "utf8")
+    expect(domains).toContain("SettingsPanel")
+    const org = readFileSync(path.join(root, "routes/organization.tsx"), "utf8")
+    expect(org).toContain("SettingsPanel")
+    expect(org).toContain('title="Team"')
+    expect(org).toContain("Members and organization settings")
+    expect(org).not.toContain("OrgAvatar")
+    const settings = readFileSync(
+      path.join(root, "components/settings-section.tsx"),
+      "utf8",
+    )
+    expect(settings).toContain("SettingsPanel")
+  })
+
+  it("app shell content uses unified padding", () => {
+    const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
+    expect(shell).toContain("p-4 md:px-6 md:py-5")
+    expect(shell).not.toContain("accountHome")
   })
 
   it("shell content uses shared content enter animation", () => {
@@ -213,6 +253,9 @@ describe("UI shell structure", () => {
     const emptyState = readFileSync(path.join(root, "components/empty-state.tsx"), "utf8")
     expect(emptyState).toContain('from "@/components/ui/empty"')
     expect(emptyState).toContain("EmptyMedia")
+    expect(emptyState).toContain("EmptyStateStep")
+    expect(emptyState).toContain('variant?: "default" | "compact"')
+    expect(emptyState).toContain("surface-inset")
   })
 
   it("domains and nodes loaders require instance admin", () => {
