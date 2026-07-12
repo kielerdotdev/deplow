@@ -890,14 +890,3 @@ export const backupsRelations = relations(backups, ({ one }) => ({
     references: [services.id],
   }),
 }))
-
-export const backupsRelations = relations(backups, ({ one }) => ({
-  project: one(projects, {
-    fields: [backups.projectId],
-    references: [projects.id],
-  }),
-  resourceLink: one(resourceLinks, {
-    fields: [backups.resourceLinkId],
-    references: [resourceLinks.id],
-  }),
-}))
