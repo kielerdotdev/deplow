@@ -6,7 +6,7 @@
     "dev": "vite dev --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "srvx --prod --port ${PORT:-3000} -s dist/client dist/server/server.js",
+    "start": "srvx --prod --port ${PORT:-3000} --static ../client --entry dist/server/server.js",
     "test": "vp test",
     "lint": "vp lint",
     "typecheck": "tsc --noEmit"
