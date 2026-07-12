@@ -188,6 +188,8 @@ describe("UI shell structure", () => {
     expect(src).toContain("Team")
     expect(src).toContain('to: "/domains"')
     expect(src).toContain("Domains")
+    expect(src).toContain('to: "/notifications"')
+    expect(src).toContain("Notifications")
     expect(src).toContain('to: "/settings"')
     expect(src).toContain("Settings")
     expect(src).toContain("instanceAdmin")

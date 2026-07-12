@@ -33,11 +33,11 @@ export function injectDeployEnv(
     ...containerRuntimeEnv(extra),
     DATABASE_URL: databaseUrl,
     REDIS_URL: redisUrl,
-    S3_ENDPOINT: config.minioDockerEndpoint,
+    S3_ENDPOINT: config.s3.appEndpoint,
     S3_BUCKET: credentials.storage.bucket,
     S3_ACCESS_KEY: credentials.storage.accessKeyId,
     S3_SECRET_KEY: credentials.storage.secretAccessKey,
-    S3_REGION: credentials.storage.region ?? config.minioRegion,
+    S3_REGION: credentials.storage.region ?? config.s3.region,
   }
 }
 
@@ -47,6 +47,7 @@ export type BindingEnvInput = {
     url: string
   }>
   storage?: {
+    endpoint?: string
     bucket: string
     accessKeyId: string
     secretAccessKey: string
@@ -65,11 +66,11 @@ export function injectDeployEnvFromBindings(
     env[b.envKey] = b.url
   }
   if (input.storage) {
-    env.S3_ENDPOINT = config.minioDockerEndpoint
+    env.S3_ENDPOINT = config.s3.appEndpoint
     env.S3_BUCKET = input.storage.bucket
     env.S3_ACCESS_KEY = input.storage.accessKeyId
     env.S3_SECRET_KEY = input.storage.secretAccessKey
-    env.S3_REGION = input.storage.region ?? config.minioRegion
+    env.S3_REGION = input.storage.region ?? config.s3.region
   }
   return env
 }

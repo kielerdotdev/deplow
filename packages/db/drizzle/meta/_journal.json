@@ -57,6 +57,20 @@
       "when": 1784100000000,
       "tag": "0007_organizations",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784200000000,
+      "tag": "0008_git_watch_paths",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784300000000,
+      "tag": "0009_platform_operator_webhook",
+      "breakpoints": true
     }
   ]
 }

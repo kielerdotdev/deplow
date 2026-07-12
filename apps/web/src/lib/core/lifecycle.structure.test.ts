@@ -45,13 +45,14 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
 
   it("webhook route drives handleGitWebhook (signature + deploy entry)", () => {
     const src = readFileSync(
-      path.join(root, "routes/api/webhooks/git.$projectId.ts"),
+      path.join(root, "routes/api/webhooks/git.$serviceId.ts"),
       "utf8",
     )
     expect(src).toContain("handleGitWebhook")
-    expect(src).toContain("runProductionDeployFromGit")
+    expect(src).toContain("runServiceDeployFromGit")
     expect(src).toContain("runServiceDeploy")
     expect(src).toContain("git_webhook")
+    expect(src).toContain("services")
   })
 
   it("proxyService is wired with caddy reload onChange", () => {
@@ -72,15 +73,35 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     const platform = readFileSync(path.join(root, "orpc/platform.ts"), "utf8")
     expect(router).toContain("proxyStatus")
     expect(router).toContain("ingressUpdate")
+    expect(router).toContain("operatorWebhookUpdate")
     expect(platform).toContain("getProxyIngressStatus")
     expect(platform).toContain("saveIngressSettings")
     expect(platform).toContain("rebuildAutoHostnames")
+    expect(platform).toContain("saveOperatorWebhookSettings")
+  })
+
+  it("operations markSucceeded/Failed fire operator webhook", () => {
+    const src = readFileSync(
+      path.join(root, "lib/core/queue/operations.ts"),
+      "utf8",
+    )
+    expect(src).toContain("notifyOperatorWebhook")
   })
 
   it("deployments.stop removes proxy route", () => {
     const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
     expect(src).toContain("stopApp")
     expect(src).toContain("proxyService.removeServiceRoute")
+  })
+
+  it("deploy success retains images and rollback uses selectRollbackTarget", () => {
+    const processor = readFileSync(
+      path.join(root, "lib/core/queue/deploy-processor.ts"),
+      "utf8",
+    )
+    expect(processor).toContain("retainAndPruneDeployImages")
+    const orpc = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
+    expect(orpc).toContain("selectRollbackTarget")
   })
 
   it("DockerNodeExecutor uses buildUserAppHostConfig for user apps", () => {

@@ -125,6 +125,12 @@ export type CreateAndDeployServiceInput = z.infer<
   typeof createAndDeployServiceInputSchema
 >
 
+const gitWatchPathsSchema = z
+  .array(z.string().min(1).max(256))
+  .max(64)
+  .nullable()
+  .optional()
+
 export const updateServiceInputSchema = z.object({
   id: z.string().min(1),
   containerPort: z.number().int().min(1).max(65_535).optional(),
@@ -136,6 +142,7 @@ export const updateServiceInputSchema = z.object({
   buildCommand: z.string().max(1024).nullable().optional(),
   startCommand: z.string().max(1024).nullable().optional(),
   healthCheckPath: z.string().max(512).nullable().optional(),
+  gitWatchPaths: gitWatchPathsSchema,
 })
 export type UpdateServiceInput = z.infer<typeof updateServiceInputSchema>
 
@@ -146,12 +153,13 @@ export const serviceGitStatusSchema = z.object({
   repoFullName: z.string().nullable().optional(),
   branch: z.string().nullable().optional(),
   webhookUrl: z.string().nullable().optional(),
-  authMethod: gitAuthMethodSchema.nullable().optional(),
+  authMethod: gitAuthMethodSchema.optional().nullable(),
   webhookManaged: z.boolean().optional(),
   lastDeliveryAt: z.string().nullable().optional(),
   lastDeliveryStatus: z.string().nullable().optional(),
   lastDeliveryError: z.string().nullable().optional(),
   connectedAt: z.string().nullable().optional(),
+  watchPaths: z.array(z.string()).nullable().optional(),
 })
 export type ServiceGitStatus = z.infer<typeof serviceGitStatusSchema>
 
@@ -171,6 +179,7 @@ export const connectServiceGitInputSchema = z.object({
   installationId: z.string().min(1).optional(),
   accessToken: z.string().min(1).optional(),
   autoWebhook: z.boolean().optional().default(true),
+  gitWatchPaths: gitWatchPathsSchema,
 })
 export type ConnectServiceGitInput = z.infer<
   typeof connectServiceGitInputSchema

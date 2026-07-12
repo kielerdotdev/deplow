@@ -457,16 +457,21 @@ export const rollback = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    await loadAccessibleService(input.serviceId, context.session!)
+    const { service } = await loadAccessibleService(
+      input.serviceId,
+      context.session!,
+    )
     const rows = await db
       .select()
       .from(deployments)
       .where(eq(deployments.serviceId, input.serviceId))
       .orderBy(desc(deployments.createdAt))
-    const target = input.deploymentId
-      ? rows.find((row) => row.id === input.deploymentId)
-      : rows.filter((row) => row.image && row.status === "running")[1]
-    if (!target?.image) {
+    const { selectRollbackTarget } = await import("@/lib/core/image-retain")
+    const target = selectRollbackTarget(rows, {
+      deploymentId: input.deploymentId,
+      currentImage: service.image,
+    })
+    if (!target) {
       throw new ORPCError("BAD_REQUEST", {
         message: "No previous image is available",
       })

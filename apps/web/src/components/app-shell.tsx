@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router"
 import {
+  BellIcon,
   BoxIcon,
   ChevronsUpDownIcon,
   GlobeIcon,
@@ -99,6 +100,12 @@ const systemNav = [
     to: "/domains" as const,
     icon: GlobeIcon,
     match: (path: string) => path.startsWith("/domains"),
+  },
+  {
+    title: "Notifications",
+    to: "/notifications" as const,
+    icon: BellIcon,
+    match: (path: string) => path.startsWith("/notifications"),
   },
   {
     title: "Nodes",

@@ -7,20 +7,21 @@ import {
   handleGitWebhook,
   isWebhookBodyTooLarge,
   MAX_WEBHOOK_BODY_BYTES,
-  type GitWebhookProject,
+  type GitWebhookService,
 } from "@/lib/core"
-import { db, gitService, platformConfig, projects } from "@/lib/services"
-import { runProductionDeploy } from "@/orpc/deployments"
+import { db, platformConfig, projects, services } from "@/lib/services"
+import { runServiceDeploy } from "@/orpc/deployments"
 
 /**
- * GitHub / GitLab push webhook → production deploy.
+ * GitHub / GitLab push webhook → production deploy for a service.
  * Verifies signatures before any clone/build work (see handleGitWebhook).
+ * Path param is the service id (registered as /api/webhooks/git/{serviceId}).
  */
-export const Route = createFileRoute("/api/webhooks/git/$projectId")({
+export const Route = createFileRoute("/api/webhooks/git/$serviceId")({
   server: {
     handlers: {
       POST: async ({ request, params }) => {
-        const projectId = params.projectId
+        const serviceId = params.serviceId
         const rawBody = await request.text()
 
         if (isWebhookBodyTooLarge(Buffer.byteLength(rawBody, "utf8"))) {
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/api/webhooks/git/$projectId")({
 
         const result = await handleGitWebhook(
           {
-            projectId,
+            serviceId,
             rawBody,
             headers: {
               "x-hub-signature-256": request.headers.get("x-hub-signature-256"),
@@ -46,28 +47,38 @@ export const Route = createFileRoute("/api/webhooks/git/$projectId")({
             },
           },
           {
-            loadProject: async (id) => {
+            loadService: async (id) => {
               const [row] = await db
                 .select()
-                .from(projects)
-                .where(eq(projects.id, id))
+                .from(services)
+                .where(eq(services.id, id))
               if (!row) return null
-              return rowToWebhookProject(row)
+              const [project] = await db
+                .select()
+                .from(projects)
+                .where(eq(projects.id, row.projectId))
+              return rowToWebhookService(row, project?.nodeId ?? null)
             },
             decryptSecret: (encrypted) =>
               decryptString(encrypted, platformConfig.secretsEncryptionKey),
-            recordDelivery: async ({ projectId: pid, status, error }) => {
+            recordDelivery: async ({ serviceId: sid, status, error }) => {
               await db
-                .update(projects)
+                .update(services)
                 .set({
                   gitLastDeliveryAt: new Date(),
                   gitLastDeliveryStatus: status,
                   gitLastDeliveryError: error ?? null,
                 })
-                .where(eq(projects.id, pid))
+                .where(eq(services.id, sid))
             },
-            runProductionDeployFromGit: async ({ project, branch }) => {
-              return runGitProductionDeploy(project, branch)
+            runServiceDeployFromGit: async ({ service }) => {
+              const summary = await runServiceDeploy({
+                serviceId: service.id,
+                nodeId: service.nodeId,
+                fromGit: true,
+                triggeredBy: "git_webhook",
+              })
+              return { deploymentId: summary.id, status: summary.status }
             },
           },
         )
@@ -78,43 +89,34 @@ export const Route = createFileRoute("/api/webhooks/git/$projectId")({
   },
 })
 
-function rowToWebhookProject(
-  row: typeof projects.$inferSelect,
-): GitWebhookProject {
+function parseWatchPaths(raw: string | null | undefined): string[] | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return null
+    const paths = parsed.filter(
+      (p): p is string => typeof p === "string" && p.trim().length > 0,
+    )
+    return paths.length > 0 ? paths : null
+  } catch {
+    return null
+  }
+}
+
+function rowToWebhookService(
+  row: typeof services.$inferSelect,
+  nodeId: string | null,
+): GitWebhookService {
   return {
     id: row.id,
+    projectId: row.projectId,
+    name: row.name,
     slug: row.slug,
-    nodeId: row.nodeId,
+    nodeId,
     gitProvider: row.gitProvider,
     gitRepoUrl: row.gitRepoUrl,
     gitBranch: row.gitBranch,
     gitWebhookSecretEncrypted: row.gitWebhookSecretEncrypted,
-    credentialsEncrypted: row.credentialsEncrypted,
+    gitWatchPaths: parseWatchPaths(row.gitWatchPaths),
   }
-}
-
-/** Clone → shared production deploy pipeline (locked, proxy, gVisor). */
-async function runGitProductionDeploy(
-  project: GitWebhookProject,
-  branch: string,
-): Promise<{ deploymentId: string; status: string }> {
-  if (!project.gitRepoUrl) {
-    throw new Error("No repo URL configured")
-  }
-
-  const clone = await gitService.syncRepo({
-    projectId: project.id,
-    repoUrl: project.gitRepoUrl,
-    branch,
-  })
-
-  const summary = await runProductionDeploy({
-    projectId: project.id,
-    nodeId: project.nodeId,
-    serviceName: "app",
-    sourcePath: clone.sourcePath,
-    triggeredBy: "git_webhook",
-  })
-
-  return { deploymentId: summary.id, status: summary.status }
 }

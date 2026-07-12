@@ -57,6 +57,28 @@ async function accessibleService(id: string, session: Session) {
   return { service, project }
 }
 
+function parseWatchPaths(raw: string | null | undefined): string[] | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return null
+    const paths = parsed.filter(
+      (p): p is string => typeof p === "string" && p.trim().length > 0,
+    )
+    return paths.length > 0 ? paths : null
+  } catch {
+    return null
+  }
+}
+
+function encodeWatchPaths(
+  paths: string[] | null | undefined,
+): string | null | undefined {
+  if (paths === undefined) return undefined
+  if (paths === null || paths.length === 0) return null
+  return JSON.stringify(paths)
+}
+
 function summary(row: typeof services.$inferSelect) {
   return {
     id: row.id,
@@ -95,6 +117,7 @@ function summary(row: typeof services.$inferSelect) {
       lastDeliveryStatus: row.gitLastDeliveryStatus,
       lastDeliveryError: row.gitLastDeliveryError,
       connectedAt: row.gitConnectedAt?.toISOString() ?? null,
+      watchPaths: parseWatchPaths(row.gitWatchPaths),
     },
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -444,6 +467,10 @@ export const update = authedProcedure
           input.healthCheckPath === undefined
             ? undefined
             : input.healthCheckPath,
+        gitWatchPaths:
+          input.gitWatchPaths === undefined
+            ? undefined
+            : encodeWatchPaths(input.gitWatchPaths),
       })
       .where(eq(services.id, service.id))
     return summary(
@@ -543,6 +570,10 @@ export const connectGit = authedProcedure
           secret,
           platformConfig.secretsEncryptionKey,
         ),
+        gitWatchPaths:
+          input.gitWatchPaths === undefined
+            ? undefined
+            : encodeWatchPaths(input.gitWatchPaths),
         gitConnectedAt: new Date(),
         gitRemoteWebhookId: null,
       })
@@ -607,6 +638,7 @@ export const disconnectGit = authedProcedure
         gitAccessTokenEncrypted: null,
         gitRemoteWebhookId: null,
         gitRepoFullName: null,
+        gitWatchPaths: null,
       })
       .where(eq(services.id, service.id))
     return { ok: true as const }

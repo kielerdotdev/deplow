@@ -1,8 +1,12 @@
-# Central platform services for local / self-hosted deplow.
+# Central platform services for local / self-hosted deplow (dev & monorepo).
+# Production VPS: use deploy/install.sh (pull-only) — see deploy/docker-compose.yml.
 # Host ports chosen to avoid common collisions on shared machines.
 #
+# Object storage is operator-provided (MinIO or Cloudflare R2) — not bundled.
+# Set DEPLOW_S3_* in .env; buckets are created on demand.
+#
 # User apps join the `default` network (name: deplow_default) so they can
-# resolve dedicated per-project Postgres/Redis containers and MinIO by Docker DNS.
+# resolve dedicated per-project Postgres/Redis containers by Docker DNS.
 # The Caddy proxy is the only public HTTP entry for apps; data services stay private.
 services:
   # Control-plane Redis for BullMQ (not per-project tenant Redis)
@@ -20,39 +24,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
-  minio:
-    image: minio/minio:latest
-    container_name: deplow-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: deplow
-      MINIO_ROOT_PASSWORD: deplowsecret
-    ports:
-      - "59000:9000"
-      - "59001:9001"
-    volumes:
-      - deplow_minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
-
-  # Sidekick so healthchecks / bucket bootstrap can use mc
-  minio-init:
-    image: minio/mc:latest
-    container_name: deplow-minio-init
-    depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set local http://minio:9000 deplow deplowsecret; do sleep 1; done;
-      mc mb -p local/deplow-backups || true;
-      exit 0;
-      "
 
   # Platform reverse proxy: Host {slug}.{baseDomain} → app container.
   # All edges (cloudflared, Tailscale Serve, Netbird) forward here with Host preserved.
@@ -115,11 +86,6 @@ services:
       DEPLOW_GIT_CLONE_ROOT: /data/git-clones
       DEPLOW_PROXY_ROUTES_DIR: /etc/caddy/routes
       DEPLOW_QUEUE_REDIS_URL: redis://platform-redis:6379
-      DEPLOW_MINIO_ENDPOINT: http://minio:9000
-      DEPLOW_MINIO_PUBLIC_ENDPOINT: ${DEPLOW_MINIO_PUBLIC_ENDPOINT:-http://127.0.0.1:59000}
-      DEPLOW_MINIO_ACCESS_KEY: ${DEPLOW_MINIO_ACCESS_KEY:-deplow}
-      DEPLOW_MINIO_SECRET_KEY: ${DEPLOW_MINIO_SECRET_KEY:-deplowsecret}
-      DEPLOW_BACKUP_BUCKET: ${DEPLOW_BACKUP_BUCKET:-deplow-backups}
       DEPLOW_DOCKER_NETWORK: ${DEPLOW_DOCKER_NETWORK:-deplow_default}
       DEPLOW_CADDY_CONTAINER: deplow-caddy
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
@@ -130,7 +96,7 @@ services:
       DEPLOW_APP_RUNTIME_REQUIRED: ${DEPLOW_APP_RUNTIME_REQUIRED:-true}
       BUILDKIT_HOST: ${BUILDKIT_HOST:-docker-container://buildkit}
       RAILPACK_BIN: /usr/local/bin/railpack
-      # Auth secrets come from env_file (.env) — do not interpolate empty overrides here.
+      # S3: set DEPLOW_S3_* in .env (not bundled)
     volumes:
       - ./data:/data
       - ./infra/caddy/routes:/etc/caddy/routes
@@ -138,11 +104,8 @@ services:
     depends_on:
       platform-redis:
         condition: service_healthy
-      minio:
-        condition: service_healthy
       caddy:
         condition: service_healthy
 
 volumes:
-  deplow_minio_data:
   deplow_platform_redis_data:

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OrganizationRouteImport } from './routes/organization'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as NodesRouteImport } from './routes/nodes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
@@ -22,7 +23,7 @@ import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProjectsProjectIdServicesServiceIdRouteImport } from './routes/projects/$projectId_/services/$serviceId'
-import { Route as ApiWebhooksGitProjectIdRouteImport } from './routes/api/webhooks/git.$projectId'
+import { Route as ApiWebhooksGitServiceIdRouteImport } from './routes/api/webhooks/git.$serviceId'
 import { Route as ApiGitOauthGitlabCallbackRouteImport } from './routes/api/git/oauth/gitlab/callback'
 import { Route as ApiGitOauthGithubCallbackRouteImport } from './routes/api/git/oauth/github/callback'
 import { Route as ApiGitGithubAppManifestCallbackRouteImport } from './routes/api/git/github/app-manifest/callback'
@@ -35,6 +36,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const OrganizationRoute = OrganizationRouteImport.update({
   id: '/organization',
   path: '/organization',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NodesRoute = NodesRouteImport.update({
@@ -93,9 +99,9 @@ const ProjectsProjectIdServicesServiceIdRoute =
     path: '/projects/$projectId/services/$serviceId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiWebhooksGitProjectIdRoute = ApiWebhooksGitProjectIdRouteImport.update({
-  id: '/api/webhooks/git/$projectId',
-  path: '/api/webhooks/git/$projectId',
+const ApiWebhooksGitServiceIdRoute = ApiWebhooksGitServiceIdRouteImport.update({
+  id: '/api/webhooks/git/$serviceId',
+  path: '/api/webhooks/git/$serviceId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGitOauthGitlabCallbackRoute =
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
+  '/notifications': typeof NotificationsRoute
   '/organization': typeof OrganizationRoute
   '/settings': typeof SettingsRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -130,7 +137,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
-  '/api/webhooks/git/$projectId': typeof ApiWebhooksGitProjectIdRoute
+  '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
   '/projects/$projectId/services/$serviceId': typeof ProjectsProjectIdServicesServiceIdRoute
   '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
   '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
+  '/notifications': typeof NotificationsRoute
   '/organization': typeof OrganizationRoute
   '/settings': typeof SettingsRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -149,7 +157,7 @@ export interface FileRoutesByTo {
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
-  '/api/webhooks/git/$projectId': typeof ApiWebhooksGitProjectIdRoute
+  '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
   '/projects/$projectId/services/$serviceId': typeof ProjectsProjectIdServicesServiceIdRoute
   '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
   '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
+  '/notifications': typeof NotificationsRoute
   '/organization': typeof OrganizationRoute
   '/settings': typeof SettingsRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -169,7 +178,7 @@ export interface FileRoutesById {
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
-  '/api/webhooks/git/$projectId': typeof ApiWebhooksGitProjectIdRoute
+  '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
   '/projects/$projectId_/services/$serviceId': typeof ProjectsProjectIdServicesServiceIdRoute
   '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
   '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/login'
     | '/nodes'
+    | '/notifications'
     | '/organization'
     | '/settings'
     | '/api/mcp'
@@ -190,7 +200,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/rpc/$'
-    | '/api/webhooks/git/$projectId'
+    | '/api/webhooks/git/$serviceId'
     | '/projects/$projectId/services/$serviceId'
     | '/api/git/github/app-manifest/callback'
     | '/api/git/oauth/github/callback'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/login'
     | '/nodes'
+    | '/notifications'
     | '/organization'
     | '/settings'
     | '/api/mcp'
@@ -209,7 +220,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/rpc/$'
-    | '/api/webhooks/git/$projectId'
+    | '/api/webhooks/git/$serviceId'
     | '/projects/$projectId/services/$serviceId'
     | '/api/git/github/app-manifest/callback'
     | '/api/git/oauth/github/callback'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/login'
     | '/nodes'
+    | '/notifications'
     | '/organization'
     | '/settings'
     | '/api/mcp'
@@ -228,7 +240,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/rpc/$'
-    | '/api/webhooks/git/$projectId'
+    | '/api/webhooks/git/$serviceId'
     | '/projects/$projectId_/services/$serviceId'
     | '/api/git/github/app-manifest/callback'
     | '/api/git/oauth/github/callback'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   IntegrationsRoute: typeof IntegrationsRoute
   LoginRoute: typeof LoginRoute
   NodesRoute: typeof NodesRoute
+  NotificationsRoute: typeof NotificationsRoute
   OrganizationRoute: typeof OrganizationRoute
   SettingsRoute: typeof SettingsRoute
   ApiMcpRoute: typeof ApiMcpRoute
@@ -248,7 +261,7 @@ export interface RootRouteChildren {
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
-  ApiWebhooksGitProjectIdRoute: typeof ApiWebhooksGitProjectIdRoute
+  ApiWebhooksGitServiceIdRoute: typeof ApiWebhooksGitServiceIdRoute
   ProjectsProjectIdServicesServiceIdRoute: typeof ProjectsProjectIdServicesServiceIdRoute
   ApiGitGithubAppManifestCallbackRoute: typeof ApiGitGithubAppManifestCallbackRoute
   ApiGitOauthGithubCallbackRoute: typeof ApiGitOauthGithubCallbackRoute
@@ -269,6 +282,13 @@ declare module '@tanstack/react-router' {
       path: '/organization'
       fullPath: '/organization'
       preLoaderRoute: typeof OrganizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nodes': {
@@ -348,11 +368,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdServicesServiceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/webhooks/git/$projectId': {
-      id: '/api/webhooks/git/$projectId'
-      path: '/api/webhooks/git/$projectId'
-      fullPath: '/api/webhooks/git/$projectId'
-      preLoaderRoute: typeof ApiWebhooksGitProjectIdRouteImport
+    '/api/webhooks/git/$serviceId': {
+      id: '/api/webhooks/git/$serviceId'
+      path: '/api/webhooks/git/$serviceId'
+      fullPath: '/api/webhooks/git/$serviceId'
+      preLoaderRoute: typeof ApiWebhooksGitServiceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/git/oauth/gitlab/callback': {
@@ -385,6 +405,7 @@ const rootRouteChildren: RootRouteChildren = {
   IntegrationsRoute: IntegrationsRoute,
   LoginRoute: LoginRoute,
   NodesRoute: NodesRoute,
+  NotificationsRoute: NotificationsRoute,
   OrganizationRoute: OrganizationRoute,
   SettingsRoute: SettingsRoute,
   ApiMcpRoute: ApiMcpRoute,
@@ -392,7 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
-  ApiWebhooksGitProjectIdRoute: ApiWebhooksGitProjectIdRoute,
+  ApiWebhooksGitServiceIdRoute: ApiWebhooksGitServiceIdRoute,
   ProjectsProjectIdServicesServiceIdRoute:
     ProjectsProjectIdServicesServiceIdRoute,
   ApiGitGithubAppManifestCallbackRoute: ApiGitGithubAppManifestCallbackRoute,

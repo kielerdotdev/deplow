@@ -39,6 +39,8 @@ export const router = {
     proxyStatus: platform.proxyStatus,
     ingressGet: platform.ingressGet,
     ingressUpdate: platform.ingressUpdate,
+    operatorWebhookGet: platform.operatorWebhookGet,
+    operatorWebhookUpdate: platform.operatorWebhookUpdate,
   },
   projects: {
     list: projects.list,

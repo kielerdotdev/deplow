@@ -175,27 +175,77 @@ class Env {
   }
 
   get minioEndpoint(): string {
-    return process.env.DEPLOW_MINIO_ENDPOINT ?? "http://127.0.0.1:59000"
+    return (
+      process.env.DEPLOW_S3_ENDPOINT ??
+      process.env.DEPLOW_MINIO_ENDPOINT ??
+      "http://127.0.0.1:59000"
+    )
   }
 
   get minioAccessKey(): string {
-    return process.env.DEPLOW_MINIO_ACCESS_KEY ?? "deplow"
+    return (
+      process.env.DEPLOW_S3_ACCESS_KEY ??
+      process.env.DEPLOW_MINIO_ACCESS_KEY ??
+      "deplow"
+    )
   }
 
   get minioSecretKey(): string {
-    return process.env.DEPLOW_MINIO_SECRET_KEY ?? "deplowsecret"
+    return (
+      process.env.DEPLOW_S3_SECRET_KEY ??
+      process.env.DEPLOW_MINIO_SECRET_KEY ??
+      "deplowsecret"
+    )
   }
 
   get minioRegion(): string {
-    return process.env.DEPLOW_MINIO_REGION ?? "us-east-1"
+    return (
+      process.env.DEPLOW_S3_REGION ??
+      process.env.DEPLOW_MINIO_REGION ??
+      (this.s3Provider === "r2" ? "auto" : "us-east-1")
+    )
   }
 
   get minioPublicEndpoint(): string {
-    return process.env.DEPLOW_MINIO_PUBLIC_ENDPOINT ?? "http://127.0.0.1:59000"
+    return (
+      process.env.DEPLOW_S3_PUBLIC_ENDPOINT ??
+      process.env.DEPLOW_MINIO_PUBLIC_ENDPOINT ??
+      this.minioEndpoint
+    )
   }
 
   get minioDockerEndpoint(): string {
-    return process.env.DEPLOW_MINIO_DOCKER_ENDPOINT ?? "http://minio:9000"
+    return (
+      process.env.DEPLOW_S3_APP_ENDPOINT ??
+      process.env.DEPLOW_MINIO_DOCKER_ENDPOINT ??
+      this.minioEndpoint
+    )
+  }
+
+  /** S3 backend: `minio` (self-hosted / any path-style) or `r2` (Cloudflare). */
+  get s3Provider(): "minio" | "r2" {
+    const raw = (
+      process.env.DEPLOW_S3_PROVIDER ??
+      process.env.DEPLOW_OBJECT_STORAGE_PROVIDER ??
+      "minio"
+    )
+      .trim()
+      .toLowerCase()
+    if (raw === "r2" || raw === "cloudflare-r2") return "r2"
+    return "minio"
+  }
+
+  /** Cloudflare account id — used to derive R2 endpoint when DEPLOW_S3_ENDPOINT is unset. */
+  get r2AccountId(): string {
+    return process.env.DEPLOW_R2_ACCOUNT_ID?.trim() ?? ""
+  }
+
+  /**
+   * MinIO only: provision per-project IAM users via `mc admin`.
+   * Default off — prefer shared keys + on-demand buckets (works for external MinIO + R2).
+   */
+  get s3ScopedUsers(): boolean {
+    return boolEnv("DEPLOW_S3_SCOPED_USERS", false)
   }
 
   get backupBucket(): string {

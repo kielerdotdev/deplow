@@ -16,6 +16,7 @@ todos.json
 
 # runtime / local data
 /data/
+/deploy-data/
 packages/db/data/
 tmp/
 infra/caddy/routes/*.caddy

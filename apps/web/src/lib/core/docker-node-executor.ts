@@ -317,6 +317,15 @@ export class DockerNodeExecutor implements NodeExecutor {
     }
   }
 
+  /** Remove a local image tag (best-effort; ignores missing). */
+  async removeImage(image: string): Promise<void> {
+    try {
+      await this.docker.getImage(image).remove({ force: true })
+    } catch {
+      // missing or in use
+    }
+  }
+
   async getContainerState(
     nodeId: string,
     serviceName: string,

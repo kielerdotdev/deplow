@@ -11,6 +11,7 @@ import {
   waitForServiceHealth,
   type BuildStrategyOverride,
 } from "@/lib/core"
+import { retainAndPruneDeployImages } from "@/lib/core/image-retain"
 import {
   markOperationFailed,
   markOperationRunning,
@@ -351,6 +352,15 @@ export async function processDeployJob(data: DeployJobData): Promise<void> {
       deploymentId,
       containerId: result.containerId,
       publicUrl,
+    })
+
+    await retainAndPruneDeployImages({
+      serviceId: service.id,
+      currentDeploymentId: deploymentId,
+      currentImage: image ?? null,
+      docker: dockerNodeExecutor,
+    }).catch((err) => {
+      console.error("[deplow] image retain/prune failed", err)
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

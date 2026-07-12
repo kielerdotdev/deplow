@@ -71,6 +71,7 @@ describe("ensureIngressSchema", () => {
     const names = tables.map((t) => t.name)
     expect(names).toContain("platform_ingress")
     expect(names).toContain("service_hostnames")
+    expect(names).toContain("platform_operator_webhook")
     sqlite.close()
   })
 })

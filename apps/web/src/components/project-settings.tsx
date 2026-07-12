@@ -427,7 +427,7 @@ function NetworkingBlock({
               <span className="text-muted-foreground">·</span>
               <span className="font-mono text-xs">redis</span>
               <span className="text-muted-foreground">·</span>
-              <span className="font-mono text-xs">minio</span>
+              <span className="font-mono text-xs">s3</span>
             </span>
           }
           sublabel={

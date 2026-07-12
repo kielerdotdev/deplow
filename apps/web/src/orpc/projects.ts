@@ -59,6 +59,19 @@ function serviceGit(row: typeof services.$inferSelect) {
     lastDeliveryStatus: row.gitLastDeliveryStatus,
     lastDeliveryError: row.gitLastDeliveryError,
     connectedAt: row.gitConnectedAt?.toISOString() ?? null,
+    watchPaths: (() => {
+      if (!row.gitWatchPaths) return null
+      try {
+        const parsed = JSON.parse(row.gitWatchPaths) as unknown
+        if (!Array.isArray(parsed)) return null
+        const paths = parsed.filter(
+          (p): p is string => typeof p === "string" && p.trim().length > 0,
+        )
+        return paths.length > 0 ? paths : null
+      } catch {
+        return null
+      }
+    })(),
   }
 }
 

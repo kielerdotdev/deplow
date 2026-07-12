@@ -1,0 +1,12 @@
+{
+	auto_https off
+	# admin used by `caddy reload` from the control plane after route changes
+	admin 0.0.0.0:2019
+}
+:80 {
+	handle /deplow-health {
+		respond "ok" 200
+	}
+	import /etc/caddy/routes/*.caddy
+	respond "deplow proxy — no matching project route" 404
+}

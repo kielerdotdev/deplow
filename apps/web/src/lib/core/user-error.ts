@@ -52,7 +52,7 @@ const PATTERNS: Array<{ re: RegExp; message: string }> = [
   {
     re: /ECONNREFUSED|connect ECONNREFUSED/i,
     message:
-      "Could not reach a platform service. Run `pnpm infra:up` and check Postgres/Redis/MinIO.",
+      "Could not reach a platform service. Check Redis/Caddy and your S3 backend (MinIO or R2).",
   },
   {
     re: /Missing required environment variable|secrets key|BETTER_AUTH_SECRET|DEPLOW_SECRETS_KEY/i,

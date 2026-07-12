@@ -23,7 +23,7 @@ create empty project (pin local Docker node)
 | Layer         | Tech                                                       |
 | ------------- | ---------------------------------------------------------- |
 | Control plane | TanStack Start, oRPC, Better Auth, Drizzle + SQLite        |
-| Data plane    | Dedicated Postgres/Redis containers + shared MinIO         |
+| Data plane    | Dedicated Postgres/Redis containers + operator S3 (MinIO/R2) |
 | Proxy / edge  | **Caddy** reverse proxy + **cloudflared** (v1 edge)        |
 | Build         | **Railpack** (default) or **Dockerfile** + Docker BuildKit |
 | Runtime       | **Docker** + **gVisor (`runsc`)** for user apps            |
@@ -42,51 +42,46 @@ Core business logic is under `apps/web/src/lib/core/` and stays framework-agnost
 
 ## Prerequisites
 
-- Docker Engine + BuildKit (`moby/buildkit` container recommended)
+### VPS / production
+
+- **Docker Engine** + Compose v2 plugin
 - **gVisor (`runsc`)** — default runtime for user apps ([install](https://gvisor.dev/docs/user_guide/install/); see [docs/secure-runtime.md](./docs/secure-runtime.md))
-- **Railpack** CLI on `PATH` ([releases](https://github.com/railwayapp/railpack/releases))
-- Node.js 22+ and pnpm 10
 - For public HTTPS: a domain + Cloudflare account (tunnel token) — TLS at Cloudflare, not Let’s Encrypt on Caddy
 
-Preferred: let the installer install/verify BuildKit, Railpack, and gVisor:
-
-```bash
-bash scripts/install.sh   # or: pnpm install:host
-```
-
-Manual one-liners if you skip the installer:
-```bash
-# BuildKit (once)
-docker run --rm --privileged -d --name buildkit moby/buildkit
-export BUILDKIT_HOST=docker-container://buildkit
-
-# gVisor (once) — follow https://gvisor.dev/docs/user_guide/install/
-sudo runsc install
-sudo systemctl restart docker
-docker run --rm --runtime=runsc hello-world
-
-# Railpack (example)
-# install binary from GitHub releases into ~/.local/bin
-export PATH="$HOME/.local/bin:$PATH"
-railpack --version
-```
+BuildKit is started by the install script. Railpack ships inside the control-plane image. You do **not** need Node on the host for production.
 
 Recommended: enable `userns-remap: default` in `/etc/docker/daemon.json` (see [docs/secure-runtime.md](./docs/secure-runtime.md)).
 
+### Development
+
+- Node.js 22+ and pnpm 10
+- Docker Engine + BuildKit + gVisor (same as production)
+- Host bootstrap: `bash scripts/install.sh` (BuildKit, Railpack on PATH, gVisor, compose infra)
+
 ## Quick start (VPS / production)
 
-**Docker (recommended):**
+**Pull-only (recommended) — no git clone, no Node:**
 
 ```bash
-git clone git@github.com:kielerdotdev/deplow.git && cd deplow
-bash scripts/deploy.sh          # creates .env, pulls/builds image, compose up
+curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | bash
 # Open http://localhost:3000 — create user → Domains → Deploy
+
+# Later, upgrade the control plane (preserves data volumes):
+curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | bash -s update
+
+# Pin a release tag:
+# DEPLOW_VERSION=v1.2.3 curl -sSL …/install.sh | bash
 ```
 
-Image: `ghcr.io/kielerdotdev/deplow` (built by GitHub Actions on `main`).  
-Local image build: `DEPLOW_BUILD_LOCAL=1 bash scripts/deploy.sh`
+Installs under `/opt/deplow` by default (`DEPLOW_HOME` to override). Image: `ghcr.io/kielerdotdev/deplow` (built by GitHub Actions on `main` / tags; **linux/amd64**).
 
-**Dev (Node on host):**
+**From a repo checkout** (uses in-tree `deploy/` assets, data under `deploy-data/`):
+
+```bash
+bash scripts/deploy.sh          # or: pnpm deploy
+```
+
+## Development
 
 ```bash
 bash scripts/install.sh   # or: pnpm install:host
@@ -98,7 +93,7 @@ pnpm dev                 # http://localhost:3000 — create user
 
 ```bash
 pnpm install
-pnpm infra:up          # MinIO, Caddy, platform Redis
+pnpm infra:up          # platform Redis + Caddy
 pnpm db:push
 cp apps/web/.env.example apps/web/.env   # BETTER_AUTH_SECRET; Domains UI for base domain
 pnpm dev               # http://localhost:3000
@@ -126,6 +121,11 @@ Internet → cloudflared → Caddy (Host: {slug}.{baseDomain}) → user app (gVi
 4. Start the edge profile:
 
 ```bash
+# Production install (/opt/deplow):
+# edit CLOUDFLARE_TUNNEL_TOKEN in /opt/deplow/.env, then:
+docker compose -p deplow --project-directory /opt/deplow --profile edge up -d
+
+# Dev (repo checkout):
 export CLOUDFLARE_TUNNEL_TOKEN=...   # from Cloudflare Zero Trust
 docker compose --profile edge up -d
 ```
@@ -136,7 +136,7 @@ Every new web service gets `https://{slug}.{baseDomain}` (primary) or `https://{
 
 Local check: `curl -H "Host: {slug}.{baseDomain}" http://127.0.0.1:8088/`
 
-Hostnames are stored in `service_hostnames` (`auto` now; `custom` / `preview` later — **custom domains are v2**). Route files live under `infra/caddy/routes/`. See [docs/access.md](./docs/access.md) and [docs/gtm.md](./docs/gtm.md).
+Hostnames are stored in `service_hostnames` (`auto` now; `custom` / `preview` later — **custom domains are v2**). Route files live in the Caddy routes volume (`infra/caddy/routes/` in monorepo/dev). See [docs/access.md](./docs/access.md) and [docs/gtm.md](./docs/gtm.md).
 
 **TLS:** terminates at Cloudflare on the tunnel. Caddy is HTTP-only on the host — there is no Let’s Encrypt on Caddy in v1.
 
@@ -159,8 +159,10 @@ Webhook endpoint: `POST /api/webhooks/git/{serviceId}`.
 | `DEPLOW_SECRETS_KEY`                | AES-GCM key for project credentials | falls back to auth secret              |
 | `DEPLOW_POSTGRES_*`                 | Platform Postgres admin             | compose defaults                       |
 | `DEPLOW_REDIS_*`                    | Platform Redis                      | compose defaults                       |
-| `DEPLOW_MINIO_*`                    | Platform MinIO                      | compose defaults                       |
-| `DEPLOW_BACKUP_BUCKET`              | Backup bucket name                  | `deplow-backups`                       |
+| `DEPLOW_S3_PROVIDER`                | Object store adapter (`minio` \| `r2`) | `minio`                                |
+| `DEPLOW_S3_ENDPOINT` / `R2_ACCOUNT` | MinIO URL or R2 account id            | required in prod                       |
+| `DEPLOW_S3_ACCESS_KEY` / `_SECRET`  | S3 credentials                        | required in prod                       |
+| `DEPLOW_BACKUP_BUCKET`              | Backup bucket name                    | `deplow-backups`                       |
 | `DEPLOW_BACKUP_DEFAULT_INTERVAL_MS` | Scheduled backup interval           | `86400000` (daily)                     |
 | `DEPLOW_BACKUP_RETAIN`              | Snapshots kept per project          | `7`                                    |
 | `DEPLOW_BACKUP_ALLOW_FAST`          | Allow sub-hour schedule intervals   | unset (`1` to enable)                  |
@@ -190,28 +192,28 @@ Full template: [`.env.example`](./.env.example).
 
 Every app service receives bound `DATABASE_URL` / `REDIS_URL` / `S3_*` (when linked) plus its service-specific environment. Web services receive a URL; workers run without proxy routes or published ports.
 
-User app containers run under **gVisor** with hardened defaults (dropped caps, no-new-privileges, readonly rootfs, resource limits). Platform services (Postgres/Redis/MinIO/Caddy) stay on runc. Compose deploys, SSH/Hetzner multi-host, preview deploys, and other DBs are **out of scope**.
+User app containers run under **gVisor** with hardened defaults (dropped caps, no-new-privileges, readonly rootfs, resource limits). Platform services (Redis/Caddy) stay on runc; object storage is an external MinIO or Cloudflare R2. Compose deploys, SSH/Hetzner multi-host, preview deploys, and other DBs are **out of scope**.
 
 ## Scripts
 
-| Command                                         | Description                          |
-| ----------------------------------------------- | ------------------------------------ |
-| `bash scripts/deploy.sh` / `pnpm deploy`        | Production compose (infra + web)     |
-| `bash scripts/install.sh` / `pnpm install:host` | Host bootstrap + infra (dev)         |
-| `pnpm dev`                                      | Web app on :3000                     |
-| `pnpm build` / `pnpm start`                     | Production build + srvx              |
-| `pnpm check` / `pnpm test` / `pnpm typecheck`   | Quality gates                        |
-| `pnpm infra:up` / `infra:down`                  | Platform containers (no web profile) |
-| `pnpm db:push`                                  | Apply control-plane schema           |
-| `pnpm e2e`                                      | Docker-backed smoke                  |
+| Command                                         | Description                                      |
+| ----------------------------------------------- | ------------------------------------------------ |
+| `deploy/install.sh` / `… \| bash -s update`     | VPS pull-only install / upgrade (`/opt/deplow`)  |
+| `bash scripts/deploy.sh` / `pnpm deploy`        | Same installer using in-tree `deploy/` assets    |
+| `bash scripts/install.sh` / `pnpm install:host` | Host bootstrap + infra (**dev**)                 |
+| `pnpm dev`                                      | Web app on :3000                                 |
+| `pnpm build` / `pnpm start`                     | Production build + srvx                          |
+| `pnpm check` / `pnpm test` / `pnpm typecheck`   | Quality gates                                    |
+| `pnpm infra:up` / `infra:down`                  | Platform containers (repo compose, no web)       |
+| `pnpm db:push`                                  | Apply control-plane schema                       |
+| `pnpm e2e`                                      | Docker-backed smoke                              |
 
 ## Ports (compose)
 
 | Service        | Host    |
 | -------------- | ------- |
 | Control plane  | `3000`  |
-| MinIO S3       | `59000` |
-| MinIO console  | `59001` |
 | Caddy proxy    | `8088`  |
+| Platform Redis | `56380` |
 
 Postgres and Redis run as **dedicated containers per project** (ephemeral localhost ports for operator tools; Docker DNS for apps).
