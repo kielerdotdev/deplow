@@ -3,7 +3,7 @@
 FROM node:22-bookworm-slim AS base
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-    ca-certificates curl python3 make g++ \
+    ca-certificates curl git openssh-client python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 WORKDIR /app
