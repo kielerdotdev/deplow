@@ -1,5 +1,13 @@
 import type { LucideIcon } from "lucide-react"
 
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { cn } from "@/lib/utils"
 
 type EmptyStateProps = {
@@ -23,40 +31,46 @@ export function EmptyState({
   size = "default",
 }: EmptyStateProps) {
   return (
-    <div
+    <Empty
       className={cn(
-        "flex flex-col items-center justify-center text-center",
-        size === "default" ? "gap-4 px-6 py-16" : "gap-3 px-4 py-10",
+        "relative border-0",
+        size === "default" ? "gap-5 px-6 py-20" : "gap-3 px-4 py-12",
         className,
       )}
     >
-      <div
+      <EmptyHeader
         className={cn(
-          "flex items-center justify-center rounded-2xl border border-dashed border-border/80 bg-muted/30 text-muted-foreground",
-          size === "default" ? "size-14" : "size-11",
+          "max-w-md",
+          size === "default" ? "gap-2" : "gap-1.5",
         )}
       >
-        <Icon className={size === "default" ? "size-6" : "size-5"} />
-      </div>
-      <div className="flex max-w-sm flex-col gap-1.5">
-        <p
+        <EmptyMedia
+          variant="icon"
           className={cn(
-            "font-medium tracking-tight",
-            size === "default" ? "text-base" : "text-sm",
+            "icon-well mb-0 border border-dashed border-border bg-muted/60 text-muted-foreground",
+            size === "default" ? "size-16 rounded-lg [&_svg]:size-7" : "size-12 [&_svg]:size-5",
+          )}
+        >
+          <Icon />
+        </EmptyMedia>
+        <EmptyTitle
+          className={cn(
+            "font-semibold tracking-tight",
+            size === "default" ? "text-lg" : "text-sm",
           )}
         >
           {title}
-        </p>
-        <p className="text-sm text-muted-foreground text-balance leading-relaxed">
+        </EmptyTitle>
+        <EmptyDescription className="text-balance leading-relaxed">
           {description}
-        </p>
-      </div>
+        </EmptyDescription>
+      </EmptyHeader>
       {action || secondaryAction ? (
-        <div className="mt-1 flex w-full max-w-xs flex-col gap-2">
+        <EmptyContent className="mt-1 max-w-xs gap-2">
           {action}
           {secondaryAction}
-        </div>
+        </EmptyContent>
       ) : null}
-    </div>
+    </Empty>
   )
 }

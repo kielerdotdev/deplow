@@ -199,6 +199,18 @@ describe("UI shell structure", () => {
     expect(shell).toContain("animate-content-in")
     expect(css).toContain("animate-content-in")
     expect(css).toContain("prefers-reduced-motion")
+    expect(css).toContain("--ease-out-ui")
+  })
+
+  it("command palette skips dialog open animation", () => {
+    const command = readFileSync(path.join(root, "components/ui/command.tsx"), "utf8")
+    expect(command).toContain("animated={false}")
+  })
+
+  it("empty states compose shadcn Empty", () => {
+    const emptyState = readFileSync(path.join(root, "components/empty-state.tsx"), "utf8")
+    expect(emptyState).toContain('from "@/components/ui/empty"')
+    expect(emptyState).toContain("EmptyMedia")
   })
 
   it("domains and nodes loaders require instance admin", () => {

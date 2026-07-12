@@ -156,8 +156,24 @@
   }
 
   .animate-content-in {
-    animation: content-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: content-in 200ms var(--ease-out-ui) both;
   }
+
+  .ease-out-ui {
+    transition-timing-function: var(--ease-out-ui);
+    animation-timing-function: var(--ease-out-ui);
+  }
+
+  .ease-drawer-ui {
+    transition-timing-function: var(--ease-drawer);
+    animation-timing-function: var(--ease-drawer);
+  }
+}
+
+/* Strong UI easings (animations.dev) — prefer over Tailwind ease-out */
+:root {
+  --ease-out-ui: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @keyframes content-in {
@@ -171,6 +187,7 @@
   }
 }
 
+/* Prefer gentler motion over zero: keep opacity, drop movement */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -179,5 +196,16 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .animate-content-in,
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="popover-content"],
+  [data-slot="tooltip-content"] {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
   }
 }

@@ -25,16 +25,13 @@ export function StackCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-3 rounded-xl border bg-card p-4 text-left transition-colors",
-        "hover:border-primary/40 hover:bg-accent/40",
-        selected
-          ? "border-primary/60 bg-accent/50 ring-1 ring-primary/30"
-          : "border-border/80",
+        "surface-panel flex flex-col gap-3 p-4 text-left transition-[box-shadow,background-color] duration-150 ease-out-ui hover:ring-primary/25",
+        selected ? "ring-primary/40 bg-accent/30" : "",
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <div className="icon-well size-8">
             <Icon className="size-4" />
           </div>
           <span className="text-sm font-medium">{title}</span>
