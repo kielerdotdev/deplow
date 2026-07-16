@@ -1,8 +1,12 @@
 /** @vitest-environment jsdom */
-import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { cleanup, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it } from "vitest"
+
+afterEach(() => cleanup())
 
 import {
+  ExceptionChainView,
+  parseExceptionChain,
   parseExceptionFrames,
   StackFramesView,
 } from "./stack-frames"
@@ -30,6 +34,46 @@ describe("parseExceptionFrames", () => {
 
   it("handles bad json", () => {
     expect(parseExceptionFrames("{")).toEqual([])
+  })
+})
+
+describe("parseExceptionChain", () => {
+  it("returns nested exception values", () => {
+    const chain = parseExceptionChain(
+      JSON.stringify({
+        values: [
+          { type: "RuntimeError", value: "outer" },
+          { type: "TimeoutError", value: "inner" },
+        ],
+      }),
+    )
+    expect(chain).toHaveLength(2)
+    expect(chain[1]?.type).toBe("TimeoutError")
+  })
+})
+
+describe("ExceptionChainView", () => {
+  it("renders exception types", () => {
+    render(
+      <ExceptionChainView
+        exceptionJson={JSON.stringify({
+          values: [
+            {
+              type: "TypeError",
+              value: "boom",
+              stacktrace: {
+                frames: [
+                  { function: "main", filename: "app.ts", in_app: true },
+                ],
+              },
+            },
+          ],
+        })}
+      />,
+    )
+    expect(screen.getByTestId("exception-chain")).toBeTruthy()
+    expect(screen.getByText(/TypeError/)).toBeTruthy()
+    expect(screen.getByText(/boom/)).toBeTruthy()
   })
 })
 

@@ -7,34 +7,38 @@ import {
 } from "@/components/observe"
 import { getSession } from "@/lib/auth.functions"
 import {
+  applyColdDefaults,
   contextToApiInput,
   parseContext,
   serializeContext,
   type ObserveContext,
 } from "@/lib/observe/context"
+import { formatPercent, formatRate } from "@/lib/observe/format"
 import { client } from "@/lib/orpc"
-import { loadShellContext } from "@/lib/shell-context"
 
 export const Route = createFileRoute("/observe/projects/$projectId/services")({
-  validateSearch: (search) => serializeContext(parseContext(search)),
+  validateSearch: (search) =>
+    serializeContext(
+      parseContext(
+        applyColdDefaults("services", search as Record<string, unknown>),
+      ),
+    ),
   loader: async ({ params }) => {
     const session = await getSession()
     if (!session) {
       throw redirect({ to: "/login", search: { redirect: undefined } })
     }
-    const shell = await loadShellContext()
-    const status = await client.observe.status().catch(() => null)
     await client.observe.projects.enable({ projectId: params.projectId }).catch(
       () => null,
     )
     const project = await client.projects.get({ id: params.projectId })
-    return { session, shell, status, project }
+    return { project }
   },
   component: ServicesPage,
 })
 
 function ServicesPage() {
-  const { session, shell, status, project } = Route.useLoaderData()
+  const { project } = Route.useLoaderData()
   const { projectId } = Route.useParams()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -83,11 +87,6 @@ function ServicesPage() {
 
   return (
     <ObserveProjectShell
-      user={session.user}
-      instanceAdmin={shell.instanceAdmin}
-      organizations={shell.organizations}
-      activeOrganization={shell.activeOrganization}
-      observeEnabled={status?.enabled === true}
       projectId={projectId}
       title={`Services · ${project.name}`}
       description="Service inventory with RED metrics."
@@ -119,27 +118,37 @@ function ServicesPage() {
             {
               id: "rate",
               header: "Rate",
-              cell: (r) => `${r.request_rate.toFixed(2)}/s`,
+              cell: (r) => (
+                <span className="tabular-nums">{formatRate(r.request_rate, { total: r.span_count })}</span>
+              ),
             },
             {
               id: "err",
               header: "Error %",
-              cell: (r) => `${(r.error_rate * 100).toFixed(2)}%`,
+              cell: (r) => (
+                <span className="tabular-nums">{formatPercent(r.error_rate * 100)}</span>
+              ),
             },
             {
               id: "p50",
               header: "p50",
-              cell: (r) => `${r.duration_p50_ms.toFixed(0)}ms`,
+              cell: (r) => (
+                <span className="tabular-nums">{`${r.duration_p50_ms.toFixed(0)}ms`}</span>
+              ),
             },
             {
               id: "p95",
               header: "p95",
-              cell: (r) => `${r.duration_p95_ms.toFixed(0)}ms`,
+              cell: (r) => (
+                <span className="tabular-nums">{`${r.duration_p95_ms.toFixed(0)}ms`}</span>
+              ),
             },
             {
               id: "n",
               header: "Spans",
-              cell: (r) => r.span_count.toLocaleString(),
+              cell: (r) => (
+                <span className="tabular-nums">{r.span_count.toLocaleString()}</span>
+              ),
             },
           ]}
           emptyTitle="No services"

@@ -40,7 +40,7 @@ export function BreakdownBuilder({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Breakdown
@@ -70,7 +70,7 @@ export function BreakdownBuilder({
       {breakdowns.map((b, i) => (
         <div
           key={i}
-          className="space-y-1.5 rounded-md border border-border/70 bg-muted/20 p-2"
+          className="flex flex-col gap-1.5 rounded-md border border-border/70 bg-muted/20 p-2"
         >
           <div className="flex items-center gap-1.5">
             <FieldAutocomplete
@@ -87,7 +87,8 @@ export function BreakdownBuilder({
             />
             <button
               type="button"
-              className="text-muted-foreground hover:text-destructive"
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Remove breakdown"
               onClick={() => onChange(breakdowns.filter((_, j) => j !== i))}
             >
               <TrashIcon className="size-3.5" />

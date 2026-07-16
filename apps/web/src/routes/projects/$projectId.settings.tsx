@@ -4,15 +4,13 @@ import {
   getRouteApi,
   useRouter,
 } from "@tanstack/react-router"
-import { Trash2Icon } from "lucide-react"
 
-import { ActionDialog } from "@/components/action-dialog"
+import { ProjectDeleteDialog } from "@/components/project-delete-dialog"
 import { PageContent, PageHeader, SettingsPanel } from "@/components/page-layout"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { client } from "@/lib/orpc"
 import { useProjectUi } from "@/components/project-ui-context"
+
 const projectRoute = getRouteApi("/projects/$projectId")
 
 export const Route = createFileRoute("/projects/$projectId/settings")({
@@ -24,7 +22,6 @@ function ProjectSettingsPage() {
   const { setError } = useProjectUi()
   const router = useRouter()
   const [destroyOpen, setDestroyOpen] = useState(false)
-  const [confirm, setConfirm] = useState("")
   const [pending, setPending] = useState(false)
 
   return (
@@ -57,7 +54,7 @@ function ProjectSettingsPage() {
           </SettingsPanel>
           <SettingsPanel
             title="Danger zone"
-            description="Destroying a project removes all services, data containers, and backups for this project."
+            description="Destroying a project removes all services, data containers, and backups for this project. Available only from settings — not the project header."
           >
             <Button
               size="sm"
@@ -67,45 +64,29 @@ function ProjectSettingsPage() {
               Destroy project
             </Button>
           </SettingsPanel>
-          <ActionDialog
+          <ProjectDeleteDialog
+            project={{
+              id: project.id,
+              name: project.name,
+              serviceCount: project.services.length,
+            }}
             open={destroyOpen}
             onOpenChange={setDestroyOpen}
-            title="Destroy project"
-            description={`Type ${project.name} to confirm.`}
-            icon={Trash2Icon}
-            footer={
-              <Button
-                variant="destructive"
-                disabled={confirm !== project.name || pending}
-                onClick={() =>
-                  void (async () => {
-                    setPending(true)
-                    setError(null)
-                    try {
-                      await client.projects.destroy({ id: project.id })
-                      void router.navigate({ to: "/" })
-                    } catch (cause) {
-                      setError(
-                        cause instanceof Error ? cause.message : String(cause),
-                      )
-                      setPending(false)
-                    }
-                  })()
-                }
-              >
-                Destroy
-              </Button>
-            }
-          >
-            <div className="space-y-2">
-              <Label>Project name</Label>
-              <Input
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder={project.name}
-              />
-            </div>
-          </ActionDialog>
+            pending={pending}
+            onConfirm={async () => {
+              setPending(true)
+              setError(null)
+              try {
+                await client.projects.destroy({ id: project.id })
+                void router.navigate({ to: "/" })
+              } catch (cause) {
+                setError(
+                  cause instanceof Error ? cause.message : String(cause),
+                )
+                setPending(false)
+              }
+            }}
+          />
         </div>
       </PageContent>
     </>

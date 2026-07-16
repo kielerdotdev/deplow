@@ -879,6 +879,9 @@ const OBSERVE_STATEMENTS = [
   )`,
   // Additive column for alerts → channel ids (JSON array)
   `ALTER TABLE observe_alerts ADD COLUMN channel_ids_json text NOT NULL DEFAULT '[]'`,
+  `ALTER TABLE observe_issues ADD COLUMN assignee_user_id text`,
+  `ALTER TABLE observe_issues ADD COLUMN priority text NOT NULL DEFAULT 'medium'`,
+  `ALTER TABLE observe_issues ADD COLUMN external_issue_url text`,
 ]
 
 export function ensureObserveSchema(sqlite: Database.Database): void {

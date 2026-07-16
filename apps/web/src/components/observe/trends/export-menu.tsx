@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -44,30 +45,32 @@ export function ExportMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outline" size="sm" className="gap-1">
-            <DownloadIcon className="size-3.5" />
+          <Button variant="outline" size="sm">
+            <DownloadIcon data-icon="inline-start" />
             Export
           </Button>
         }
       />
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => void exportFmt("csv")}>
-          CSV
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void exportFmt("json")}>
-          Query + result JSON
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            download(
-              "trends-query.json",
-              JSON.stringify(query, null, 2),
-              "application/json",
-            )
-          }
-        >
-          Query JSON only
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => void exportFmt("csv")}>
+            CSV
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void exportFmt("json")}>
+            Query + result JSON
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              download(
+                "trends-query.json",
+                JSON.stringify(query, null, 2),
+                "application/json",
+              )
+            }
+          >
+            Query JSON only
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

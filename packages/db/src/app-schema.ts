@@ -973,6 +973,13 @@ export const observeIssues = sqliteTable(
       .notNull(),
     lastEventId: text("last_event_id"),
     lastTraceId: text("last_trace_id"),
+    assigneeUserId: text("assignee_user_id"),
+    priority: text("priority", {
+      enum: ["low", "medium", "high"],
+    })
+      .notNull()
+      .default("medium"),
+    externalIssueUrl: text("external_issue_url"),
     isDeleted: integer("is_deleted", { mode: "boolean" })
       .notNull()
       .default(false),

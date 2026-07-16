@@ -60,7 +60,7 @@ export function ResultTable({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-1">
         {result.seriesMeta.map((m) => (
           <button

@@ -141,11 +141,20 @@ EVENT=$(rpc "observe/events/get" "{\"json\":{\"projectId\":\"$PROJECT_ID\",\"eve
 echo "$EVENT" | tee -a "$SCRATCH/observe.log"
 echo "$EVENT" | grep -q "observe-e2e-boom"
 
+echo "==> Issue trend + event series APIs" | tee -a "$SCRATCH/observe.log"
+TREND=$(rpc "observe/issues/trend" "{\"json\":{\"projectId\":\"$PROJECT_ID\",\"issueIds\":[\"$ISSUE_ID\"],\"hours\":24}}")
+echo "$TREND" | tee -a "$SCRATCH/observe.log"
+echo "$TREND" | grep -q "$ISSUE_ID"
+SERIES=$(rpc "observe/issues/eventSeries" "{\"json\":{\"projectId\":\"$PROJECT_ID\",\"issueId\":\"$ISSUE_ID\",\"preset\":\"24h\"}}")
+echo "$SERIES" | tee -a "$SCRATCH/observe.log"
+echo "$SERIES" | grep -q 'matchingCount\|series'
+
 echo "==> UI pages" | tee -a "$SCRATCH/observe.log"
 for path in \
   "/observe" \
   "/observe/projects/$PROJECT_ID/issues" \
   "/observe/projects/$PROJECT_ID/issues/$ISSUE_ID" \
+  "/observe/projects/$PROJECT_ID/traces" \
   "/observe/projects/$PROJECT_ID/setup"
 do
   HTML=$(page "$path")
@@ -164,8 +173,14 @@ do
       }
       ;;
     */issues/*)
-      echo "$HTML" | grep -qi 'Stacktrace\|Resolve\|Observe\|observe-e2e' || {
+      echo "$HTML" | grep -qi 'Recommended\|Resolve\|lifetime\|Observe\|observe-e2e' || {
         echo "WARN: issue detail HTML may be client-hydrated; checking shell"
+        echo "$HTML" | grep -qi 'Observe\|deplow' || exit 1
+      }
+      ;;
+    */traces)
+      echo "$HTML" | grep -qi 'Trace\|Observe\|volume' || {
+        echo "WARN: traces HTML may be client-hydrated; checking shell"
         echo "$HTML" | grep -qi 'Observe\|deplow' || exit 1
       }
       ;;

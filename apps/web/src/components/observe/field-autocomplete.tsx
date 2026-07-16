@@ -117,7 +117,7 @@ export function FieldAutocomplete({
         }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className="h-7 pr-6 text-xs"
+        className="h-7 w-full pr-6 text-xs"
         aria-autocomplete="list"
         aria-controls={listId}
         autoComplete="off"

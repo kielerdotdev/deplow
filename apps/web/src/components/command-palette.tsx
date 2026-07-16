@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useRouterState } from "@tanstack/react-router"
 import {
   BellIcon,
+  BugIcon,
+  ChartLineIcon,
   ClockIcon,
   FolderIcon,
   GlobeIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  ListTreeIcon,
   PlugIcon,
+  ScrollTextIcon,
   SearchIcon,
   ServerIcon,
+  ActivityIcon,
 } from "lucide-react"
 
 import {
@@ -31,6 +36,7 @@ import {
   type CommandGroup as CommandGroupName,
   type CommandMode,
 } from "@/lib/command"
+import { pickObserveNavSearch } from "@/lib/observe/context"
 import { client } from "@/lib/orpc"
 import { cn } from "@/lib/utils"
 
@@ -40,6 +46,63 @@ const SECTION_LABELS: Record<(typeof PROJECT_SECTION_IDS)[number], string> = {
   settings: "Settings",
   secrets: "Secrets",
 }
+
+const OBSERVE_SECTIONS = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: ActivityIcon,
+    to: "/observe/projects/$projectId" as const,
+  },
+  {
+    id: "services",
+    label: "Services",
+    icon: ServerIcon,
+    to: "/observe/projects/$projectId/services" as const,
+  },
+  {
+    id: "trends",
+    label: "Charts",
+    icon: ChartLineIcon,
+    to: "/observe/projects/$projectId/trends" as const,
+  },
+  {
+    id: "insights",
+    label: "Saved charts",
+    icon: ChartLineIcon,
+    to: "/observe/projects/$projectId/insights" as const,
+  },
+  {
+    id: "dashboards",
+    label: "Boards",
+    icon: LayoutDashboardIcon,
+    to: "/observe/projects/$projectId/dashboards" as const,
+  },
+  {
+    id: "alerts",
+    label: "Alerts",
+    icon: BellIcon,
+    to: "/observe/projects/$projectId/alerts" as const,
+  },
+  {
+    id: "traces",
+    label: "Traces",
+    icon: ListTreeIcon,
+    to: "/observe/projects/$projectId/traces" as const,
+  },
+  {
+    id: "logs",
+    label: "Logs",
+    icon: ScrollTextIcon,
+    to: "/observe/projects/$projectId/logs" as const,
+  },
+  {
+    id: "issues",
+    label: "Issues",
+    icon: BugIcon,
+    to: "/observe/projects/$projectId/issues" as const,
+  },
+] as const
 
 const GOTO_GROUPS: CommandGroupName[] = [
   "Suggestions",
@@ -69,6 +132,18 @@ export function CommandPalette() {
   const { commands, open, mode, setOpen, openPalette, projectId } =
     useCommandRegistry()
   const navigate = useNavigate()
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const rawSearch = useRouterState({ select: (s) => s.location.search })
+  const observeSearch = useMemo(
+    () =>
+      pathname.startsWith("/observe")
+        ? pickObserveNavSearch(
+            rawSearch as unknown as Record<string, unknown>,
+          )
+        : {},
+    [pathname, rawSearch],
+  )
+  const observeMode = pathname.startsWith("/observe")
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
   const [recents, setRecents] = useState(() => loadRecentCommands())
   const mac = isMacPlatform()
@@ -194,45 +269,67 @@ export function CommandPalette() {
     }
 
     if (projectId) {
-      const sectionNav: Record<
-        (typeof PROJECT_SECTION_IDS)[number],
-        () => void
-      > = {
-        overview: () =>
-          void navigate({
-            to: "/projects/$projectId",
-            params: { projectId },
-          }),
-        deployments: () =>
-          void navigate({
-            to: "/projects/$projectId/deployments",
-            params: { projectId },
-          }),
-        secrets: () =>
-          void navigate({
-            to: "/projects/$projectId/secrets",
-            params: { projectId },
-          }),
-        settings: () =>
-          void navigate({
-            to: "/projects/$projectId/settings",
-            params: { projectId },
-          }),
-      }
-      for (const section of PROJECT_SECTION_IDS) {
-        items.push({
-          id: `section.${projectId}.${section}`,
-          label: SECTION_LABELS[section],
-          group: "Project sections",
-          mode: "goto",
-          keywords: ["section", section, projectId],
-          perform: sectionNav[section],
-        })
+      if (observeMode) {
+        for (const section of OBSERVE_SECTIONS) {
+          items.push({
+            id: `observe.${projectId}.${section.id}`,
+            label: section.label,
+            group: "Project sections",
+            mode: "goto",
+            icon: section.icon,
+            keywords: ["observe", "section", section.id, projectId],
+            perform: () =>
+              void navigate({
+                to: section.to,
+                params: { projectId },
+                search:
+                  Object.keys(observeSearch).length > 0
+                    ? (observeSearch as never)
+                    : undefined,
+              }),
+          })
+        }
+      } else {
+        const sectionNav: Record<
+          (typeof PROJECT_SECTION_IDS)[number],
+          () => void
+        > = {
+          overview: () =>
+            void navigate({
+              to: "/projects/$projectId",
+              params: { projectId },
+            }),
+          deployments: () =>
+            void navigate({
+              to: "/projects/$projectId/deployments",
+              params: { projectId },
+            }),
+          secrets: () =>
+            void navigate({
+              to: "/projects/$projectId/secrets",
+              params: { projectId },
+            }),
+          settings: () =>
+            void navigate({
+              to: "/projects/$projectId/settings",
+              params: { projectId },
+            }),
+        }
+        for (const section of PROJECT_SECTION_IDS) {
+          items.push({
+            id: `section.${projectId}.${section}`,
+            label: SECTION_LABELS[section],
+            group: "Project sections",
+            mode: "goto",
+            keywords: ["section", section, projectId],
+            perform: sectionNav[section],
+          })
+        }
       }
     }
 
     return items
-  }, [navigate, projects, projectId])
+  }, [navigate, projects, projectId, observeMode, observeSearch])
 
   const allCommands = useMemo(() => {
     const map = new Map<string, AppCommand>()
@@ -358,14 +455,16 @@ export function CommandPaletteTrigger({
       type="button"
       onClick={() => openPalette("goto")}
       className={cn(
-        "inline-flex h-8 max-w-56 items-center gap-2 rounded-lg border border-border bg-muted/40 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        "inline-flex h-9 max-w-56 items-center gap-2 rounded-lg border border-border bg-muted/40 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         className,
       )}
       aria-label="Open go to palette"
     >
       <SearchIcon className="size-3.5 shrink-0 opacity-70" />
-      <span className="hidden truncate sm:inline">Search…</span>
-      <kbd className="ml-auto hidden rounded border border-border bg-background px-1 font-mono text-[10px] sm:inline">
+      <span className="hidden truncate sm:inline">
+        Search projects, traces, issues…
+      </span>
+      <kbd className="ml-auto hidden rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] sm:inline">
         {mod}P
       </kbd>
     </button>

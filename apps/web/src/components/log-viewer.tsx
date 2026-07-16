@@ -75,6 +75,10 @@ export function LogViewer({
         <pre
           ref={endRef}
           className="p-4 font-mono text-xs whitespace-pre-wrap"
+          role="log"
+          aria-live={live ? "polite" : "off"}
+          aria-relevant="additions"
+          aria-busy={loading || undefined}
         >
           {display}
         </pre>

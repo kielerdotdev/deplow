@@ -20,6 +20,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as ObserveIndexRouteImport } from './routes/observe/index'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
+import { Route as SettingsOperatorRouteImport } from './routes/settings.operator'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsNodesRouteImport } from './routes/settings.nodes'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
@@ -113,6 +114,11 @@ const ObserveIndexRoute = ObserveIndexRouteImport.update({
 const SettingsTeamRoute = SettingsTeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsOperatorRoute = SettingsOperatorRouteImport.update({
+  id: '/operator',
+  path: '/operator',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
@@ -351,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/operator': typeof SettingsOperatorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/observe/': typeof ObserveIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -401,6 +408,7 @@ export interface FileRoutesByTo {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/operator': typeof SettingsOperatorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/observe': typeof ObserveIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -453,6 +461,7 @@ export interface FileRoutesById {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/operator': typeof SettingsOperatorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/observe/': typeof ObserveIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -507,6 +516,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/nodes'
     | '/settings/notifications'
+    | '/settings/operator'
     | '/settings/team'
     | '/observe/'
     | '/settings/'
@@ -557,6 +567,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/nodes'
     | '/settings/notifications'
+    | '/settings/operator'
     | '/settings/team'
     | '/observe'
     | '/settings'
@@ -608,6 +619,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/nodes'
     | '/settings/notifications'
+    | '/settings/operator'
     | '/settings/team'
     | '/observe/'
     | '/settings/'
@@ -749,6 +761,13 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/settings/team'
       preLoaderRoute: typeof SettingsTeamRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/operator': {
+      id: '/settings/operator'
+      path: '/operator'
+      fullPath: '/settings/operator'
+      preLoaderRoute: typeof SettingsOperatorRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/notifications': {
@@ -1032,6 +1051,7 @@ interface SettingsRouteChildren {
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNodesRoute: typeof SettingsNodesRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsOperatorRoute: typeof SettingsOperatorRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -1041,6 +1061,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNodesRoute: SettingsNodesRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsOperatorRoute: SettingsOperatorRoute,
   SettingsTeamRoute: SettingsTeamRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }

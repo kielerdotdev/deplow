@@ -1,5 +1,8 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router"
 
+import { RouteErrorPage } from "@/components/route-error"
+import { RoutePending } from "@/components/route-pending"
+
 import { routeTree } from "./routeTree.gen"
 
 export function getRouter() {
@@ -8,6 +11,16 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    /** Show pending UI after a short wait so fast navigations stay snappy. */
+    defaultPendingMs: 200,
+    /** Avoid a one-frame flash of the pending skeleton. */
+    defaultPendingMinMs: 200,
+    defaultPendingComponent: RoutePending,
+    defaultErrorComponent: ({ error }) => (
+      <RouteErrorPage
+        error={error instanceof Error ? error : new Error(String(error))}
+      />
+    ),
   })
 
   return router

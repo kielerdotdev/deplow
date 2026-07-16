@@ -29,6 +29,9 @@ const KEYS = {
   spanId: "sid",
   release: "rel",
   environment: "env",
+  spanScope: "scope",
+  errorsOnly: "err",
+  minDurationMs: "dmin",
   selection: "sel",
   tab: "tab",
 } as const
@@ -118,6 +121,12 @@ export function serializeContext(
   if (q.spanId) out[KEYS.spanId] = q.spanId
   if (q.release) out[KEYS.release] = q.release
   if (q.environment) out[KEYS.environment] = q.environment
+  // Default investigation mode is root; only serialize non-defaults.
+  if (q.spanScope && q.spanScope !== "root") out[KEYS.spanScope] = q.spanScope
+  if (q.errorsOnly) out[KEYS.errorsOnly] = "1"
+  if (q.minDurationMs != null && q.minDurationMs > 0) {
+    out[KEYS.minDurationMs] = String(q.minDurationMs)
+  }
 
   const sel = encodeSelection(ctx.selection)
   if (sel) out[KEYS.selection] = sel
@@ -184,6 +193,28 @@ export function parseContext(search: ContextSearchParams): ObserveContext {
       typeof search[KEYS.environment] === "string"
         ? (search[KEYS.environment] as string)
         : undefined,
+    spanScope:
+      search[KEYS.spanScope] === "root" ||
+      search[KEYS.spanScope] === "entrypoint"
+        ? search[KEYS.spanScope]
+        : search[KEYS.spanScope] === "all"
+          ? "all"
+          : undefined,
+    errorsOnly:
+      search[KEYS.errorsOnly] === "1" || search[KEYS.errorsOnly] === "true"
+        ? true
+        : undefined,
+    minDurationMs:
+      typeof search[KEYS.minDurationMs] === "string" &&
+      search[KEYS.minDurationMs] !== ""
+        ? Number(search[KEYS.minDurationMs])
+        : undefined,
+  }
+  if (
+    query.minDurationMs != null &&
+    (Number.isNaN(query.minDurationMs) || query.minDurationMs < 0)
+  ) {
+    query.minDurationMs = undefined
   }
 
   const tabRaw = search[KEYS.tab]

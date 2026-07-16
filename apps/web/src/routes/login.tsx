@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Field, FieldGroup } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth-client"
@@ -117,8 +118,8 @@ function LoginPage() {
           </div>
         </div>
 
-        <div className="relative space-y-8">
-          <div className="space-y-3">
+        <div className="relative flex flex-col gap-8">
+          <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-semibold tracking-tight text-balance">
               Ship apps with infrastructure included
             </h1>
@@ -128,7 +129,7 @@ function LoginPage() {
             </p>
           </div>
 
-          <ul className="space-y-4">
+          <ul className="flex flex-col gap-4">
             {highlights.map((item) => (
               <li key={item.title} className="flex items-start gap-3">
                 <div className="icon-well size-9 shrink-0">
@@ -173,55 +174,57 @@ function LoginPage() {
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="flex flex-col gap-4">
-              {mode === "sign-up" ? (
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="name">Name</Label>
+            <CardContent>
+              <FieldGroup className="gap-4">
+                {mode === "sign-up" ? (
+                  <Field>
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      autoComplete="name"
+                    />
+                  </Field>
+                ) : null}
+
+                <Field>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
-                    autoComplete="name"
+                    autoComplete="email"
                   />
-                </div>
-              ) : null}
+                </Field>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
+                <Field>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    autoComplete={
+                      mode === "sign-up" ? "new-password" : "current-password"
+                    }
+                  />
+                </Field>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  autoComplete={
-                    mode === "sign-up" ? "new-password" : "current-password"
-                  }
-                />
-              </div>
-
-              {error ? (
-                <Alert variant="destructive">
-                  <AlertTitle>
-                    {mode === "sign-in" ? "Sign in failed" : "Sign up failed"}
-                  </AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : null}
+                {error ? (
+                  <Alert variant="destructive">
+                    <AlertTitle>
+                      {mode === "sign-in" ? "Sign in failed" : "Sign up failed"}
+                    </AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                ) : null}
+              </FieldGroup>
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
               <Button type="submit" disabled={pending} className="w-full">

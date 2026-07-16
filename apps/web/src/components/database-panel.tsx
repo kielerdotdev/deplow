@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 
 import { ActionDialog } from "@/components/action-dialog"
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
 import { DashboardCard, DashboardRow } from "@/components/dashboard-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -25,6 +26,13 @@ type DatabasePanelProps = {
   onRefresh: () => Promise<void>
 }
 
+type PendingConfirm =
+  | { kind: "rotate-pg"; name: string }
+  | { kind: "drop-pg"; name: string }
+  | { kind: "rotate-redis"; name: string }
+  | { kind: "drop-redis"; name: string }
+  | null
+
 export function DatabasePanel({
   projectId,
   overview,
@@ -36,6 +44,7 @@ export function DatabasePanel({
   const [createPgOpen, setCreatePgOpen] = useState(false)
   const [createRedisOpen, setCreateRedisOpen] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<PendingConfirm>(null)
 
   async function copy(text: string, key: string) {
     await navigator.clipboard.writeText(text)
@@ -44,7 +53,6 @@ export function DatabasePanel({
   }
 
   async function rotatePg(roleName: string) {
-    if (!window.confirm(`Rotate password for ${roleName}?`)) return
     setPending(true)
     setError(null)
     try {
@@ -64,8 +72,8 @@ export function DatabasePanel({
   }
 
   async function dropPg(roleName: string) {
-    if (!window.confirm(`Drop role ${roleName}?`)) return
     setPending(true)
+    setError(null)
     try {
       await client.projects.dropPostgresRole({ id: projectId, roleName })
       await onRefresh()
@@ -77,8 +85,8 @@ export function DatabasePanel({
   }
 
   async function rotateRedis(username: string) {
-    if (!window.confirm(`Rotate password for ${username}?`)) return
     setPending(true)
+    setError(null)
     try {
       const rotated = await client.projects.rotateRedisUser({
         id: projectId,
@@ -96,8 +104,8 @@ export function DatabasePanel({
   }
 
   async function dropRedis(username: string) {
-    if (!window.confirm(`Drop Redis user ${username}?`)) return
     setPending(true)
+    setError(null)
     try {
       await client.projects.dropRedisUser({ id: projectId, username })
       await onRefresh()
@@ -127,6 +135,43 @@ export function DatabasePanel({
       setPending(false)
     }
   }
+
+  const confirmCopy = confirm
+    ? {
+        "rotate-pg": {
+          title: `Rotate password for ${confirm.name}?`,
+          description:
+            "A new password is generated. Copy it from the alert that appears — it won’t be shown again.",
+          confirmLabel: "Rotate password",
+          destructive: false,
+          run: () => rotatePg(confirm.name),
+        },
+        "drop-pg": {
+          title: `Drop role ${confirm.name}?`,
+          description:
+            "This removes the Postgres role from the project database.",
+          confirmLabel: "Drop role",
+          destructive: true,
+          run: () => dropPg(confirm.name),
+        },
+        "rotate-redis": {
+          title: `Rotate password for ${confirm.name}?`,
+          description:
+            "A new password is generated. Copy it from the alert that appears — it won’t be shown again.",
+          confirmLabel: "Rotate password",
+          destructive: false,
+          run: () => rotateRedis(confirm.name),
+        },
+        "drop-redis": {
+          title: `Drop Redis user ${confirm.name}?`,
+          description:
+            "This removes the ACL user from the project Redis namespace.",
+          confirmLabel: "Drop user",
+          destructive: true,
+          run: () => dropRedis(confirm.name),
+        },
+      }[confirm.kind]
+    : null
 
   return (
     <div className="space-y-4">
@@ -273,7 +318,9 @@ export function DatabasePanel({
                   size="sm"
                   variant="outline"
                   disabled={pending}
-                  onClick={() => void rotatePg(role.name)}
+                  onClick={() =>
+                    setConfirm({ kind: "rotate-pg", name: role.name })
+                  }
                 >
                   Rotate
                 </Button>
@@ -282,7 +329,9 @@ export function DatabasePanel({
                     size="icon-sm"
                     variant="ghost"
                     disabled={pending}
-                    onClick={() => void dropPg(role.name)}
+                    onClick={() =>
+                      setConfirm({ kind: "drop-pg", name: role.name })
+                    }
                     aria-label={`Drop ${role.name}`}
                   >
                     <Trash2Icon />
@@ -329,7 +378,9 @@ export function DatabasePanel({
                   size="sm"
                   variant="outline"
                   disabled={pending}
-                  onClick={() => void rotateRedis(user.username)}
+                  onClick={() =>
+                    setConfirm({ kind: "rotate-redis", name: user.username })
+                  }
                 >
                   Rotate
                 </Button>
@@ -338,7 +389,9 @@ export function DatabasePanel({
                     size="icon-sm"
                     variant="ghost"
                     disabled={pending}
-                    onClick={() => void dropRedis(user.username)}
+                    onClick={() =>
+                      setConfirm({ kind: "drop-redis", name: user.username })
+                    }
                     aria-label={`Drop ${user.username}`}
                   >
                     <Trash2Icon />
@@ -370,6 +423,22 @@ export function DatabasePanel({
           await onRefresh()
         }}
         onError={setError}
+      />
+
+      <ConfirmActionDialog
+        open={confirm != null}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null)
+        }}
+        title={confirmCopy?.title ?? ""}
+        description={confirmCopy?.description ?? ""}
+        confirmLabel={confirmCopy?.confirmLabel}
+        destructive={confirmCopy?.destructive}
+        pending={pending}
+        onConfirm={async () => {
+          if (!confirmCopy) return
+          await confirmCopy.run()
+        }}
       />
     </div>
   )

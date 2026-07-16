@@ -73,6 +73,35 @@ describe("Observe Context URL", () => {
     expect(qs).toContain("svc=api")
   })
 
+  it("round-trips trace scope, errors-only, and min duration", () => {
+    const ctx: ObserveContext = {
+      time: { kind: "preset", preset: "1h" },
+      baseline: { mode: "none" },
+      filters: [],
+      query: {
+        spanScope: "root",
+        errorsOnly: true,
+        minDurationMs: 500,
+      },
+    }
+    const s = serializeContext(ctx)
+    // root is the default — omitted from the URL
+    expect(s.scope).toBeUndefined()
+    expect(s.err).toBe("1")
+    expect(s.dmin).toBe("500")
+    const back = parseContext(s)
+    expect(back.query.spanScope).toBeUndefined()
+    expect(back.query.errorsOnly).toBe(true)
+    expect(back.query.minDurationMs).toBe(500)
+
+    const entry = serializeContext({
+      ...ctx,
+      query: { ...ctx.query, spanScope: "entrypoint" },
+    })
+    expect(entry.scope).toBe("entrypoint")
+    expect(parseContext(entry).query.spanScope).toBe("entrypoint")
+  })
+
   it("resolves baseline previous window", () => {
     const current = resolveTimeRange({ kind: "preset", preset: "1h" }, Date.parse("2026-07-15T12:00:00Z"))
     const bl = resolveBaselineRange({ mode: "previous" }, current)

@@ -1,21 +1,25 @@
-import { useEffect, useState } from "react"
+import { useRouterState } from "@tanstack/react-router"
 
-import { AppShell } from "@/components/app-shell"
-import type { OrgOption } from "@/components/org-switcher"
-import { ContextBar } from "@/components/observe/context-bar"
-import type { ObserveProjectOption } from "@/components/observe/project-switcher"
+import {
+  ContextBar,
+  type ObserveSurface,
+} from "@/components/observe/context-bar"
 import { PageContent, PageHeader } from "@/components/page-layout"
 import type { ObserveContext } from "@/lib/observe/context"
-import { client } from "@/lib/orpc"
 
-type ShellUser = { name: string; email: string }
+function surfaceFromPath(pathname: string): ObserveSurface {
+  if (pathname.includes("/traces")) return "traces"
+  if (pathname.includes("/logs")) return "logs"
+  if (pathname.includes("/explore")) return "explore"
+  if (pathname.includes("/issues")) return "issues"
+  return "default"
+}
 
+/**
+ * Observe page frame (header + context bar). Chrome is owned by the
+ * `/observe/projects/$projectId` layout so it stays mounted across tabs.
+ */
 export function ObserveProjectShell({
-  user,
-  instanceAdmin,
-  organizations,
-  activeOrganization,
-  observeEnabled,
   projectId,
   title,
   description,
@@ -25,12 +29,7 @@ export function ObserveProjectShell({
   onSaveView,
   children,
 }: {
-  user: ShellUser
-  instanceAdmin?: boolean
-  organizations?: OrgOption[]
-  activeOrganization?: OrgOption | null
-  observeEnabled: boolean
-  projectId: string
+  projectId?: string
   title: string
   description?: string
   actions?: React.ReactNode
@@ -39,36 +38,11 @@ export function ObserveProjectShell({
   onSaveView?: (name: string) => void
   children: React.ReactNode
 }) {
-  const [projects, setProjects] = useState<ObserveProjectOption[]>([])
-
-  useEffect(() => {
-    let cancelled = false
-    void client.projects
-      .list()
-      .then((list) => {
-        if (!cancelled) {
-          setProjects(list.map((p) => ({ id: p.id, name: p.name })))
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setProjects([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const surface = surfaceFromPath(pathname)
 
   return (
-    <AppShell
-      user={user}
-      instanceAdmin={instanceAdmin}
-      organizations={organizations}
-      activeOrganization={activeOrganization}
-      uiMode="observe"
-      observeEnabled={observeEnabled}
-      observeProjectId={projectId}
-      observeProjects={projects}
-    >
+    <>
       <PageHeader title={title} description={description} actions={actions} />
       <PageContent>
         {context && onContextChange ? (
@@ -76,11 +50,12 @@ export function ObserveProjectShell({
             context={context}
             onChange={onContextChange}
             onSaveView={onSaveView}
-            className="mb-4"
+            projectId={projectId}
+            surface={surface}
           />
         ) : null}
         {children}
       </PageContent>
-    </AppShell>
+    </>
   )
 }

@@ -10,17 +10,11 @@ import { BellIcon } from "lucide-react"
 import {
   BaselinePicker,
   ChartFrame,
-  InsightWidget,
-  ObserveEmptyState,
   ObserveProjectShell,
   TimeRangePicker,
 } from "@/components/observe"
 import { AnalysisTypeTabs } from "@/components/observe/trends/analysis-type-tabs"
 import { BreakdownBuilder } from "@/components/observe/trends/breakdown-builder"
-import {
-  ChartsHubTabs,
-  type ChartsView,
-} from "@/components/observe/trends/charts-hub-tabs"
 import { CreateAlertFromTrends } from "@/components/observe/trends/create-alert-dialog"
 import { ExportMenu } from "@/components/observe/trends/export-menu"
 import { FormulaEditor } from "@/components/observe/trends/formula-editor"
@@ -34,14 +28,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getSession } from "@/lib/auth.functions"
 import {
-  parseContext,
-  type ObserveContext,
-} from "@/lib/observe/context"
-import {
-  parseDashboardLayout,
-  type DashboardLayout,
-} from "@/lib/observe/insights"
-import {
   defaultTrendsQuery,
   parseTrendsQuery,
   serializeTrendsQuery,
@@ -50,13 +36,10 @@ import {
   type TrendsVizKind,
 } from "@/lib/observe/trends"
 import { client } from "@/lib/orpc"
-import { loadShellContext } from "@/lib/shell-context"
 
 type ChartsSearch = {
   tq?: string
-  view: ChartsView
   insightId?: string
-  dashboardId?: string
 }
 
 export const Route = createFileRoute("/observe/projects/$projectId/trends")({
@@ -65,16 +48,33 @@ export const Route = createFileRoute("/observe/projects/$projectId/trends")({
     const q = parseTrendsQuery(raw)
     const insightId =
       typeof raw.insightId === "string" ? raw.insightId : undefined
-    const dashboardId =
-      typeof raw.dashboardId === "string" ? raw.dashboardId : undefined
-    const viewRaw = typeof raw.view === "string" ? raw.view : "builder"
-    const view: ChartsView =
-      viewRaw === "library" || viewRaw === "boards" ? viewRaw : "builder"
     return {
       ...serializeTrendsQuery(q),
-      view,
       ...(insightId ? { insightId } : {}),
-      ...(dashboardId ? { dashboardId } : {}),
+    }
+  },
+  beforeLoad: ({ params, search }) => {
+    const raw = search as Record<string, unknown>
+    const view = typeof raw.view === "string" ? raw.view : undefined
+    if (view === "library") {
+      throw redirect({
+        to: "/observe/projects/$projectId/insights",
+        params: { projectId: params.projectId },
+      })
+    }
+    if (view === "boards") {
+      const dashboardId =
+        typeof raw.dashboardId === "string" ? raw.dashboardId : undefined
+      if (dashboardId) {
+        throw redirect({
+          to: "/observe/projects/$projectId/dashboards/$dashboardId",
+          params: { projectId: params.projectId, dashboardId },
+        })
+      }
+      throw redirect({
+        to: "/observe/projects/$projectId/dashboards",
+        params: { projectId: params.projectId },
+      })
     }
   },
   loader: async ({ params, location }) => {
@@ -82,8 +82,6 @@ export const Route = createFileRoute("/observe/projects/$projectId/trends")({
     if (!session) {
       throw redirect({ to: "/login", search: { redirect: undefined } })
     }
-    const shell = await loadShellContext()
-    const status = await client.observe.status().catch(() => null)
     await client.observe.projects.enable({ projectId: params.projectId }).catch(
       () => null,
     )
@@ -110,75 +108,54 @@ export const Route = createFileRoute("/observe/projects/$projectId/trends")({
       }
     }
 
-    const [insights, dashboards, alerts] = await Promise.all([
-      client.observe.insights
-        .list({ projectId: params.projectId })
-        .catch(() => []),
-      client.observe.dashboards
-        .list({ projectId: params.projectId })
-        .catch(() => []),
-      client.observe.alerts
-        .list({ projectId: params.projectId })
-        .catch(() => []),
-    ])
+    const alerts = await client.observe.alerts
+      .list({ projectId: params.projectId })
+      .catch(() => [])
 
-    let board: Awaited<
-      ReturnType<typeof client.observe.dashboards.get>
-    > | null = null
-    if (search.dashboardId) {
-      board = await client.observe.dashboards
-        .get({
-          projectId: params.projectId,
-          dashboardId: search.dashboardId,
-        })
-        .catch(() => null)
-    }
-
-    return {
-      session,
-      shell,
-      status,
-      project,
-      initialQuery,
-      insightMeta,
-      insights,
-      dashboards,
-      alerts,
-      board,
-    }
+    return { project, initialQuery, insightMeta, alerts }
   },
-  component: ChartsHubPage,
+  component: ChartsPage,
 })
 
-function ChartsHubPage() {
+function ChartsPage() {
   const data = Route.useLoaderData()
   const { projectId } = Route.useParams()
-  const search = Route.useSearch()
-  const view = search.view || "builder"
 
   return (
     <ObserveProjectShell
-      user={data.session.user}
-      instanceAdmin={data.shell.instanceAdmin}
-      organizations={data.shell.organizations}
-      activeOrganization={data.shell.activeOrganization}
-      observeEnabled={data.status?.enabled === true}
       projectId={projectId}
-      title={`Charts · ${data.project.name}`}
-      description="Build, save, and board Trends queries — alerts from the builder."
+      title="Charts"
+      description={`Build Trends queries for ${data.project.name}`}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            render={
+              <Link
+                to="/observe/projects/$projectId/insights"
+                params={{ projectId }}
+              />
+            }
+          >
+            Saved charts
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            render={
+              <Link
+                to="/observe/projects/$projectId/alerts"
+                params={{ projectId }}
+              />
+            }
+          >
+            Alerts
+          </Button>
+        </div>
+      }
     >
-      <ChartsHubTabs
-        projectId={projectId}
-        view={view}
-        search={{
-          tq: search.tq,
-          insightId: search.insightId,
-          dashboardId: search.dashboardId,
-        }}
-      />
-      {view === "builder" ? <BuilderView /> : null}
-      {view === "library" ? <LibraryView /> : null}
-      {view === "boards" ? <BoardsView /> : null}
+      <BuilderView />
     </ObserveProjectShell>
   )
 }
@@ -204,7 +181,6 @@ function BuilderView() {
       void navigate({
         search: {
           ...serializeTrendsQuery(next),
-          view: "builder",
           ...(insightMeta ? { insightId: insightMeta.id } : {}),
         },
         replace: true,
@@ -263,7 +239,6 @@ function BuilderView() {
         void navigate({
           search: {
             ...serializeTrendsQuery(query),
-            view: "builder",
             insightId: id,
           },
           replace: true,
@@ -289,7 +264,7 @@ function BuilderView() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <AnalysisTypeTabs
           projectId={projectId}
@@ -337,20 +312,18 @@ function BuilderView() {
         </div>
       </div>
 
-      {showAlert ? (
-        <CreateAlertFromTrends
-          projectId={projectId}
-          query={query}
-          onCancel={() => setShowAlert(false)}
-          onCreated={async () => {
-            setShowAlert(false)
-            await router.invalidate()
-          }}
-        />
-      ) : null}
+      <CreateAlertFromTrends
+        projectId={projectId}
+        query={query}
+        open={showAlert}
+        onOpenChange={setShowAlert}
+        onCreated={() => {
+          void router.invalidate()
+        }}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <aside className="space-y-4 surface-panel p-3">
+        <aside className="flex flex-col gap-4 surface-panel p-3">
           <SeriesBuilder
             series={query.series}
             onChange={(series) => patch({ series })}
@@ -371,7 +344,7 @@ function BuilderView() {
             onChange={(breakdowns) => patch({ breakdowns })}
           />
 
-          <div className="space-y-2 border-t border-border/60 pt-3">
+          <div className="flex flex-col gap-2 border-t border-border/60 pt-3">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Time
             </h4>
@@ -401,7 +374,7 @@ function BuilderView() {
             </label>
           </div>
 
-          <div className="space-y-2 border-t border-border/60 pt-3">
+          <div className="flex flex-col gap-2 border-t border-border/60 pt-3">
             <button
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground"
@@ -432,7 +405,7 @@ function BuilderView() {
           </div>
         </aside>
 
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <ChartFrame
             title={saveName.trim() || "Trends"}
             description={
@@ -513,225 +486,6 @@ function BuilderView() {
           ) : null}
         </div>
       </div>
-    </div>
-  )
-}
-
-function LibraryView() {
-  const { insights } = Route.useLoaderData()
-  const { projectId } = Route.useParams()
-  const router = useRouter()
-
-  if (insights.length === 0) {
-    return (
-      <ObserveEmptyState
-        title="No saved charts"
-        description="Build a Trends query and hit Save — it shows up here."
-        action={
-          <Button
-            size="sm"
-            render={
-              <Link
-                to="/observe/projects/$projectId/trends"
-                params={{ projectId }}
-                search={{ view: "builder" }}
-              />
-            }
-          >
-            Open builder
-          </Button>
-        }
-      />
-    )
-  }
-
-  return (
-    <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {insights.map((i) => {
-        const spec = i.spec as TrendsQuery
-        const label =
-          spec.series?.[0]?.label ?? spec.series?.[0]?.measure ?? "chart"
-        return (
-          <li key={i.id} className="surface-panel flex flex-col gap-2 p-4">
-            <div>
-              <h3 className="truncate text-sm font-semibold">{i.name}</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {spec.series?.length ?? 0} series · {label}
-              </p>
-            </div>
-            <div className="mt-auto flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                render={
-                  <Link
-                    to="/observe/projects/$projectId/trends"
-                    params={{ projectId }}
-                    search={{ view: "builder", insightId: i.id }}
-                  />
-                }
-              >
-                Edit
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-destructive"
-                onClick={async () => {
-                  await client.observe.insights.delete({
-                    projectId,
-                    insightId: i.id,
-                  })
-                  await router.invalidate()
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
-
-function BoardsView() {
-  const { dashboards, board, insights } = Route.useLoaderData()
-  const { projectId } = Route.useParams()
-  const navigate = Route.useNavigate()
-  const router = useRouter()
-  const search = Route.useSearch()
-  const [context, setContext] = useState<ObserveContext>(() =>
-    parseContext({}),
-  )
-  const [creating, setCreating] = useState(false)
-
-  if (board) {
-    const layout: DashboardLayout =
-      board.layout &&
-      typeof board.layout === "object" &&
-      Array.isArray((board.layout as DashboardLayout).widgets)
-        ? (board.layout as DashboardLayout)
-        : parseDashboardLayout(
-            typeof board.layoutJson === "string"
-              ? board.layoutJson
-              : JSON.stringify(board.layoutJson ?? { widgets: [] }),
-          )
-    const widgets = Array.isArray(layout.widgets) ? layout.widgets : []
-    const insightMap = new Map(
-      [...(board.insights ?? []), ...insights].map((i) => [i.id, i]),
-    )
-
-    return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() =>
-              void navigate({
-                search: {
-                  view: "boards",
-                  tq: search.tq,
-                  insightId: search.insightId,
-                },
-              })
-            }
-          >
-            ← All boards
-          </Button>
-          <h2 className="text-sm font-semibold">{board.name}</h2>
-          <div className="ml-auto">
-            <TimeRangePicker
-              value={context.time}
-              onChange={(time) => setContext({ ...context, time })}
-            />
-          </div>
-        </div>
-        {widgets.length === 0 ? (
-          <ObserveEmptyState
-            title="Empty board"
-            description="Add widgets from Saved charts (library)."
-          />
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {widgets.map((w) => {
-              const insight = insightMap.get(w.insightId)
-              if (!insight) return null
-              return (
-                <InsightWidget
-                  key={w.id}
-                  projectId={projectId}
-                  context={context}
-                  widget={w}
-                  insight={insight}
-                  onContextChange={setContext}
-                />
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          disabled={creating}
-          onClick={async () => {
-            setCreating(true)
-            try {
-              const { id } = await client.observe.dashboards.create({
-                projectId,
-                name: "Untitled board",
-                template: "blank",
-              })
-              await router.invalidate()
-              void navigate({
-                search: { view: "boards", dashboardId: id, tq: search.tq },
-              })
-            } finally {
-              setCreating(false)
-            }
-          }}
-        >
-          New board
-        </Button>
-      </div>
-      {dashboards.length === 0 ? (
-        <ObserveEmptyState
-          title="No boards yet"
-          description="Boards are grids of saved charts with a shared time range."
-        />
-      ) : (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {dashboards.map((d) => (
-            <li key={d.id}>
-              <button
-                type="button"
-                className="surface-panel w-full p-4 text-left hover:bg-muted/30"
-                onClick={() =>
-                  void navigate({
-                    search: {
-                      view: "boards",
-                      dashboardId: d.id,
-                      tq: search.tq,
-                    },
-                  })
-                }
-              >
-                <h3 className="text-sm font-semibold">{d.name}</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {d.template}
-                </p>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }

@@ -22,12 +22,12 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="min-w-0 space-y-1">
-        <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-[-0.03em] text-foreground">
+      <div className="flex flex-col min-w-0 gap-0.5">
+        <h1 className="flex flex-wrap items-center gap-2 text-balance text-xl font-semibold tracking-[-0.035em] text-foreground md:text-[1.375rem]">
           {title}
         </h1>
         {description ? (
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <p className="max-w-2xl text-pretty text-[13px] leading-relaxed text-muted-foreground">
             {description}
           </p>
         ) : null}
@@ -56,7 +56,7 @@ export function PageContent({
   return (
     <div
       className={cn(
-        "flex w-full flex-col gap-4",
+        "flex w-full flex-col gap-3.5",
         width === "narrow" && "max-w-3xl",
         className,
       )}
@@ -90,10 +90,10 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   return (
     <section className={cn("surface-panel overflow-hidden", className)}>
-      <div className="flex items-start justify-between gap-3 border-b border-border/60 px-5 py-4">
+      <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex min-w-0 items-start gap-3">
           {Icon ? (
-            <div className="icon-well mt-0.5 size-8 shrink-0">
+            <div className="icon-well mt-0.5 size-7 shrink-0">
               <Icon className="size-3.5" />
             </div>
           ) : null}
@@ -108,9 +108,9 @@ export function SettingsPanel({
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className={cn(flush ? "py-0" : "px-5 py-4")}>{children}</div>
+      <div className={cn(flush ? "py-0" : "px-4 py-3.5")}>{children}</div>
       {footer ? (
-        <div className="flex flex-wrap items-center gap-3 border-t border-border/60 px-5 py-3">
+        <div className="flex flex-wrap items-center gap-3 border-t border-border px-4 py-2.5">
           {footer}
         </div>
       ) : null}

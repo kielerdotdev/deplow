@@ -17,7 +17,7 @@ describe("UI shell structure", () => {
     expect(src).toContain("SidebarProvider")
     expect(src).toContain("SidebarMenuButton")
     expect(src).toContain("buildDeployNav")
-    expect(src).toContain("DeployProjectSwitcher")
+    expect(src).toContain("ProjectSwitcher")
     expect(src).toContain('title: "Overview"')
     expect(src).toContain('title: "Deployments"')
     expect(src).toContain('title: "Secrets"')
@@ -31,7 +31,14 @@ describe("UI shell structure", () => {
     expect(src).toContain("CommandPaletteTrigger")
     expect(src).toContain("Deploy")
     expect(src).toContain("Observe")
-    expect(src).toContain('to="/observe"')
+    expect(src).toContain("observeHome")
+    expect(src).toContain("ProjectSwitcher")
+    expect(src).toContain("pickObserveNavSearch")
+    expect(src).toContain("observeSearch")
+    expect(src).toContain("Monitor")
+    expect(src).toContain("Investigate")
+    expect(src).toContain("Changes")
+    expect(src).toContain("SidebarGroupLabel")
     expect(src).not.toContain("ContainerIcon")
   })
 
@@ -46,6 +53,8 @@ describe("UI shell structure", () => {
     expect(src).toContain('key === "k"')
     expect(src).toContain("CommandDialog")
     expect(src).toContain("pushRecentCommand")
+    expect(src).toContain("pickObserveNavSearch")
+    expect(src).toContain("Search projects, traces, issues")
   })
 
   it("project layout nests overview/deployments/secrets/settings", () => {
@@ -58,9 +67,12 @@ describe("UI shell structure", () => {
       "utf8",
     )
     expect(layout).toContain("Outlet")
-    expect(layout).toContain("deployProjectId")
     expect(layout).toContain("AddServiceDialog")
     expect(layout).toContain("CommandAction")
+    expect(layout).toContain("AppShell")
+    expect(layout).toContain("ProjectLayout")
+    expect(layout).not.toContain("Hello")
+    expect(layout).not.toContain("RouteComponent")
     expect(layout).not.toContain("ProjectRail")
     expect(layout).not.toContain("validateSearch")
     expect(overview).toContain("ProjectTopology")
@@ -213,6 +225,7 @@ describe("UI shell structure", () => {
     expect(nav).toContain('to: "/settings/team"')
     expect(nav).toContain('to: "/settings/domains"')
     expect(nav).toContain('to: "/settings/notifications"')
+    expect(nav).toContain('to: "/settings/operator"')
     expect(nav).toContain('to: "/settings/nodes"')
     expect(nav).toContain("instanceAdmin")
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
@@ -225,6 +238,7 @@ describe("UI shell structure", () => {
       "routes/settings.integrations.tsx",
       "routes/settings.domains.tsx",
       "routes/settings.notifications.tsx",
+      "routes/settings.operator.tsx",
       "routes/settings.nodes.tsx",
       "routes/settings.index.tsx",
       "routes/settings.team.tsx",
@@ -252,7 +266,7 @@ describe("UI shell structure", () => {
 
   it("app shell content uses unified padding", () => {
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
-    expect(shell).toContain("p-4 md:px-6 md:py-5")
+    expect(shell).toContain("p-3 md:px-5 md:py-4")
     expect(shell).toContain("accountHome && \"pt-2\"")
   })
 
@@ -263,6 +277,26 @@ describe("UI shell structure", () => {
     expect(css).toContain("animate-content-in")
     expect(css).toContain("prefers-reduced-motion")
     expect(css).toContain("--ease-out-ui")
+  })
+
+  it("router exposes default pending UI and root shows nav progress", () => {
+    const router = readFileSync(path.join(root, "router.tsx"), "utf8")
+    expect(router).toContain("defaultPendingComponent")
+    expect(router).toContain("RoutePending")
+    expect(router).toContain("defaultPendingMs")
+    expect(router).toContain("defaultErrorComponent")
+    const rootRoute = readFileSync(path.join(root, "routes/__root.tsx"), "utf8")
+    expect(rootRoute).toContain("NavigationProgress")
+    expect(rootRoute).toContain("NotFoundPage")
+    const css = readFileSync(path.join(root, "styles.css"), "utf8")
+    expect(css).toContain("animate-nav-progress")
+  })
+
+  it("gates Observe mode toggle on observeEnabled", () => {
+    const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
+    expect(shell).toContain("observeEnabled")
+    expect(shell).not.toContain("_observeEnabled")
+    expect(shell).toContain("Observe is not enabled")
   })
 
   it("command palette skips dialog open animation", () => {
@@ -325,9 +359,19 @@ describe("UI shell structure", () => {
     expect(src).toContain('from "@/components/ui/label"')
   })
 
-  it("root document uses dark theme without TanStack Devtools", () => {
+  it("root document boots theme without TanStack Devtools", () => {
     const src = readFileSync(path.join(root, "routes/__root.tsx"), "utf8")
-    expect(src).toContain('<html lang="en" className="dark">')
+    expect(src).toContain("THEME_BOOT_SCRIPT")
+    expect(src).toContain("suppressHydrationWarning")
+    expect(src).not.toContain('className="dark"')
     expect(src).not.toContain("TanStackDevtools")
+  })
+
+  it("app shell exposes theme toggle", () => {
+    const src = readFileSync(
+      path.join(root, "components/app-shell.tsx"),
+      "utf8",
+    )
+    expect(src).toContain("ThemeToggle")
   })
 })

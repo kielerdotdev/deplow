@@ -66,8 +66,9 @@ function ClauseRow({
       ) : null}
       <button
         type="button"
-        className="text-muted-foreground hover:text-destructive"
+        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={onRemove}
+        aria-label="Remove filter"
       >
         <TrashIcon className="size-3.5" />
       </button>
@@ -90,8 +91,8 @@ function GroupEditor({
     <div
       className={
         depth > 0
-          ? "space-y-1.5 rounded-md border border-dashed border-border/70 p-2"
-          : "space-y-1.5"
+          ? "flex flex-col gap-1.5 rounded-md border border-dashed border-border/70 p-2"
+          : "flex flex-col gap-1.5"
       }
     >
       <div className="flex items-center gap-2">
@@ -197,7 +198,7 @@ export function TrendsFilterBuilder({
   )
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Filters

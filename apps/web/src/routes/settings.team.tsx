@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { ActionDialog } from "@/components/action-dialog"
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
 import { CopyField } from "@/components/copy-field"
 import { EmptyState } from "@/components/empty-state"
 import { RoleBadge } from "@/components/org-ui"
@@ -201,6 +202,11 @@ function OrganizationPage() {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [pending, setPending] = useState(false)
+  const [removeMember, setRemoveMember] = useState<{
+    userId: string
+    name: string
+  } | null>(null)
+  const [revokeInviteId, setRevokeInviteId] = useState<string | null>(null)
 
   async function saveOrg(event: React.FormEvent) {
     event.preventDefault()
@@ -288,23 +294,12 @@ function OrganizationPage() {
                         size="sm"
                         variant="ghost"
                         disabled={pending}
-                        onClick={async () => {
-                          setPending(true)
-                          setError(null)
-                          try {
-                            await client.organizations.removeMember({
-                              organizationId: org.id,
-                              userId: member.userId,
-                            })
-                            await router.invalidate()
-                          } catch (e) {
-                            setError(
-                              e instanceof Error ? e.message : String(e),
-                            )
-                          } finally {
-                            setPending(false)
-                          }
-                        }}
+                        onClick={() =>
+                          setRemoveMember({
+                            userId: member.userId,
+                            name: member.name,
+                          })
+                        }
                       >
                         <Trash2Icon className="size-3.5" />
                         Remove
@@ -341,21 +336,7 @@ function OrganizationPage() {
                         size="sm"
                         variant="ghost"
                         disabled={pending}
-                        onClick={async () => {
-                          setPending(true)
-                          try {
-                            await client.organizations.revokeInvite({
-                              id: invite.id,
-                            })
-                            await router.invalidate()
-                          } catch (e) {
-                            setError(
-                              e instanceof Error ? e.message : String(e),
-                            )
-                          } finally {
-                            setPending(false)
-                          }
-                        }}
+                        onClick={() => setRevokeInviteId(invite.id)}
                       >
                         Revoke
                       </Button>
@@ -429,6 +410,63 @@ function OrganizationPage() {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         organizationId={org.id}
+      />
+
+      <ConfirmActionDialog
+        open={!!removeMember}
+        onOpenChange={(open) => {
+          if (!open) setRemoveMember(null)
+        }}
+        title="Remove member"
+        description={
+          removeMember
+            ? `Remove ${removeMember.name} from ${org.name}? They will lose access immediately.`
+            : "Remove this member?"
+        }
+        confirmLabel="Remove member"
+        pending={pending}
+        onConfirm={async () => {
+          if (!removeMember) return
+          setPending(true)
+          setError(null)
+          try {
+            await client.organizations.removeMember({
+              organizationId: org.id,
+              userId: removeMember.userId,
+            })
+            await router.invalidate()
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e))
+            throw e
+          } finally {
+            setPending(false)
+          }
+        }}
+      />
+
+      <ConfirmActionDialog
+        open={!!revokeInviteId}
+        onOpenChange={(open) => {
+          if (!open) setRevokeInviteId(null)
+        }}
+        title="Revoke invite"
+        description="Revoke this invite link? Anyone with the link will no longer be able to join."
+        confirmLabel="Revoke invite"
+        pending={pending}
+        onConfirm={async () => {
+          if (!revokeInviteId) return
+          setPending(true)
+          setError(null)
+          try {
+            await client.organizations.revokeInvite({ id: revokeInviteId })
+            await router.invalidate()
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e))
+            throw e
+          } finally {
+            setPending(false)
+          }
+        }}
       />
     </>
   )

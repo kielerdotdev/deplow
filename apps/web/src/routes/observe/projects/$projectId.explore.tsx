@@ -19,10 +19,10 @@ import {
   parseContext,
   selectionApiInput,
   serializeContext,
+  serializeTraceSearch,
   type ObserveContext,
 } from "@/lib/observe/context"
 import { client } from "@/lib/orpc"
-import { loadShellContext } from "@/lib/shell-context"
 
 export const Route = createFileRoute("/observe/projects/$projectId/explore")({
   validateSearch: (search) => serializeContext(parseContext(search)),
@@ -31,16 +31,14 @@ export const Route = createFileRoute("/observe/projects/$projectId/explore")({
     if (!session) {
       throw redirect({ to: "/login", search: { redirect: undefined } })
     }
-    const shell = await loadShellContext()
-    const status = await client.observe.status().catch(() => null)
     const project = await client.projects.get({ id: params.projectId })
-    return { session, shell, status, project }
+    return { project }
   },
   component: ExplorePage,
 })
 
 function ExplorePage() {
-  const { session, shell, status, project } = Route.useLoaderData()
+  const { project } = Route.useLoaderData()
   const { projectId } = Route.useParams()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -181,11 +179,6 @@ function ExplorePage() {
 
   return (
     <ObserveProjectShell
-      user={session.user}
-      instanceAdmin={shell.instanceAdmin}
-      organizations={shell.organizations}
-      activeOrganization={shell.activeOrganization}
-      observeEnabled={status?.enabled === true}
       projectId={projectId}
       title={`Explore · ${project.name}`}
       description="Heatmap → selection → attributes associated with the cohort → evidence."
@@ -317,7 +310,7 @@ function ExplorePage() {
                         <Link
                           to="/observe/projects/$projectId/traces/$traceId"
                           params={{ projectId, traceId: r.trace_id }}
-                          search={serializeContext(context)}
+                          search={serializeTraceSearch(context)}
                           className="hover:underline"
                         >
                           {r.root_name}
@@ -355,7 +348,7 @@ function ExplorePage() {
                           <Link
                             to="/observe/projects/$projectId/traces/$traceId"
                             params={{ projectId, traceId: r.trace_id }}
-                            search={serializeContext(context)}
+                            search={serializeTraceSearch(context)}
                             className="font-mono text-xs hover:underline"
                           >
                             open

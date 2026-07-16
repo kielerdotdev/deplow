@@ -1,12 +1,14 @@
+import { ChevronDownIcon } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { TimePreset, TimeRange } from "@/lib/observe/context"
-import { ChevronDownIcon } from "lucide-react"
 
 const PRESETS: { id: TimePreset; label: string }[] = [
   { id: "15m", label: "Last 15m" },
@@ -34,21 +36,23 @@ export function TimeRangePicker({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outline" size="sm" className="gap-1">
+          <Button variant="outline" size="sm">
             {label}
-            <ChevronDownIcon className="size-3.5 opacity-60" />
+            <ChevronDownIcon data-icon="inline-end" className="opacity-60" />
           </Button>
         }
       />
       <DropdownMenuContent align="start">
-        {PRESETS.map((p) => (
-          <DropdownMenuItem
-            key={p.id}
-            onClick={() => onChange({ kind: "preset", preset: p.id })}
-          >
-            {p.label}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          {PRESETS.map((p) => (
+            <DropdownMenuItem
+              key={p.id}
+              onClick={() => onChange({ kind: "preset", preset: p.id })}
+            >
+              {p.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

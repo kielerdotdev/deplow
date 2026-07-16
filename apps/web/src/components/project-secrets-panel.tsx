@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useBlocker } from "@tanstack/react-router"
 import {
   EyeIcon,
   EyeOffIcon,
@@ -7,6 +8,7 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
 import { SettingsHint, SettingsSection } from "@/components/settings-section"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,6 +78,24 @@ export function ProjectSecretsPanel({ projectId }: { projectId: string }) {
     void loadBindings(false)
     void loadEnv(false)
   }, [projectId])
+
+  useEffect(() => {
+    if (!dirty) return
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", onBeforeUnload)
+    return () => window.removeEventListener("beforeunload", onBeforeUnload)
+  }, [dirty])
+
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty,
+    withResolver: true,
+    enableBeforeUnload: false,
+  })
+
+  const leaveBlocked = blocker.status === "blocked"
 
   function updateEntry(index: number, patch: Partial<EnvEntry>) {
     setEntries((rows) =>
@@ -292,6 +312,26 @@ export function ProjectSecretsPanel({ projectId }: { projectId: string }) {
           </SettingsHint>
         </div>
       </SettingsSection>
+
+      <ConfirmActionDialog
+        open={leaveBlocked}
+        onOpenChange={(open) => {
+          if (!open && blocker.status === "blocked") blocker.reset?.()
+        }}
+        title="Unsaved secrets"
+        description="You have unsaved environment secrets. Leave without saving?"
+        confirmLabel="Leave without saving"
+        cancelLabel="Keep editing"
+        destructive
+        onConfirm={() => {
+          setDirty(false)
+          blocker.proceed?.()
+        }}
+      >
+        <p className="text-sm text-muted-foreground">
+          Changes to env secrets will be lost if you leave now.
+        </p>
+      </ConfirmActionDialog>
     </div>
   )
 }

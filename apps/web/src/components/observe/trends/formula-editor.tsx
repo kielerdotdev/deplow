@@ -52,7 +52,7 @@ export function FormulaEditor({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Formulas
@@ -70,7 +70,7 @@ export function FormulaEditor({
         return (
           <div
             key={f.id}
-            className="space-y-1 rounded-md border border-border/70 bg-muted/20 p-2"
+            className="flex flex-col gap-1 rounded-md border border-border/70 bg-muted/20 p-2"
           >
             <div className="flex items-center gap-1.5">
               <span className="flex size-6 items-center justify-center rounded bg-muted text-xs font-bold">
@@ -90,7 +90,8 @@ export function FormulaEditor({
               />
               <button
                 type="button"
-                className="text-muted-foreground hover:text-destructive"
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Remove formula"
                 onClick={() => onChange(formulas.filter((x) => x.id !== f.id))}
               >
                 <TrashIcon className="size-3.5" />

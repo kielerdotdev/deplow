@@ -31,7 +31,7 @@ export function DetailDrawer({
           className,
         )}
       >
-        <SheetHeader className="shrink-0 space-y-1.5 border-b border-border/60 px-6 py-5 pr-14 text-left">
+        <SheetHeader className="flex flex-col shrink-0 gap-1.5 border-b border-border/60 px-6 py-5 pr-14 text-left">
           <SheetTitle className="text-base font-semibold tracking-tight">
             {title}
           </SheetTitle>
@@ -41,7 +41,7 @@ export function DetailDrawer({
             </SheetDescription>
           ) : null}
         </SheetHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6">
           {children}
         </div>
       </SheetContent>

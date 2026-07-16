@@ -22,4 +22,27 @@ describe("observe query helpers", () => {
     expect(sql).toContain("Duration >=")
     expect(sql).toContain("http.status_code")
   })
+
+  it("scopes to root spans", () => {
+    const sql = spanWhere({
+      projectId: "p1",
+      from: new Date("2026-07-15T00:00:00Z"),
+      to: new Date("2026-07-15T01:00:00Z"),
+      spanScope: "root",
+    })
+    expect(sql).toContain("ParentSpanId = ''")
+  })
+
+  it("scopes to entrypoint kinds", () => {
+    const sql = spanWhere({
+      projectId: "p1",
+      from: new Date("2026-07-15T00:00:00Z"),
+      to: new Date("2026-07-15T01:00:00Z"),
+      spanScope: "entrypoint",
+      statusError: true,
+    })
+    expect(sql).toContain("SPAN_KIND_SERVER")
+    expect(sql).toContain("SPAN_KIND_CONSUMER")
+    expect(sql).toContain("STATUS_CODE_ERROR")
+  })
 })

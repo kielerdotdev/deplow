@@ -32,6 +32,8 @@ const CommandRegistryContext = createContext<CommandRegistryContextValue | null>
 )
 
 function projectIdFromPath(pathname: string): string | null {
+  const observe = pathname.match(/^\/observe\/projects\/([^/]+)/)
+  if (observe?.[1]) return observe[1]
   const match = pathname.match(/^\/projects\/([^/]+)/)
   return match?.[1] ?? null
 }

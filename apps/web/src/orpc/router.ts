@@ -143,7 +143,11 @@ export const router = {
       list: observe.issuesList,
       get: observe.issuesGet,
       updateStatus: observe.issuesUpdateStatus,
+      updateTriage: observe.issuesUpdateTriage,
       bulkUpdateStatus: observe.issuesBulkUpdateStatus,
+      trend: observe.issuesTrend,
+      eventHistogram: observe.issuesEventHistogram,
+      eventSeries: observe.issuesEventSeries,
     },
     events: {
       get: observe.eventsGet,
@@ -158,6 +162,7 @@ export const router = {
     traces: {
       list: observeQuery.tracesList,
       get: observeQuery.tracesGet,
+      histogram: observeQuery.tracesHistogramQuery,
     },
     logs: {
       search: observeQuery.logsSearch,
@@ -177,6 +182,7 @@ export const router = {
     savedViews: {
       list: observeQuery.savedViewsList,
       create: observeQuery.savedViewsCreate,
+      delete: observeQuery.savedViewsDelete,
     },
     dashboards: {
       list: observeQuery.dashboardsList,
@@ -205,6 +211,7 @@ export const router = {
       list: observeQuery.alertsList,
       create: observeQuery.alertsCreate,
       update: observeQuery.alertsUpdate,
+      delete: observeQuery.alertsDelete,
     },
     members: {
       list: observeQuery.membersList,
@@ -218,5 +225,6 @@ export const router = {
     list: observeQuery.messageChannelsList,
     create: observeQuery.messageChannelsCreate,
     delete: observeQuery.messageChannelsDelete,
+    test: observeQuery.messageChannelsTest,
   },
 }

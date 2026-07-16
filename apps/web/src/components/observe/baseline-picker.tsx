@@ -1,12 +1,14 @@
+import { ChevronDownIcon } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { BaselineSpec } from "@/lib/observe/context"
-import { ChevronDownIcon } from "lucide-react"
 
 export function BaselinePicker({
   value,
@@ -26,19 +28,21 @@ export function BaselinePicker({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outline" size="sm" className="gap-1">
+          <Button variant="outline" size="sm">
             {label}
-            <ChevronDownIcon className="size-3.5 opacity-60" />
+            <ChevronDownIcon data-icon="inline-end" className="opacity-60" />
           </Button>
         }
       />
       <DropdownMenuContent align="start">
-        <DropdownMenuItem onClick={() => onChange({ mode: "none" })}>
-          No baseline
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onChange({ mode: "previous" })}>
-          Previous period
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => onChange({ mode: "none" })}>
+            No baseline
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onChange({ mode: "previous" })}>
+            Previous period
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

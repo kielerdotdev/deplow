@@ -9,6 +9,8 @@ export {
   insertEvent,
   getEvent,
   listEventsForIssue,
+  eventHistogramForIssue,
+  countEventsForIssueInRange,
   deleteOldestEvents,
   type ObserveEventRow,
 } from "./clickhouse/events"

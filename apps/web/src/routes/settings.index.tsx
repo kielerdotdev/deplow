@@ -1,11 +1,11 @@
 import { useState } from "react"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
-import { CheckIcon, CopyIcon, KeyRoundIcon, MegaphoneIcon, Trash2Icon } from "lucide-react"
+import { CheckIcon, CopyIcon, KeyRoundIcon, Trash2Icon } from "lucide-react"
 
 import { CommandAction } from "@/components/command-action"
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { PageContent, PageHeader } from "@/components/page-layout"
-import { MessageChannelsPanel } from "@/components/settings/message-channels-panel"
 import { SettingsField, SettingsSection } from "@/components/settings-section"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,7 @@ function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [createdToken, setCreatedToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [revokeId, setRevokeId] = useState<string | null>(null)
 
   const mcpUrl =
     typeof window !== "undefined"
@@ -79,7 +80,7 @@ function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="MCP tokens and notification channels for alerts."
+        description="MCP tokens for Cursor and API access."
       />
       <PageContent width="narrow">
         <CommandAction
@@ -98,15 +99,6 @@ function SettingsPage() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
-
-        <SettingsSection icon={MegaphoneIcon} title="Notification channels">
-          <SettingsField
-            label="Channels"
-            description="Slack, Discord, email, or generic webhooks. Assign these when creating alerts from Charts."
-          >
-            <MessageChannelsPanel />
-          </SettingsField>
-        </SettingsSection>
 
         {createdToken ? (
           <Alert>
@@ -218,7 +210,7 @@ function SettingsPage() {
                       size="sm"
                       variant="ghost"
                       disabled={pending}
-                      onClick={() => void revokeToken(token.id)}
+                      onClick={() => setRevokeId(token.id)}
                     >
                       <Trash2Icon className="size-3.5" />
                       Revoke
@@ -248,6 +240,26 @@ function SettingsPage() {
           </SettingsField>
         </SettingsSection>
       </PageContent>
+
+      <ConfirmActionDialog
+        open={!!revokeId}
+        onOpenChange={(open) => {
+          if (!open) setRevokeId(null)
+        }}
+        title="Revoke MCP token"
+        description={
+          revokeId
+            ? `Revoke “${tokens.find((t) => t.id === revokeId)?.name ?? "this token"}”? Connected MCP clients will stop working until you create a new token.`
+            : "Revoke this token?"
+        }
+        confirmLabel="Revoke token"
+        pending={pending}
+        onConfirm={async () => {
+          if (!revokeId) return
+          await revokeToken(revokeId)
+          setRevokeId(null)
+        }}
+      />
     </>
   )
 }

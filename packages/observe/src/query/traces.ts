@@ -48,7 +48,7 @@ export async function listTraces(
     `
     SELECT
       TraceId AS trace_id,
-      any(ServiceName) AS service,
+      argMin(ServiceName, Timestamp) AS service,
       argMin(SpanName, Timestamp) AS root_name,
       min(Timestamp) AS start,
       max(toUnixTimestamp64Nano(Timestamp) + toUInt64(Duration))
@@ -133,4 +133,44 @@ export async function recentErrorTraces(
     { ...filter, statusError: true },
     limit,
   )
+}
+
+/** Trace count over time (one point per bucket by root span start). */
+export async function tracesHistogram(
+  config: ObserveClickHouseConfig,
+  filter: SpanFilter,
+  bucketSeconds = 300,
+): Promise<Array<{ t: number; count: number; error_count: number }>> {
+  const where = spanWhere(filter)
+  const rows = await queryJson<{
+    t: string
+    count: string
+    error_count: string
+  }>(
+    config,
+    `
+    SELECT
+      toUnixTimestamp(
+        toStartOfInterval(min_ts, INTERVAL ${Math.max(bucketSeconds, 60)} SECOND)
+      ) * 1000 AS t,
+      count() AS count,
+      countIf(has_error > 0) AS error_count
+    FROM (
+      SELECT
+        TraceId,
+        min(Timestamp) AS min_ts,
+        countIf(StatusCode = 'STATUS_CODE_ERROR') AS has_error
+      FROM spans
+      WHERE ${where}
+      GROUP BY TraceId
+    )
+    GROUP BY t
+    ORDER BY t ASC
+    `,
+  )
+  return rows.map((r) => ({
+    t: Number(r.t),
+    count: Number(r.count),
+    error_count: Number(r.error_count),
+  }))
 }

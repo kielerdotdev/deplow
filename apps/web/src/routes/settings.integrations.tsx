@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 
 import { CommandAction } from "@/components/command-action"
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
 import { IntegrationCard } from "@/components/integration-card"
 import { PageContent, PageHeader } from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -17,10 +18,12 @@ import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Field, FieldGroup } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getSession } from "@/lib/auth.functions"
@@ -56,6 +59,13 @@ function IntegrationsPage() {
   const [deleteUrl, setDeleteUrl] = useState<string | null>(null)
   const [gitlabClientId, setGitlabClientId] = useState("")
   const [gitlabSecret, setGitlabSecret] = useState("")
+  const [confirmAction, setConfirmAction] = useState<
+    | "disconnect-github"
+    | "disconnect-gitlab"
+    | "remove-github-app"
+    | "remove-gitlab"
+    | null
+  >(null)
   const [gitlabBase, setGitlabBase] = useState("https://gitlab.com")
   const [showGithubHelp, setShowGithubHelp] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -118,16 +128,13 @@ function IntegrationsPage() {
       await router.invalidate()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      throw e
     } finally {
       setPending(false)
     }
   }
 
   async function removeGitHubApp() {
-    const ok = window.confirm(
-      "Remove the GitHub App from this server? You may need to finish deletion on github.com.",
-    )
-    if (!ok) return
     setPending(true)
     setError(null)
     setInfo(null)
@@ -150,16 +157,13 @@ function IntegrationsPage() {
       await router.invalidate()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      throw e
     } finally {
       setPending(false)
     }
   }
 
   async function removeGitLab() {
-    const ok = window.confirm(
-      "Remove GitLab OAuth from this server? Connected accounts will be unlinked.",
-    )
-    if (!ok) return
     setPending(true)
     setError(null)
     setInfo(null)
@@ -169,6 +173,7 @@ function IntegrationsPage() {
       await router.invalidate()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      throw e
     } finally {
       setPending(false)
     }
@@ -258,7 +263,7 @@ function IntegrationsPage() {
       {info ? (
         <Alert>
           <AlertTitle>Done</AlertTitle>
-          <AlertDescription className="space-y-2">
+          <AlertDescription className="flex flex-col gap-2">
             <p>{info}</p>
             {deleteUrl ? (
               <p>
@@ -324,37 +329,41 @@ function IntegrationsPage() {
                     <EllipsisIcon />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-44">
-                    {status.installUrl ? (
-                      <DropdownMenuItem
-                        render={
-                          <a
-                            href={status.installUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          />
-                        }
-                      >
-                        Install on GitHub
-                      </DropdownMenuItem>
-                    ) : null}
-                    {githubLink ? (
-                      <DropdownMenuItem
-                        disabled={pending}
-                        onClick={() => void disconnect("github")}
-                      >
-                        Disconnect account
-                      </DropdownMenuItem>
-                    ) : null}
+                    <DropdownMenuGroup>
+                      {status.installUrl ? (
+                        <DropdownMenuItem
+                          render={
+                            <a
+                              href={status.installUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            />
+                          }
+                        >
+                          Install on GitHub
+                        </DropdownMenuItem>
+                      ) : null}
+                      {githubLink ? (
+                        <DropdownMenuItem
+                          disabled={pending}
+                          onClick={() => setConfirmAction("disconnect-github")}
+                        >
+                          Disconnect account
+                        </DropdownMenuItem>
+                      ) : null}
+                    </DropdownMenuGroup>
                     {(status.installUrl || githubLink) && (
                       <DropdownMenuSeparator />
                     )}
-                    <DropdownMenuItem
-                      disabled={pending}
-                      variant="destructive"
-                      onClick={() => void removeGitHubApp()}
-                    >
-                      Remove App
-                    </DropdownMenuItem>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        disabled={pending}
+                        variant="destructive"
+                        onClick={() => setConfirmAction("remove-github-app")}
+                      >
+                        Remove App
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -378,7 +387,7 @@ function IntegrationsPage() {
                 />
               </button>
               {showGithubHelp ? (
-                <div className="mt-3 space-y-2">
+                <div className="flex flex-col mt-3 gap-2">
                   <p className="text-xs text-muted-foreground">
                     Add this callback URL on the GitHub App, then try Connect
                     again.
@@ -440,21 +449,25 @@ function IntegrationsPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-44">
                     {gitlabLink ? (
-                      <DropdownMenuItem
-                        disabled={pending}
-                        onClick={() => void disconnect("gitlab")}
-                      >
-                        Disconnect account
-                      </DropdownMenuItem>
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem
+                          disabled={pending}
+                          onClick={() => setConfirmAction("disconnect-gitlab")}
+                        >
+                          Disconnect account
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
                     ) : null}
                     {gitlabLink ? <DropdownMenuSeparator /> : null}
-                    <DropdownMenuItem
-                      disabled={pending}
-                      variant="destructive"
-                      onClick={() => void removeGitLab()}
-                    >
-                      Remove OAuth
-                    </DropdownMenuItem>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        disabled={pending}
+                        variant="destructive"
+                        onClick={() => setConfirmAction("remove-gitlab")}
+                      >
+                        Remove OAuth
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -463,14 +476,14 @@ function IntegrationsPage() {
         >
           {!status.gitlabOAuthConfigured ? (
             <form
-              className="space-y-3 border-t border-border/60 pt-4"
+              className="flex flex-col gap-3 border-t border-border/60 pt-4"
               onSubmit={(e) => {
                 e.preventDefault()
                 void saveGitLab()
               }}
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
+              <FieldGroup className="gap-3">
+                <Field>
                   <Label htmlFor="gitlab-client-id">Application ID</Label>
                   <Input
                     id="gitlab-client-id"
@@ -478,8 +491,8 @@ function IntegrationsPage() {
                     onChange={(e) => setGitlabClientId(e.target.value)}
                     autoComplete="off"
                   />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
+                </Field>
+                <Field>
                   <Label htmlFor="gitlab-secret">Secret</Label>
                   <Input
                     id="gitlab-secret"
@@ -488,8 +501,8 @@ function IntegrationsPage() {
                     onChange={(e) => setGitlabSecret(e.target.value)}
                     autoComplete="off"
                   />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
+                </Field>
+                <Field>
                   <Label htmlFor="gitlab-base">Instance URL</Label>
                   <Input
                     id="gitlab-base"
@@ -497,8 +510,8 @@ function IntegrationsPage() {
                     onChange={(e) => setGitlabBase(e.target.value)}
                     placeholder="https://gitlab.com"
                   />
-                </div>
-              </div>
+                </Field>
+              </FieldGroup>
               <Button
                 type="submit"
                 size="sm"
@@ -511,6 +524,51 @@ function IntegrationsPage() {
           ) : null}
         </IntegrationCard>
       </PageContent>
+
+      <ConfirmActionDialog
+        open={confirmAction === "disconnect-github"}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title="Disconnect GitHub"
+        description="Disconnect this GitHub account from Deplow? Deployments that use it will stop syncing until you reconnect."
+        confirmLabel="Disconnect"
+        pending={pending}
+        onConfirm={() => disconnect("github")}
+      />
+      <ConfirmActionDialog
+        open={confirmAction === "disconnect-gitlab"}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title="Disconnect GitLab"
+        description="Disconnect this GitLab account from Deplow? Deployments that use it will stop syncing until you reconnect."
+        confirmLabel="Disconnect"
+        pending={pending}
+        onConfirm={() => disconnect("gitlab")}
+      />
+      <ConfirmActionDialog
+        open={confirmAction === "remove-github-app"}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title="Remove GitHub App"
+        description="Remove the GitHub App from this server? You may need to finish deletion on github.com."
+        confirmLabel="Remove App"
+        pending={pending}
+        onConfirm={() => removeGitHubApp()}
+      />
+      <ConfirmActionDialog
+        open={confirmAction === "remove-gitlab"}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title="Remove GitLab OAuth"
+        description="Remove GitLab OAuth from this server? Connected accounts will be unlinked."
+        confirmLabel="Remove OAuth"
+        pending={pending}
+        onConfirm={() => removeGitLab()}
+      />
     </>
   )
 }

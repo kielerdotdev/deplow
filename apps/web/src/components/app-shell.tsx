@@ -1,11 +1,14 @@
+import { useEffect, useMemo } from "react"
 import { Link, useRouterState } from "@tanstack/react-router"
 import {
   ActivityIcon,
+  BellIcon,
   BugIcon,
   ChartLineIcon,
   ChevronsUpDownIcon,
   CompassIcon,
   KeyRoundIcon,
+  LayoutDashboardIcon,
   LayoutGridIcon,
   ListTreeIcon,
   LogOutIcon,
@@ -22,14 +25,8 @@ import {
   CommandPaletteTrigger,
 } from "@/components/command-palette"
 import { DeplowLogo } from "@/components/deplow-logo"
-import {
-  DeployProjectSwitcher,
-  type DeployProjectOption,
-} from "@/components/deploy-project-switcher"
-import {
-  ObserveProjectSwitcher,
-  type ObserveProjectOption,
-} from "@/components/observe/project-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ProjectSwitcher } from "@/components/project-switcher"
 import {
   OrgSwitcher,
   type OrgOption,
@@ -50,6 +47,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -61,10 +59,12 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { authClient } from "@/lib/auth-client"
 import { CommandProvider } from "@/lib/command"
+import { pickObserveNavSearch } from "@/lib/observe/context"
+import {
+  syncActiveProjectFromPath,
+  useProjectStore,
+} from "@/lib/project-store"
 import { cn } from "@/lib/utils"
-
-const EMPTY_PROJECTS: DeployProjectOption[] = []
-const EMPTY_OBSERVE_PROJECTS: ObserveProjectOption[] = []
 
 type AppShellProps = {
   user: {
@@ -78,12 +78,6 @@ type AppShellProps = {
   accountHome?: boolean
   uiMode?: "deploy" | "observe"
   observeEnabled?: boolean
-  /** When set, Observe sidebar links target this project. */
-  observeProjectId?: string
-  observeProjects?: ObserveProjectOption[]
-  /** When set, Deploy sidebar links target this project. */
-  deployProjectId?: string
-  deployProjects?: DeployProjectOption[]
   children: React.ReactNode
 }
 
@@ -119,63 +113,99 @@ function buildDeployNav(projectId?: string) {
   ]
 }
 
-function buildObserveNav(projectId?: string) {
-  if (!projectId) {
-    return []
-  }
+type NavItem = {
+  title: string
+  to: string
+  icon: typeof ActivityIcon
+  match: (path: string) => boolean
+}
+
+type NavGroup = { label: string; items: NavItem[] }
+
+function buildObserveNav(projectId?: string): NavGroup[] {
+  if (!projectId) return []
   const base = `/observe/projects/${projectId}`
   return [
     {
-      title: "Overview",
-      to: base,
-      icon: ActivityIcon,
-      match: (path: string) => path === base || path === `${base}/`,
+      label: "Monitor",
+      items: [
+        {
+          title: "Overview",
+          to: base,
+          icon: ActivityIcon,
+          match: (path: string) => path === base || path === `${base}/`,
+        },
+        {
+          title: "Services",
+          to: `${base}/services`,
+          icon: ServerIcon,
+          match: (path: string) => path.includes("/services"),
+        },
+        {
+          title: "Charts",
+          to: `${base}/trends`,
+          icon: ChartLineIcon,
+          match: (path: string) => path.includes("/trends"),
+        },
+        {
+          title: "Saved charts",
+          to: `${base}/insights`,
+          icon: ChartLineIcon,
+          match: (path: string) => path.includes("/insights"),
+        },
+        {
+          title: "Boards",
+          to: `${base}/dashboards`,
+          icon: LayoutDashboardIcon,
+          match: (path: string) => path.includes("/dashboards"),
+        },
+        {
+          title: "Alerts",
+          to: `${base}/alerts`,
+          icon: BellIcon,
+          match: (path: string) => path.includes("/alerts"),
+        },
+      ],
     },
     {
-      title: "Services",
-      to: `${base}/services`,
-      icon: ServerIcon,
-      match: (path: string) => path.includes("/services"),
+      label: "Investigate",
+      items: [
+        {
+          title: "Issues",
+          to: `${base}/issues`,
+          icon: BugIcon,
+          match: (path: string) => path.includes("/issues"),
+        },
+        {
+          title: "Traces",
+          to: `${base}/traces`,
+          icon: ListTreeIcon,
+          match: (path: string) => path.includes("/traces"),
+        },
+        {
+          title: "Logs",
+          to: `${base}/logs`,
+          icon: ScrollTextIcon,
+          match: (path: string) => path.includes("/logs"),
+        },
+        {
+          title: "Explore",
+          to: `${base}/explore`,
+          icon: CompassIcon,
+          match: (path: string) => path.includes("/explore"),
+        },
+      ],
     },
     {
-      title: "Charts",
-      to: `${base}/trends`,
-      icon: ChartLineIcon,
-      match: (path: string) =>
-        path.includes("/trends") ||
-        path.includes("/insights") ||
-        path.includes("/dashboards") ||
-        path.includes("/alerts"),
-    },
-    {
-      title: "Explore",
-      to: `${base}/explore`,
-      icon: CompassIcon,
-      match: (path: string) => path.includes("/explore"),
-    },
-    {
-      title: "Traces",
-      to: `${base}/traces`,
-      icon: ListTreeIcon,
-      match: (path: string) => path.includes("/traces"),
-    },
-    {
-      title: "Logs",
-      to: `${base}/logs`,
-      icon: ScrollTextIcon,
-      match: (path: string) => path.includes("/logs"),
-    },
-    {
-      title: "Issues",
-      to: `${base}/issues`,
-      icon: BugIcon,
-      match: (path: string) => path.includes("/issues"),
-    },
-    {
-      title: "Releases",
-      to: `${base}/releases`,
-      icon: TagIcon,
-      match: (path: string) => path.includes("/releases"),
+      label: "Changes",
+      items: [
+        {
+          title: "Releases",
+          to: `${base}/releases`,
+          icon: TagIcon,
+          match: (path: string) => path.includes("/releases"),
+        },
+      ],
     },
   ]
 }
@@ -188,20 +218,40 @@ export function AppShell({
   actions,
   accountHome,
   uiMode,
-  observeEnabled: _observeEnabled = false,
-  observeProjectId,
-  observeProjects = EMPTY_OBSERVE_PROJECTS,
-  deployProjectId,
-  deployProjects = EMPTY_PROJECTS,
+  observeEnabled = false,
   children,
 }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const rawSearch = useRouterState({ select: (s) => s.location.search })
+  const observeSearch = useMemo(
+    () =>
+      pathname.startsWith("/observe")
+        ? pickObserveNavSearch(
+            rawSearch as unknown as Record<string, unknown>,
+          )
+        : {},
+    [pathname, rawSearch],
+  )
+  const activeProjectId = useProjectStore((s) => s.activeProjectId)
   const mode =
     uiMode ?? (pathname.startsWith("/observe") ? "observe" : "deploy")
-  const primaryNav =
+  const observeGroups =
     mode === "observe"
-      ? buildObserveNav(observeProjectId)
-      : buildDeployNav(deployProjectId)
+      ? buildObserveNav(activeProjectId ?? undefined)
+      : []
+  const deployNav =
+    mode === "deploy" ? buildDeployNav(activeProjectId ?? undefined) : []
+
+  useEffect(() => {
+    syncActiveProjectFromPath(pathname)
+  }, [pathname])
+
+  const deployHome = activeProjectId
+    ? `/projects/${activeProjectId}`
+    : "/"
+  const observeHome = activeProjectId
+    ? `/observe/projects/${activeProjectId}`
+    : "/observe"
 
   async function handleSignOut() {
     await authClient.signOut()
@@ -224,7 +274,8 @@ export function AppShell({
           />
           <Sidebar
             collapsible="icon"
-            className="border-r border-sidebar-border/70 bg-sidebar"
+            className="border-r border-sidebar-border/80 bg-sidebar/95 backdrop-blur-sm"
+            style={{ viewTransitionName: "app-sidebar" }}
           >
             <SidebarHeader className="gap-1.5 border-b border-sidebar-border/70 pb-2">
               <SidebarMenu>
@@ -232,7 +283,7 @@ export function AppShell({
                   <SidebarMenuButton
                     size="lg"
                     render={
-                      <Link to={mode === "observe" ? "/observe" : "/"} />
+                      <Link to={mode === "observe" ? observeHome : deployHome} />
                     }
                     className="data-[slot=sidebar-menu-button]:p-1.5!"
                   >
@@ -245,29 +296,46 @@ export function AppShell({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
-              <div className="mx-2 flex rounded-md border border-sidebar-border/80 p-0.5 text-xs">
+              <div className="mx-2 flex h-9 items-stretch rounded-md border border-sidebar-border bg-background/40 p-0.5 text-xs">
                 <Link
-                  to="/"
+                  to={deployHome}
+                  title="Deploy — same project; deployment and service config"
                   className={cn(
-                    "flex-1 rounded-sm px-2 py-1 text-center",
+                    "flex flex-1 items-center justify-center rounded-[3px] px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                     mode === "deploy"
-                      ? "bg-sidebar-accent font-medium"
+                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   Deploy
                 </Link>
-                <Link
-                  to="/observe"
-                  className={cn(
-                    "flex-1 rounded-sm px-2 py-1 text-center",
-                    mode === "observe"
-                      ? "bg-sidebar-accent font-medium"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  Observe
-                </Link>
+                {observeEnabled ? (
+                  <Link
+                    to={observeHome}
+                    search={
+                      Object.keys(observeSearch).length > 0
+                        ? (observeSearch as never)
+                        : undefined
+                    }
+                    className={cn(
+                      "flex flex-1 items-center justify-center rounded-[3px] px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                      mode === "observe"
+                        ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title="Observe — same project; investigation scope carried when set"
+                  >
+                    Observe
+                  </Link>
+                ) : (
+                  <span
+                    className="flex flex-1 cursor-not-allowed items-center justify-center rounded-[3px] px-2 text-muted-foreground/50"
+                    title="Observe is not enabled on this instance"
+                    aria-disabled="true"
+                  >
+                    Observe
+                  </span>
+                )}
               </div>
               {organizations.length > 1 ? (
                 <OrgSwitcher
@@ -275,40 +343,61 @@ export function AppShell({
                   active={activeOrganization}
                 />
               ) : null}
-              {mode === "observe" ? (
-                <ObserveProjectSwitcher
-                  projects={observeProjects}
-                  activeProjectId={observeProjectId}
-                />
-              ) : (
-                <DeployProjectSwitcher
-                  projects={deployProjects}
-                  activeProjectId={deployProjectId}
-                />
-              )}
+              <ProjectSwitcher mode={mode} />
             </SidebarHeader>
 
             <SidebarContent>
-              {primaryNav.length > 0 ? (
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {primaryNav.map((item) => (
-                        <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton
-                            isActive={item.match(pathname)}
-                            tooltip={item.title}
-                            render={<Link to={item.to as never} />}
-                          >
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              ) : null}
+              {mode === "observe"
+                ? observeGroups.map((group) => (
+                    <SidebarGroup key={group.label}>
+                      <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                      <SidebarGroupContent>
+                        <SidebarMenu>
+                          {group.items.map((item) => (
+                            <SidebarMenuItem key={item.title}>
+                              <SidebarMenuButton
+                                isActive={item.match(pathname)}
+                                tooltip={item.title}
+                                render={
+                                  <Link
+                                    to={item.to as never}
+                                    search={
+                                      Object.keys(observeSearch).length > 0
+                                        ? (observeSearch as never)
+                                        : undefined
+                                    }
+                                  />
+                                }
+                              >
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          ))}
+                        </SidebarMenu>
+                      </SidebarGroupContent>
+                    </SidebarGroup>
+                  ))
+                : deployNav.length > 0 ? (
+                    <SidebarGroup>
+                      <SidebarGroupContent>
+                        <SidebarMenu>
+                          {deployNav.map((item) => (
+                            <SidebarMenuItem key={item.title}>
+                              <SidebarMenuButton
+                                isActive={item.match(pathname)}
+                                tooltip={item.title}
+                                render={<Link to={item.to as never} />}
+                              >
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          ))}
+                        </SidebarMenu>
+                      </SidebarGroupContent>
+                    </SidebarGroup>
+                  ) : null}
             </SidebarContent>
 
             <SidebarFooter>
@@ -379,11 +468,12 @@ export function AppShell({
             </SidebarFooter>
           </Sidebar>
 
-          <SidebarInset className="min-w-0 overflow-x-hidden bg-background">
-            <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/90 px-4 backdrop-blur-md md:px-6">
+          <SidebarInset className="min-w-0 overflow-x-hidden bg-transparent">
+            <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b border-border/70 bg-background/75 px-3 backdrop-blur-xl md:px-5">
               <SidebarTrigger className="-ml-0.5" />
               <div className="flex-1" />
-              <CommandPaletteTrigger className="mr-1" />
+              <CommandPaletteTrigger className="mr-0.5" />
+              <ThemeToggle />
               {actions ? (
                 <div className="flex shrink-0 items-center gap-1.5">
                   {actions}
@@ -392,7 +482,7 @@ export function AppShell({
             </header>
             <div
               className={cn(
-                "animate-content-in flex min-w-0 flex-1 flex-col gap-6 overflow-x-hidden p-4 md:px-6 md:py-5",
+                "animate-content-in flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden p-3 md:px-5 md:py-4",
                 accountHome && "pt-2",
               )}
             >

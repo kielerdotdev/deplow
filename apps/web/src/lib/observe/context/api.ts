@@ -29,6 +29,10 @@ export function contextToApiInput(
     durationMsMax = ctx.selection.yMax
   }
 
+  if (durationMsMin == null && ctx.query.minDurationMs != null) {
+    durationMsMin = ctx.query.minDurationMs
+  }
+
   return {
     projectId,
     from: range.from.toISOString(),
@@ -45,7 +49,9 @@ export function contextToApiInput(
     })),
     durationMsMin,
     durationMsMax,
-    statusError: extras?.statusError,
+    statusError: extras?.statusError ?? ctx.query.errorsOnly,
+    // Root spans are the product default for investigation lists.
+    spanScope: ctx.query.spanScope ?? "root",
   }
 }
 

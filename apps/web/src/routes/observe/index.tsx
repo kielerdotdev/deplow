@@ -1,11 +1,11 @@
-import { createFileRoute, redirect } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { createFileRoute, Link, redirect } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
-import type { ObserveProjectOption } from "@/components/observe/project-switcher"
 import { PageContent, PageHeader } from "@/components/page-layout"
+import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
+import { useProjectStore } from "@/lib/project-store"
 import { loadShellContext } from "@/lib/shell-context"
 
 export const Route = createFileRoute("/observe/")({
@@ -15,29 +15,24 @@ export const Route = createFileRoute("/observe/")({
       throw redirect({ to: "/login", search: { redirect: undefined } })
     }
     const shell = await loadShellContext()
-    const status = await client.observe.status().catch(() => null)
     const projects = await client.projects.list().catch(() => [])
-    if (status?.enabled && projects[0]) {
+    const activeId = useProjectStore.getState().activeProjectId
+    const preferred =
+      (activeId && projects.find((p) => p.id === activeId)) || projects[0]
+    if (shell.observeEnabled && preferred) {
       throw redirect({
         to: "/observe/projects/$projectId",
-        params: { projectId: projects[0].id },
+        params: { projectId: preferred.id },
       })
     }
-    return { session, shell, status, projects }
+    return { session, shell }
   },
   component: ObserveHome,
 })
 
 function ObserveHome() {
-  const { session, shell, status, projects } = Route.useLoaderData()
-  const observeEnabled = status?.enabled === true
-  const [observeProjects, setObserveProjects] = useState<
-    ObserveProjectOption[]
-  >(projects.map((p) => ({ id: p.id, name: p.name })))
-
-  useEffect(() => {
-    setObserveProjects(projects.map((p) => ({ id: p.id, name: p.name })))
-  }, [projects])
+  const { session, shell } = Route.useLoaderData()
+  const observeEnabled = shell.observeEnabled
 
   return (
     <AppShell
@@ -47,7 +42,6 @@ function ObserveHome() {
       activeOrganization={shell.activeOrganization}
       uiMode="observe"
       observeEnabled={observeEnabled}
-      observeProjects={observeProjects}
     >
       <PageHeader
         title="Observe"
@@ -70,6 +64,9 @@ function ObserveHome() {
               Create a project in Deploy mode, then pick it from the sidebar to
               start observing.
             </p>
+            <Button size="sm" className="mt-4" render={<Link to="/" />}>
+              Open Deploy
+            </Button>
           </div>
         )}
       </PageContent>

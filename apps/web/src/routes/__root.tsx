@@ -1,5 +1,9 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
+import { NavigationProgress } from "@/components/navigation-progress"
+import { NotFoundPage, RouteErrorPage } from "@/components/route-error"
+import { THEME_BOOT_SCRIPT } from "@/lib/theme"
+
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
@@ -42,22 +46,22 @@ export const Route = createRootRoute({
         ]
       : [],
   }),
-  notFoundComponent: () => (
-    <main className="container mx-auto p-4 pt-16">
-      <h1>404</h1>
-      <p>The requested page could not be found.</p>
-    </main>
+  notFoundComponent: NotFoundPage,
+  errorComponent: ({ error }) => (
+    <RouteErrorPage error={error instanceof Error ? error : new Error(String(error))} />
   ),
   shellComponent: RootDocument,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body>
+        <NavigationProgress />
         {children}
         <Scripts />
       </body>

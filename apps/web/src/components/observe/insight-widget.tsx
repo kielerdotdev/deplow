@@ -109,7 +109,7 @@ export function InsightWidget({
               <Link
                 to="/observe/projects/$projectId/trends"
                 params={{ projectId }}
-                search={{ view: "builder", insightId: insight.id }}
+                search={{ insightId: insight.id }}
               />
             }
           >

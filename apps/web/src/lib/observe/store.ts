@@ -1,7 +1,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 
-import { and, desc, eq, isNull, sql } from "@deplow/db"
+import { and, desc, eq, inArray, isNull, sql } from "@deplow/db"
 import {
   observeEventCountsHourly,
   observeGroupings,
@@ -434,6 +434,37 @@ export async function getIssue(issueId: string) {
     .where(eq(observeIssues.id, issueId))
     .limit(1)
   return issue ?? null
+}
+
+/** Hourly event counts for issue sparklines (SQLite rollups from digest). */
+export async function fetchIssueTrends(
+  issueIds: string[],
+  hours = 24,
+): Promise<Record<string, Array<{ t: string; count: number }>>> {
+  if (issueIds.length === 0) return {}
+  const cutoff = new Date(Date.now() - hours * 60 * 60_000)
+  const cutoffIso = cutoff.toISOString().slice(0, 13) + ":00:00.000Z"
+  const rows = await db
+    .select()
+    .from(observeEventCountsHourly)
+    .where(
+      and(
+        eq(observeEventCountsHourly.scope, "issue"),
+        inArray(observeEventCountsHourly.scopeId, issueIds),
+      ),
+    )
+  const out: Record<string, Array<{ t: string; count: number }>> = {}
+  for (const id of issueIds) out[id] = []
+  for (const row of rows) {
+    if (row.hour < cutoffIso) continue
+    const list = out[row.scopeId]
+    if (!list) continue
+    list.push({ t: row.hour, count: row.count })
+  }
+  for (const id of issueIds) {
+    out[id]!.sort((a, b) => a.t.localeCompare(b.t))
+  }
+  return out
 }
 
 export async function fetchEvent(projectId: string, eventId: string) {

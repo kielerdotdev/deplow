@@ -112,11 +112,31 @@ class FilterIngestSpanProcessor implements SpanProcessor {
   }
 }
 
-let sdk: NodeSDK | null = null
-let started = false
+/**
+ * Survive Vite SSR HMR: module-local `started` resets on reload and would
+ * re-patch http/https, stacking ClientRequest listeners until MaxListeners
+ * warnings flood the console.
+ */
+type DogfoodOtelGlobal = {
+  sdk: NodeSDK | null
+  started: boolean
+}
+
+const OTEL_GLOBAL_KEY = "__deplowDogfoodOtel"
+
+function otelState(): DogfoodOtelGlobal {
+  const g = globalThis as typeof globalThis & {
+    [OTEL_GLOBAL_KEY]?: DogfoodOtelGlobal
+  }
+  if (!g[OTEL_GLOBAL_KEY]) {
+    g[OTEL_GLOBAL_KEY] = { sdk: null, started: false }
+  }
+  return g[OTEL_GLOBAL_KEY]
+}
 
 export function initDogfoodOtel(target: DogfoodOtelTarget): void {
-  if (started || !target.otelEndpoint || !target.projectId) return
+  const state = otelState()
+  if (state.started || !target.otelEndpoint || !target.projectId) return
 
   const base = target.otelEndpoint.replace(/\/$/, "")
   const headers = parseOtelAuthHeaders(target.otelHeaders)
@@ -136,19 +156,34 @@ export function initDogfoodOtel(target: DogfoodOtelTarget): void {
     headers,
   })
 
-  sdk = new NodeSDK({
+  // Mark before start() so a concurrent/HMR call cannot race a second SDK.
+  state.started = true
+
+  const sdk = new NodeSDK({
     resource,
     spanProcessors: [
-      new FilterIngestSpanProcessor(new BatchSpanProcessor(traceExporter)),
+      new FilterIngestSpanProcessor(
+        new BatchSpanProcessor(traceExporter, {
+          maxExportBatchSize: 64,
+          scheduledDelayMillis: 2000,
+        }),
+      ),
     ],
     logRecordProcessors: [
-      new BatchLogRecordProcessor({ exporter: logExporter }),
+      new BatchLogRecordProcessor({
+        exporter: logExporter,
+        scheduledDelayMillis: 2000,
+      }),
     ],
     instrumentations: [
       getNodeAutoInstrumentations({
         "@opentelemetry/instrumentation-fs": { enabled: false },
         "@opentelemetry/instrumentation-dns": { enabled: false },
         "@opentelemetry/instrumentation-net": { enabled: false },
+        // Avoid stacking listeners on Connect/Express/Router (TanStack Start).
+        "@opentelemetry/instrumentation-express": { enabled: false },
+        "@opentelemetry/instrumentation-router": { enabled: false },
+        "@opentelemetry/instrumentation-connect": { enabled: false },
         "@opentelemetry/instrumentation-http": {
           ignoreIncomingRequestHook(req) {
             const host = req.headers?.host ?? "local"
@@ -202,8 +237,15 @@ export function initDogfoodOtel(target: DogfoodOtelTarget): void {
     ],
   })
 
-  sdk.start()
-  started = true
+  try {
+    sdk.start()
+    state.sdk = sdk
+  } catch (err) {
+    state.started = false
+    state.sdk = null
+    console.warn("[observe-dogfood] OTEL start failed", err)
+    return
+  }
 
   dogfoodLog("deplow dogfood OpenTelemetry online", "info")
 
@@ -215,13 +257,15 @@ export function initDogfoodOtel(target: DogfoodOtelTarget): void {
 }
 
 export async function shutdownDogfoodOtel(): Promise<void> {
+  const state = otelState()
+  const sdk = state.sdk
   if (!sdk) {
-    started = false
+    state.started = false
     return
   }
   await sdk.shutdown().catch(() => undefined)
-  sdk = null
-  started = false
+  state.sdk = null
+  state.started = false
 }
 
 /** Emit an OTEL log record (no-op if SDK not started). */
@@ -229,7 +273,7 @@ export function dogfoodLog(
   body: string,
   severity: "debug" | "info" | "warn" | "error" = "info",
 ) {
-  if (!started) return
+  if (!otelState().started) return
   const severityNumber =
     severity === "error"
       ? 17

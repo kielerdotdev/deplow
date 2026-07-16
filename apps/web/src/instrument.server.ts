@@ -8,12 +8,15 @@ import type { NodeOptions } from "@sentry/node"
 import { env } from "./lib/env"
 import { dogfoodSentryOptions } from "./lib/observe/dogfood"
 
-let initialized = false
+const SENTRY_GLOBAL_KEY = "__deplowDogfoodSentry"
 
 export function initDogfoodSentryServer(dsn: string) {
-  if (initialized || !dsn) return
+  const g = globalThis as typeof globalThis & {
+    [SENTRY_GLOBAL_KEY]?: boolean
+  }
+  if (g[SENTRY_GLOBAL_KEY] || !dsn) return
   Sentry.init(dogfoodSentryOptions(dsn) as unknown as NodeOptions)
-  initialized = true
+  g[SENTRY_GLOBAL_KEY] = true
   console.info(
     "[observe-dogfood] server Sentry →",
     dsn.replace(/\/\/.*@/, "//***@"),

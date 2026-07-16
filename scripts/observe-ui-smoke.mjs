@@ -82,12 +82,15 @@ async function assertPage(path, checks) {
 await assertPage("/observe", ["Deploy", "Observe"])
 await assertPage(`/observe/projects/${PROJECT_ID}/issues`, ["Issues"])
 await assertPage(`/observe/projects/${PROJECT_ID}/setup`, ["DSN"])
+await assertPage(`/observe/projects/${PROJECT_ID}/issues`, ["Issues", "Trend"])
 await assertPage(`/observe/projects/${PROJECT_ID}/issues/${ISSUE_ID}`, [
-  "Stacktrace",
   "Resolve",
+  "lifetime events",
+  "Recommended",
 ])
 
-await page.getByRole("button", { name: "Stacktrace" }).click()
+await page.locator('[data-testid="event-inspector"]').waitFor({ timeout: 15_000 })
+await page.getByRole("button", { name: /^Stack/ }).click()
 // Sample envelopes use either main (generic e2e) or handler (yoyoyolo)
 await page.locator('[data-testid="stack-frames"]').waitFor({ timeout: 10_000 })
 const frameText = await page.locator('[data-testid="stack-frames"]').innerText()
@@ -95,6 +98,16 @@ if (!/main|handler|app\.ts|yoyoyolo/.test(frameText)) {
   throw new Error(`unexpected stack frames: ${frameText}`)
 }
 console.log("stack frames ok:", frameText.split("\n")[0])
+
+// Correlation: Open trace / Correlated logs from issue without pasting IDs
+const corr = page.locator('[data-testid="correlation-links"]')
+await corr.first().waitFor({ timeout: 10_000 })
+console.log("correlation links ok")
+
+await assertPage(`/observe/projects/${PROJECT_ID}/traces`, [
+  "Traces",
+  "Trace volume",
+])
 
 await browser.close()
 console.log("observe-ui-smoke: PASS")

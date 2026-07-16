@@ -17,6 +17,8 @@ export function esc(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
 }
 
+export type SpanScope = "all" | "root" | "entrypoint"
+
 export type SpanFilter = {
   projectId: string
   from: Date
@@ -26,6 +28,8 @@ export type SpanFilter = {
   release?: string
   environment?: string
   statusError?: boolean
+  /** Restrict matched spans before grouping into traces. */
+  spanScope?: SpanScope
   /** Free text against SpanName */
   q?: string
   /** Attribute filters: key op value against SpanAttributes / ResourceAttributes */
@@ -49,6 +53,16 @@ export type SpanFilter = {
   durationMsMax?: number
 }
 
+/** OTEL kind strings seen from otelcol + synth generators. */
+const ENTRYPOINT_KINDS = [
+  "SPAN_KIND_SERVER",
+  "SPAN_KIND_CONSUMER",
+  "Server",
+  "Consumer",
+  "SERVER",
+  "CONSUMER",
+]
+
 export function spanWhere(f: SpanFilter): string {
   const parts = [
     `project_id = '${esc(f.projectId)}'`,
@@ -68,6 +82,12 @@ export function spanWhere(f: SpanFilter): string {
     )
   }
   if (f.statusError) parts.push(`StatusCode = 'STATUS_CODE_ERROR'`)
+  if (f.spanScope === "root") {
+    parts.push(`(ParentSpanId = '' OR ParentSpanId IS NULL)`)
+  } else if (f.spanScope === "entrypoint") {
+    const kinds = ENTRYPOINT_KINDS.map((k) => `'${esc(k)}'`).join(", ")
+    parts.push(`SpanKind IN (${kinds})`)
+  }
   if (f.q) parts.push(`positionCaseInsensitive(SpanName, '${esc(f.q)}') > 0`)
   if (f.durationMsMin !== undefined) {
     parts.push(`Duration >= ${Math.floor(f.durationMsMin * 1e6)}`)

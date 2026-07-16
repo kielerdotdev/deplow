@@ -22,7 +22,7 @@ export function InsightBuilder({
   onSaved: () => Promise<void>
 }) {
   return (
-    <div className="surface-panel space-y-3 p-6">
+    <div className="flex flex-col surface-panel gap-3 p-6">
       <h2 className="text-sm font-semibold">Insights editor moved to Trends</h2>
       <p className="text-sm text-muted-foreground">
         Charts are now built with the Trends query builder (multi-series,
@@ -35,11 +35,7 @@ export function InsightBuilder({
             <Link
               to="/observe/projects/$projectId/trends"
               params={{ projectId }}
-              search={
-                initial
-                  ? { view: "builder", insightId: initial.id }
-                  : { view: "builder" }
-              }
+              search={initial ? { insightId: initial.id } : {}}
             />
           }
         >

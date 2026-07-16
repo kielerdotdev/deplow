@@ -70,6 +70,9 @@ export const selectionSchema = z.object({
 })
 export type Selection = z.infer<typeof selectionSchema>
 
+export const spanScopeSchema = z.enum(["all", "root", "entrypoint"])
+export type SpanScope = z.infer<typeof spanScopeSchema>
+
 export const querySpecSchema = z.object({
   /** Free-text / Lucene-ish query string (service, operation, message). */
   q: z.string().optional(),
@@ -79,6 +82,12 @@ export const querySpecSchema = z.object({
   spanId: z.string().optional(),
   release: z.string().optional(),
   environment: z.string().optional(),
+  /** Trace explorer span scope (root / entrypoint / all). */
+  spanScope: spanScopeSchema.optional(),
+  /** Only traces/spans with error status. */
+  errorsOnly: z.boolean().optional(),
+  /** Minimum matched-span duration in ms. */
+  minDurationMs: z.number().nonnegative().optional(),
 })
 export type QuerySpec = z.infer<typeof querySpecSchema>
 

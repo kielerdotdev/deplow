@@ -81,7 +81,7 @@ export function SeriesBuilder({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Series
@@ -94,7 +94,7 @@ export function SeriesBuilder({
       {series.map((s) => (
         <div
           key={s.id}
-          className="space-y-1.5 rounded-md border border-border/70 bg-muted/20 p-2"
+          className="flex flex-col gap-1.5 rounded-md border border-border/70 bg-muted/20 p-2"
         >
           <div className="flex items-center gap-1.5">
             <span className="flex size-6 items-center justify-center rounded bg-muted text-xs font-bold">
@@ -110,7 +110,8 @@ export function SeriesBuilder({
             />
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground"
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={s.hidden ? "Show series" : "Hide series"}
               title={s.hidden ? "Show" : "Hide"}
               onClick={() => update(s.id, { hidden: !s.hidden })}
             >
@@ -122,7 +123,8 @@ export function SeriesBuilder({
             </button>
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground"
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Duplicate series"
               title="Duplicate"
               onClick={() => dup(s)}
             >
@@ -131,7 +133,8 @@ export function SeriesBuilder({
             {series.length > 1 ? (
               <button
                 type="button"
-                className="text-muted-foreground hover:text-destructive"
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Remove series"
                 title="Remove"
                 onClick={() => onChange(series.filter((x) => x.id !== s.id))}
               >

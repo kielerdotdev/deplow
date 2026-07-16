@@ -5,12 +5,13 @@ import {
   redirect,
   useRouter,
 } from "@tanstack/react-router"
-import { BoxIcon, PlusIcon, RocketIcon, Trash2Icon } from "lucide-react"
+import { BoxIcon, PlusIcon, RocketIcon } from "lucide-react"
 
 import { AddServiceDialog } from "@/components/add-service-dialog"
 import { AppShell } from "@/components/app-shell"
 import { CommandAction } from "@/components/command-action"
 import { ProjectUiContext } from "@/components/project-ui-context"
+import { ShellPending } from "@/components/route-pending"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
@@ -22,28 +23,26 @@ export const Route = createFileRoute("/projects/$projectId")({
     const session = await getSession()
     if (!session)
       throw redirect({ to: "/login", search: { redirect: undefined } })
-    const [shell, project, deployments, projects] = await Promise.all([
+    const [shell, project, deployments] = await Promise.all([
       loadShellContext(),
       client.projects.get({ id: params.projectId }),
       client.deployments.list({ projectId: params.projectId }),
-      client.projects.list(),
     ])
     return {
       session,
       shell,
       project,
       deployments,
-      deployProjects: projects.map((p) => ({ id: p.id, name: p.name })),
     }
   },
+  pendingComponent: ShellPending,
   component: ProjectLayout,
 })
 
 function ProjectLayout() {
-  const { session, shell, project, deployProjects } = Route.useLoaderData()
+  const { session, shell, project } = Route.useLoaderData()
   const router = useRouter()
   const [addOpen, setAddOpen] = useState(false)
-  const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const openAddService = useCallback(() => setAddOpen(true), [])
@@ -70,34 +69,9 @@ function ProjectLayout() {
           <PlusIcon data-icon="inline-start" />
           Add service
         </Button>
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() =>
-            void (async () => {
-              if (
-                !window.confirm(
-                  `Destroy ${project.name}? Type confirmation is also available in Settings.`,
-                )
-              )
-                return
-              setPending(true)
-              try {
-                await client.projects.destroy({ id: project.id })
-                void router.navigate({ to: "/" })
-              } catch (cause) {
-                setError(cause instanceof Error ? cause.message : String(cause))
-                setPending(false)
-              }
-            })()
-          }
-        >
-          <Trash2Icon data-icon="inline-start" />
-          Destroy
-        </Button>
       </>
     ),
-    [openAddService, pending, project.id, project.name, router],
+    [openAddService, project.id],
   )
 
   return (
@@ -107,9 +81,8 @@ function ProjectLayout() {
         instanceAdmin={shell.instanceAdmin}
         organizations={shell.organizations}
         activeOrganization={shell.activeOrganization}
-        deployProjectId={project.id}
-        deployProjects={deployProjects}
         actions={actions}
+        observeEnabled={shell.observeEnabled}
       >
         {error ? (
           <Alert variant="destructive" className="mb-4">

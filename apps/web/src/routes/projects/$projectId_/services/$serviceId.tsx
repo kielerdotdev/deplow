@@ -56,14 +56,13 @@ export const Route = createFileRoute(
   loader: async ({ params }) => {
     const session = await getSession()
     if (!session) throw redirect({ to: "/login", search: { redirect: undefined } })
-    const [shell, project, service, deployments, operations, projects] =
+    const [shell, project, service, deployments, operations] =
       await Promise.all([
         loadShellContext(),
         client.projects.get({ id: params.projectId }),
         client.services.get({ id: params.serviceId }),
         client.deployments.list({ serviceId: params.serviceId }),
         client.operations.list({ serviceId: params.serviceId }),
-        client.projects.list(),
       ])
     if (service.projectId !== project.id) {
       throw redirect({
@@ -89,7 +88,6 @@ export const Route = createFileRoute(
       dbOverview,
       backups,
       pitr,
-      deployProjects: projects.map((p) => ({ id: p.id, name: p.name })),
     }
   },
   component: ServicePage,
@@ -115,7 +113,6 @@ function ServicePage() {
     dbOverview,
     backups,
     pitr,
-    deployProjects,
   } = Route.useLoaderData()
   const { tab: tabParam } = Route.useSearch()
   const tab = (tabParam ?? "overview") as Tab
@@ -295,12 +292,11 @@ function ServicePage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
-      deployProjectId={project.id}
-      deployProjects={deployProjects}
+      observeEnabled={shell.observeEnabled}
     >
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 space-y-2">
+          <div className="flex flex-col min-w-0 gap-2">
             <Link
               to="/projects/$projectId"
               params={{ projectId: project.id }}
@@ -445,7 +441,7 @@ function ServicePage() {
 
         {tab === "overview" ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="surface-panel space-y-2 p-4">
+            <div className="flex flex-col surface-panel gap-2 p-4">
               <p className="text-xs text-muted-foreground">Status</p>
               <StatusBadge status={service.status} />
               {service.lastOperationId ? (
@@ -454,7 +450,7 @@ function ServicePage() {
                 </p>
               ) : null}
             </div>
-            <div className="surface-panel space-y-2 p-4">
+            <div className="flex flex-col surface-panel gap-2 p-4">
               <p className="text-xs text-muted-foreground">Recent operations</p>
               {operations.length === 0 ? (
                 <p className="text-sm text-muted-foreground">None yet</p>
@@ -494,7 +490,7 @@ function ServicePage() {
                   key={d.id}
                   className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 >
-                  <div className="min-w-0 space-y-1">
+                  <div className="flex flex-col min-w-0 gap-1">
                     <p className="text-sm font-medium">
                       {d.serviceName}
                       {d.gitSha ? (
@@ -597,7 +593,7 @@ function ServicePage() {
             title="Resource bindings"
             description="Explicit connections inject credentials as environment variables on the next deploy."
           >
-            <div className="space-y-4">
+            <div className="flex flex-col gap-4">
               <div className="surface-panel divide-y divide-border">
                 {(service.bindings ?? []).length === 0 ? (
                   <p className="px-4 py-6 text-sm text-muted-foreground">
@@ -628,9 +624,11 @@ function ServicePage() {
                 )}
               </div>
               <div className="surface-panel grid gap-3 p-4 sm:grid-cols-3">
-                <div className="space-y-1.5">
-                  <Label>Provider</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bind-provider">Provider</Label>
                   <select
+                    id="bind-provider"
+                    name="bind-provider"
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                     value={bindProviderId}
                     onChange={(e) => {
@@ -648,9 +646,13 @@ function ServicePage() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Env key</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bind-env-key">Env key</Label>
                   <Input
+                    id="bind-env-key"
+                    name="bind-env-key"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={bindEnvKey}
                     onChange={(e) =>
                       setBindEnvKey(e.target.value.toUpperCase())
@@ -689,13 +691,13 @@ function ServicePage() {
         ) : null}
 
         {tab === "settings" ? (
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             <PageSection
               icon={SettingsIcon}
               title="Service settings"
               description="Runtime and source configuration for this service."
             >
-              <div className="surface-panel space-y-3 p-4 text-sm">
+              <div className="flex flex-col surface-panel gap-3 p-4 text-sm">
                 <p>
                   <span className="text-muted-foreground">Name:</span>{" "}
                   {service.name}
@@ -750,9 +752,13 @@ function ServicePage() {
           </Button>
         }
       >
-        <div className="space-y-2">
-          <Label>Service name</Label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="destroy-service-name">Service name</Label>
           <Input
+            id="destroy-service-name"
+            name="destroy-service-name"
+            autoComplete="off"
+            spellCheck={false}
             value={destroyConfirm}
             onChange={(e) => setDestroyConfirm(e.target.value)}
             placeholder={service.name}

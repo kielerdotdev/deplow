@@ -345,8 +345,12 @@ function SeriesChart({
     [valueLabel],
   )
 
-  const brushHeight = onBrush ? 28 : 0
+  const nonzero = series.filter((p) => p.v > 0).length
+  const showBrush =
+    Boolean(onBrush) && series.length >= 8 && nonzero > 2
+  const brushHeight = showBrush ? 32 : 0
   const chartHeight = height
+  const preferBar = kind === "area" && nonzero <= 2
 
   function handlePointClick(state: unknown) {
     if (!onPointClick || !state || typeof state !== "object") return
@@ -406,24 +410,29 @@ function SeriesChart({
     </>
   )
 
-  const brushEl = onBrush ? (
+  const brushEl = showBrush ? (
     <Brush
       dataKey="label"
       height={brushHeight}
-      stroke="var(--color-value)"
-      travellerWidth={8}
+      stroke="var(--chart-selection)"
+      travellerWidth={16}
       onDragEnd={handleBrushEnd}
     />
   ) : null
 
+  const effectiveKind = preferBar ? "bar" : kind
+
   return (
     <ChartContainer
       config={config}
-      className={cn("aspect-auto w-full", className)}
+      className={cn(
+        "observe-chart aspect-auto w-full",
+        className,
+      )}
       style={{ height: chartHeight }}
       initialDimension={{ width: 480, height: chartHeight }}
     >
-      {kind === "bar" ? (
+      {effectiveKind === "bar" ? (
         <BarChart
           accessibilityLayer
           data={data}

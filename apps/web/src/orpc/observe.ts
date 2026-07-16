@@ -13,10 +13,17 @@ import {
   ensureObserveReady,
   fetchEvent,
   fetchIssueEvents,
+  fetchIssueTrends,
   getIssue,
   listIssuesForProject,
   observeClickHouseConfig,
 } from "@/lib/observe/store"
+import {
+  countEventsForIssueInRange,
+  eventHistogramForIssue,
+  getClickHouse,
+} from "@deplow/observe"
+import { resolveTimeRange } from "@/lib/observe/context"
 
 import { authedProcedure } from "./middleware"
 
@@ -156,6 +163,9 @@ export const issuesList = authedProcedure
       lastSeen: r.lastSeen.toISOString(),
       lastEventId: r.lastEventId,
       lastTraceId: r.lastTraceId,
+      assigneeUserId: r.assigneeUserId ?? null,
+      priority: r.priority ?? "medium",
+      externalIssueUrl: r.externalIssueUrl ?? null,
     }))
   })
 
@@ -186,7 +196,45 @@ export const issuesGet = authedProcedure
       lastSeen: issue.lastSeen.toISOString(),
       lastEventId: issue.lastEventId,
       lastTraceId: issue.lastTraceId,
+      assigneeUserId: issue.assigneeUserId ?? null,
+      priority: issue.priority ?? "medium",
+      externalIssueUrl: issue.externalIssueUrl ?? null,
     }
+  })
+
+export const issuesUpdateTriage = authedProcedure
+  .input(
+    z.object({
+      issueId: z.string().uuid(),
+      assigneeUserId: z.string().nullable().optional(),
+      priority: z.enum(["low", "medium", "high"]).optional(),
+      externalIssueUrl: z.string().url().nullable().optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    const issue = await getIssue(input.issueId)
+    if (!issue) throw new ORPCError("NOT_FOUND", { message: "Issue not found" })
+    const [op] = await db
+      .select()
+      .from(observeProjects)
+      .where(eq(observeProjects.id, issue.observeProjectId))
+      .limit(1)
+    if (!op) throw new ORPCError("NOT_FOUND", { message: "Issue not found" })
+    await assertProjectAccess(op.projectId, context.session)
+    await db
+      .update(observeIssues)
+      .set({
+        ...(input.assigneeUserId !== undefined
+          ? { assigneeUserId: input.assigneeUserId }
+          : {}),
+        ...(input.priority !== undefined ? { priority: input.priority } : {}),
+        ...(input.externalIssueUrl !== undefined
+          ? { externalIssueUrl: input.externalIssueUrl }
+          : {}),
+        updatedAt: new Date(),
+      })
+    return { ok: true as const }
   })
 
 export const issuesUpdateStatus = authedProcedure
@@ -279,5 +327,129 @@ export const eventsListForIssue = authedProcedure
       message: e.message,
       culprit: e.culprit,
       digest_order: e.digest_order,
+      trace_id: e.trace_id,
     }))
+  })
+
+export const issuesTrend = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      issueIds: z.array(z.string().uuid()).min(1).max(100),
+      hours: z.number().int().min(1).max(168).optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    return fetchIssueTrends(input.issueIds, input.hours ?? 24)
+  })
+
+export const issuesEventHistogram = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      issueId: z.string().uuid(),
+      from: z.string(),
+      to: z.string(),
+      bucketSeconds: z.number().int().min(60).max(86400).optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    const ready = await ensureObserveReady()
+    if (!ready.ok) {
+      throw new ORPCError("FAILED_PRECONDITION", { message: ready.detail })
+    }
+    const ch = getClickHouse(observeClickHouseConfig())
+    const from = new Date(input.from)
+    const to = new Date(input.to)
+    const [series, matchingCount] = await Promise.all([
+      eventHistogramForIssue(
+        ch,
+        input.projectId,
+        input.issueId,
+        from,
+        to,
+        input.bucketSeconds ?? 3600,
+      ),
+      countEventsForIssueInRange(
+        ch,
+        input.projectId,
+        input.issueId,
+        from,
+        to,
+      ),
+    ])
+    return {
+      series: series.map((s) => ({ t: s.t, v: s.count })),
+      matchingCount,
+    }
+  })
+
+/** Convenience: resolve Context preset range on the server for issue histogram. */
+export const issuesEventSeries = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      issueId: z.string().uuid(),
+      preset: z
+        .enum(["15m", "1h", "6h", "24h", "7d", "14d", "30d"])
+        .optional(),
+      from: z.string().optional(),
+      to: z.string().optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    const ready = await ensureObserveReady()
+    if (!ready.ok) {
+      throw new ORPCError("FAILED_PRECONDITION", { message: ready.detail })
+    }
+    let from: Date
+    let to: Date
+    if (input.from && input.to) {
+      from = new Date(input.from)
+      to = new Date(input.to)
+    } else {
+      const r = resolveTimeRange({
+        kind: "preset",
+        preset: input.preset ?? "24h",
+      })
+      from = r.from
+      to = r.to
+    }
+    const spanMs = to.getTime() - from.getTime()
+    const bucketSeconds =
+      spanMs <= 2 * 60 * 60_000
+        ? 300
+        : spanMs <= 24 * 60 * 60_000
+          ? 3600
+          : 6 * 3600
+    const ch = getClickHouse(observeClickHouseConfig())
+    const [series, matchingCount] = await Promise.all([
+      eventHistogramForIssue(
+        ch,
+        input.projectId,
+        input.issueId,
+        from,
+        to,
+        bucketSeconds,
+      ),
+      countEventsForIssueInRange(
+        ch,
+        input.projectId,
+        input.issueId,
+        from,
+        to,
+      ),
+    ])
+    return {
+      series: series.map((s) => ({ t: s.t, v: s.count })),
+      matchingCount,
+      from: from.toISOString(),
+      to: to.toISOString(),
+    }
   })

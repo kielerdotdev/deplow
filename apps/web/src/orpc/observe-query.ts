@@ -20,6 +20,7 @@ import {
   listServicesRed,
   listTraces,
   logsHistogram,
+  tracesHistogram,
   metricSeries,
   overviewRed,
   recentErrorTraces,
@@ -99,6 +100,7 @@ const contextInputSchema = z.object({
   durationMsMin: z.number().optional(),
   durationMsMax: z.number().optional(),
   statusError: z.boolean().optional(),
+  spanScope: z.enum(["all", "root", "entrypoint"]).optional(),
 })
 
 function toFilter(input: z.infer<typeof contextInputSchema>): SpanFilter {
@@ -115,6 +117,7 @@ function toFilter(input: z.infer<typeof contextInputSchema>): SpanFilter {
     durationMsMin: input.durationMsMin,
     durationMsMax: input.durationMsMax,
     statusError: input.statusError,
+    spanScope: input.spanScope,
   }
 }
 
@@ -225,6 +228,32 @@ export const tracesGet = authedProcedure
       input.traceId,
     )
     return { spans, partial: spans.length >= 5000, sampled: false }
+  })
+
+export const tracesHistogramQuery = authedProcedure
+  .input(
+    contextInputSchema.extend({
+      bucketSeconds: z.number().int().min(60).max(86400).optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    await readyOrThrow()
+    const spanMs =
+      new Date(input.to).getTime() - new Date(input.from).getTime()
+    const bucket =
+      input.bucketSeconds ??
+      (spanMs <= 2 * 60 * 60_000
+        ? 300
+        : spanMs <= 24 * 60 * 60_000
+          ? 900
+          : 3600)
+    return tracesHistogram(
+      observeClickHouseConfig(),
+      toFilter(input),
+      bucket,
+    )
   })
 
 export const logsSearch = authedProcedure
@@ -401,6 +430,35 @@ export const savedViewsCreate = authedProcedure
       createdBy: context.session.user.id,
     })
     return { id }
+  })
+
+export const savedViewsDelete = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      viewId: z.string().uuid(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    await assertObserveRole(input.projectId, context.session.user.id, "editor")
+    const op = await getObserveProject(input.projectId)
+    if (!op) {
+      throw new ORPCError("NOT_FOUND", { message: "Observe project missing" })
+    }
+    const [existing] = await db
+      .select()
+      .from(observeSavedViews)
+      .where(eq(observeSavedViews.id, input.viewId))
+      .limit(1)
+    if (!existing || existing.observeProjectId !== op.id) {
+      throw new ORPCError("NOT_FOUND", { message: "Saved view not found" })
+    }
+    await db
+      .delete(observeSavedViews)
+      .where(eq(observeSavedViews.id, input.viewId))
+    return { ok: true as const }
   })
 
 export const dashboardsList = authedProcedure
@@ -964,20 +1022,33 @@ export const alertsList = authedProcedure
       .select()
       .from(observeAlerts)
       .where(eq(observeAlerts.observeProjectId, op.id))
-    return rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      enabled: r.enabled,
-      kind: r.kind,
-      metric: r.metric,
-      operator: r.operator,
-      threshold: r.threshold,
-      window: r.window,
-      channelEmail: r.channelEmail,
-      channelWebhook: r.channelWebhook,
-      lastTriggeredAt: r.lastTriggeredAt?.toISOString() ?? null,
-      contextJson: r.contextJson,
-    }))
+    return rows.map((r) => {
+      let channelIds: string[] = []
+      try {
+        const parsed = JSON.parse(r.channelIdsJson) as unknown
+        if (Array.isArray(parsed)) {
+          channelIds = parsed.filter((x): x is string => typeof x === "string")
+        }
+      } catch {
+        /* ignore */
+      }
+      return {
+        id: r.id,
+        name: r.name,
+        enabled: r.enabled,
+        kind: r.kind,
+        metric: r.metric,
+        operator: r.operator,
+        threshold: r.threshold,
+        window: r.window,
+        channelEmail: r.channelEmail,
+        channelWebhook: r.channelWebhook,
+        channelIds,
+        lastTriggeredAt: r.lastTriggeredAt?.toISOString() ?? null,
+        contextJson: r.contextJson,
+        createdAt: r.createdAt.toISOString(),
+      }
+    })
   })
 
 export const alertsCreate = authedProcedure
@@ -1153,6 +1224,41 @@ export const messageChannelsDelete = authedProcedure
     return { ok: true as const }
   })
 
+export const messageChannelsTest = authedProcedure
+  .input(z.object({ id: z.string().uuid() }))
+  .handler(async ({ context, input }) => {
+    if (!context.session) throw new ORPCError("UNAUTHORIZED")
+    const [row] = await db
+      .select()
+      .from(messageChannels)
+      .where(eq(messageChannels.id, input.id))
+      .limit(1)
+    if (!row) {
+      throw new ORPCError("NOT_FOUND", { message: "Channel not found" })
+    }
+    let config: { url?: string; email?: string } = {}
+    try {
+      config = JSON.parse(row.configJson) as { url?: string; email?: string }
+    } catch {
+      /* ignore */
+    }
+    const { deliverChannelTest, ChannelDeliverError } = await import(
+      "@/lib/message-channel-deliver"
+    )
+    try {
+      return await deliverChannelTest({
+        name: row.name,
+        kind: row.kind as "slack" | "discord" | "webhook" | "email",
+        config,
+      })
+    } catch (error) {
+      if (error instanceof ChannelDeliverError) {
+        throw new ORPCError("BAD_REQUEST", { message: error.message })
+      }
+      throw error
+    }
+  })
+
 export const alertsUpdate = authedProcedure
   .input(
     z.object({
@@ -1160,20 +1266,71 @@ export const alertsUpdate = authedProcedure
       alertId: z.string().uuid(),
       enabled: z.boolean().optional(),
       name: z.string().optional(),
+      threshold: z.string().optional(),
+      kind: z.enum(["threshold", "relative"]).optional(),
+      window: z.string().optional(),
+      channelIds: z.array(z.string().uuid()).optional(),
     }),
   )
   .handler(async ({ context, input }) => {
     requireObserve()
     await assertProjectAccess(input.projectId, context.session)
     await assertObserveRole(input.projectId, context.session.user.id, "editor")
+    const op = await getObserveProject(input.projectId)
+    if (!op) {
+      throw new ORPCError("NOT_FOUND", { message: "Project not found" })
+    }
+    const [existing] = await db
+      .select()
+      .from(observeAlerts)
+      .where(eq(observeAlerts.id, input.alertId))
+      .limit(1)
+    if (!existing || existing.observeProjectId !== op.id) {
+      throw new ORPCError("NOT_FOUND", { message: "Alert not found" })
+    }
     await db
       .update(observeAlerts)
       .set({
         ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
         ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.threshold !== undefined
+          ? { threshold: input.threshold }
+          : {}),
+        ...(input.kind !== undefined ? { kind: input.kind } : {}),
+        ...(input.window !== undefined ? { window: input.window } : {}),
+        ...(input.channelIds !== undefined
+          ? { channelIdsJson: JSON.stringify(input.channelIds) }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(observeAlerts.id, input.alertId))
+    return { ok: true as const }
+  })
+
+export const alertsDelete = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      alertId: z.string().uuid(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    await assertObserveRole(input.projectId, context.session.user.id, "editor")
+    const op = await getObserveProject(input.projectId)
+    if (!op) {
+      throw new ORPCError("NOT_FOUND", { message: "Project not found" })
+    }
+    const [existing] = await db
+      .select()
+      .from(observeAlerts)
+      .where(eq(observeAlerts.id, input.alertId))
+      .limit(1)
+    if (!existing || existing.observeProjectId !== op.id) {
+      throw new ORPCError("NOT_FOUND", { message: "Alert not found" })
+    }
+    await db.delete(observeAlerts).where(eq(observeAlerts.id, input.alertId))
     return { ok: true as const }
   })
 

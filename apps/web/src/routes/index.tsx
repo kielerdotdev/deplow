@@ -91,6 +91,9 @@ function CreateProjectDialogBody({
     try {
       const project = await client.projects.create({ name })
       close()
+      const { useProjectStore } = await import("@/lib/project-store")
+      useProjectStore.getState().setActiveProjectId(project.id)
+      await useProjectStore.getState().refresh()
       await router.invalidate()
       await router.navigate({
         to: "/projects/$projectId",
@@ -244,7 +247,7 @@ function DashboardPage() {
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
       accountHome
-      deployProjects={projects.map((p) => ({ id: p.id, name: p.name }))}
+      observeEnabled={shell.observeEnabled}
     >
       <PageHeader
         title={`Welcome back, ${firstName}`}
@@ -301,7 +304,7 @@ function DashboardPage() {
               <h2 className="text-sm font-semibold tracking-tight">
                 Projects
               </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                 {serviceCount} services across {projects.length} project
                 {projects.length === 1 ? "" : "s"}
               </p>
@@ -396,7 +399,7 @@ function DashboardPage() {
                       <TableCell className="data-table-cell font-mono text-xs text-muted-foreground">
                         {host ?? "—"}
                       </TableCell>
-                      <TableCell className="data-table-cell text-muted-foreground">
+                      <TableCell className="data-table-cell text-muted-foreground tabular-nums">
                         {project.services?.length ?? 0}
                       </TableCell>
                       <TableCell className="data-table-cell">

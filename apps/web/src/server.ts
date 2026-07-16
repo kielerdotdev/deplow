@@ -23,12 +23,23 @@ import {
 
 const baseFetch = createStartHandler(defaultStreamHandler)
 
-let dogfoodReady: Promise<DogfoodBootstrap | null> | null = null
+const DOGFOOD_READY_KEY = "__deplowDogfoodReady"
+
+function dogfoodReadySlot(): {
+  current: Promise<DogfoodBootstrap | null> | null
+} {
+  const g = globalThis as typeof globalThis & {
+    [DOGFOOD_READY_KEY]?: { current: Promise<DogfoodBootstrap | null> | null }
+  }
+  if (!g[DOGFOOD_READY_KEY]) g[DOGFOOD_READY_KEY] = { current: null }
+  return g[DOGFOOD_READY_KEY]
+}
 
 function ensureDogfood() {
   if (!env.observeDogfood) return Promise.resolve(null)
-  if (!dogfoodReady) {
-    dogfoodReady = ensureDogfoodBootstrap()
+  const slot = dogfoodReadySlot()
+  if (!slot.current) {
+    slot.current = ensureDogfoodBootstrap()
       .then((boot) => {
         if (boot?.dsn) {
           if (boot.otelEndpoint && boot.projectId) {
@@ -45,17 +56,17 @@ function ensureDogfood() {
           )
         } else {
           // Allow retry after signup creates an org
-          dogfoodReady = null
+          slot.current = null
         }
         return boot
       })
       .catch((err) => {
         console.warn("[observe-dogfood] failed to resolve DSN", err)
-        dogfoodReady = null
+        slot.current = null
         return null
       })
   }
-  return dogfoodReady
+  return slot.current
 }
 
 if (typeof process !== "undefined") {

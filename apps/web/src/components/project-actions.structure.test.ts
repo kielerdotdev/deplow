@@ -50,6 +50,10 @@ describe("Project delete dialog", () => {
     path.resolve(import.meta.dirname, "../routes/index.tsx"),
     "utf8",
   )
+  const projectLayout = readFileSync(
+    path.resolve(import.meta.dirname, "../routes/projects/$projectId.tsx"),
+    "utf8",
+  )
 
   it("uses hold-to-confirm for destructive destroy", () => {
     expect(dialog).toContain("ConfirmationButton")
@@ -60,5 +64,10 @@ describe("Project delete dialog", () => {
   it("invalidates the dashboard after destroy", () => {
     expect(home).toContain("router.invalidate()")
     expect(home).toContain("onConfirm={handleDestroyProject}")
+  })
+
+  it("uses hold-to-confirm from the project layout Destroy action", () => {
+    expect(projectLayout).toContain("ProjectDeleteDialog")
+    expect(projectLayout).not.toContain("window.confirm")
   })
 })
