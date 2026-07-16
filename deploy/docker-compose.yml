@@ -114,8 +114,40 @@ services:
       caddy:
         condition: service_healthy
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: deplow-clickhouse
+    profiles: ["observe"]
+    restart: unless-stopped
+    volumes:
+      - deplow_observe_ch:/var/lib/clickhouse
+      - ../infra/clickhouse/config.d:/etc/clickhouse-server/config.d:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: deplow-otelcol
+    profiles: ["observe"]
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ../infra/otelcol/config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
 volumes:
   deplow_web_data:
   deplow_caddy_routes:
   deplow_platform_redis_data:
   deplow_minio_data:
+  deplow_observe_ch:

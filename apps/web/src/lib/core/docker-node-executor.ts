@@ -293,18 +293,16 @@ export class DockerNodeExecutor implements NodeExecutor {
     serviceName: string,
     port: number,
   ): Promise<boolean> {
+    // Prefer /proc + short-timeout tools. Skip `node` — Railpack mise shims can
+    // stall or spam under read-only rootfs and hang docker exec streams.
     const script = [
       `port=${Number(port)}`,
       `hex=$(printf '%04X' "$port")`,
-      // /proc is always available; 0A = TCP_LISTEN
       `if grep -h ":"$hex /proc/net/tcp /proc/net/tcp6 2>/dev/null | awk '$4=="0A"{found=1} END{exit !found}'; then exit 0; fi`,
-      // bash /dev/tcp (not available in dash)
       `if command -v bash >/dev/null 2>&1; then bash -c "echo >/dev/tcp/127.0.0.1/$port" >/dev/null 2>&1 && exit 0; fi`,
-      // Node is present in Node/Railpack images
-      `if command -v node >/dev/null 2>&1; then node -e "require('net').connect($port,'127.0.0.1',()=>process.exit(0)).on('error',()=>process.exit(1))" >/dev/null 2>&1 && exit 0; fi`,
       `command -v wget >/dev/null 2>&1 && wget -q -O- --timeout=1 http://127.0.0.1:$port/ >/dev/null 2>&1 && exit 0`,
       `command -v curl >/dev/null 2>&1 && curl -sf --max-time 1 http://127.0.0.1:$port/ >/dev/null 2>&1 && exit 0`,
-      `command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 $port >/dev/null 2>&1 && exit 0`,
+      `command -v nc >/dev/null 2>&1 && nc -z -w 1 127.0.0.1 $port >/dev/null 2>&1 && exit 0`,
       `exit 1`,
     ].join("; ")
     const code = await this.execInService(nodeId, serviceName, [
@@ -395,6 +393,7 @@ export class DockerNodeExecutor implements NodeExecutor {
     nodeId: string,
     serviceName: string,
     cmd: string[],
+    timeoutMs = 8_000,
   ): Promise<{ code: number; stdout: string }> {
     const name = this.containerName(nodeId, serviceName)
     try {
@@ -407,9 +406,19 @@ export class DockerNodeExecutor implements NodeExecutor {
       const stream = await exec.start({ hijack: true, stdin: false })
       const chunks: Buffer[] = []
       await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          stream.destroy()
+          reject(new Error(`exec timed out after ${timeoutMs}ms`))
+        }, timeoutMs)
         stream.on("data", (c: Buffer) => chunks.push(Buffer.from(c)))
-        stream.on("end", () => resolve())
-        stream.on("error", reject)
+        stream.on("end", () => {
+          clearTimeout(timer)
+          resolve()
+        })
+        stream.on("error", (err: Error) => {
+          clearTimeout(timer)
+          reject(err)
+        })
       })
       const inspect = await exec.inspect()
       return {

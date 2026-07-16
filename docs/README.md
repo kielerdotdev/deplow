@@ -10,6 +10,7 @@ Canonical project documentation. **These files dictate product, marketing, and i
 | [sequencing.md](./sequencing.md)         | **v1 / v2 / v3** — what to build now vs later                        |
 | [gtm.md](./gtm.md)                       | **Public launch bar** — happy path vs Coolify/Dokploy                |
 | [product.md](./product.md)               | **What we ship** — one project shape, in/out of scope                |
+| [observe.md](./observe.md)               | **Optional Observe** — Sentry + OTel + ClickHouse                    |
 | [data-plane.md](./data-plane.md)         | **DB/Redis/S3 linking** — design notes                               |
 | [security.md](./security.md)             | **Security stance** — non-negotiables                                |
 | [access.md](./access.md)                 | **Proxy + cloudflared (v1)** — wildcard URLs                         |

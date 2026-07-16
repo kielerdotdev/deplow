@@ -111,6 +111,22 @@ function fakeTarget(linkId = "link1"): BackupTarget {
   }
 }
 
+function testPlatformConfig(): PlatformConfig {
+  return {
+    backupBucket: "deplow-backups",
+    s3: {
+      provider: "minio",
+      endpoint: "http://127.0.0.1:9000",
+      publicEndpoint: "http://127.0.0.1:9000",
+      appEndpoint: "http://127.0.0.1:9000",
+      accessKeyId: "test",
+      secretAccessKey: "test",
+      region: "us-east-1",
+      backupBucket: "deplow-backups",
+    },
+  } as PlatformConfig
+}
+
 describe("BackupService.prune", () => {
   afterEach(() => {
     delete process.env.DEPLOW_BACKUP_RETAIN
@@ -129,10 +145,7 @@ describe("BackupService.prune", () => {
     const store = makeStore(seed)
     const deletedKeys: string[] = []
 
-    const service = new BackupService(
-      { backupBucket: "deplow-backups" } as PlatformConfig,
-      store,
-    )
+    const service = new BackupService(testPlatformConfig(), store)
     ;(
       service as unknown as {
         storage: { deleteObject: (b: string, key: string) => Promise<void> }
@@ -163,10 +176,7 @@ describe("BackupService.prune", () => {
     store.getLastBackupAt = async () => new Date()
     store.getIntervalMs = async () => 86_400_000
 
-    const service = new BackupService(
-      { backupBucket: "deplow-backups" } as PlatformConfig,
-      store,
-    )
+    const service = new BackupService(testPlatformConfig(), store)
     const create = vi.spyOn(store, "createRunning")
 
     const result = await service.run("p1", fakeTarget())

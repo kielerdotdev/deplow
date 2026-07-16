@@ -22,7 +22,9 @@ describe("evaluateDoctorChecks", () => {
       secretsConfigured: true,
       nodeEnv: "production",
     })
-    expect(checks.every((c) => c.status === "ok")).toBe(true)
+    expect(checks.filter((c) => c.status !== "skip").every((c) => c.status === "ok")).toBe(
+      true,
+    )
     expect(doctorSummary(checks).ok).toBe(true)
   })
 

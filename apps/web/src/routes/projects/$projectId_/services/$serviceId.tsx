@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label"
 import { getSession } from "@/lib/auth.functions"
 import { useLogStream } from "@/hooks/use-log-stream"
 import { client } from "@/lib/orpc"
+import { loadShellContext } from "@/lib/shell-context"
 
 const serviceSearchSchema = z.object({
   tab: z
@@ -55,12 +56,15 @@ export const Route = createFileRoute(
   loader: async ({ params }) => {
     const session = await getSession()
     if (!session) throw redirect({ to: "/login", search: { redirect: undefined } })
-    const [project, service, deployments, operations] = await Promise.all([
-      client.projects.get({ id: params.projectId }),
-      client.services.get({ id: params.serviceId }),
-      client.deployments.list({ serviceId: params.serviceId }),
-      client.operations.list({ serviceId: params.serviceId }),
-    ])
+    const [shell, project, service, deployments, operations, projects] =
+      await Promise.all([
+        loadShellContext(),
+        client.projects.get({ id: params.projectId }),
+        client.services.get({ id: params.serviceId }),
+        client.deployments.list({ serviceId: params.serviceId }),
+        client.operations.list({ serviceId: params.serviceId }),
+        client.projects.list(),
+      ])
     if (service.projectId !== project.id) {
       throw redirect({
         to: "/projects/$projectId",
@@ -77,6 +81,7 @@ export const Route = createFileRoute(
       : [null, [], null]
     return {
       session,
+      shell,
       project,
       service,
       deployments,
@@ -84,6 +89,7 @@ export const Route = createFileRoute(
       dbOverview,
       backups,
       pitr,
+      deployProjects: projects.map((p) => ({ id: p.id, name: p.name })),
     }
   },
   component: ServicePage,
@@ -101,6 +107,7 @@ type Tab =
 function ServicePage() {
   const {
     session,
+    shell,
     project,
     service,
     deployments,
@@ -108,6 +115,7 @@ function ServicePage() {
     dbOverview,
     backups,
     pitr,
+    deployProjects,
   } = Route.useLoaderData()
   const { tab: tabParam } = Route.useSearch()
   const tab = (tabParam ?? "overview") as Tab
@@ -282,7 +290,14 @@ function ServicePage() {
   ]
 
   return (
-    <AppShell user={session.user}>
+    <AppShell
+      user={session.user}
+      instanceAdmin={shell.instanceAdmin}
+      organizations={shell.organizations}
+      activeOrganization={shell.activeOrganization}
+      deployProjectId={project.id}
+      deployProjects={deployProjects}
+    >
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-2">

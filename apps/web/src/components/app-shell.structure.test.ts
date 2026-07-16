@@ -9,23 +9,29 @@ import { describe, expect, it } from "vitest"
 describe("UI shell structure", () => {
   const root = path.resolve(import.meta.dirname, "..")
 
-  it("app-shell uses shadcn Sidebar and nav destinations", () => {
+  it("app-shell uses shadcn Sidebar and project-scoped Deploy nav", () => {
     const src = readFileSync(
       path.join(root, "components/app-shell.tsx"),
       "utf8",
     )
     expect(src).toContain("SidebarProvider")
     expect(src).toContain("SidebarMenuButton")
-    expect(src).toContain('title: "Home"')
-    expect(src).toContain('title: "Team"')
-    expect(src).toContain('title: "Nodes"')
-    expect(src).toContain("Platform")
-    expect(src).toContain("instanceAdmin")
+    expect(src).toContain("buildDeployNav")
+    expect(src).toContain("DeployProjectSwitcher")
+    expect(src).toContain('title: "Overview"')
+    expect(src).toContain('title: "Deployments"')
+    expect(src).toContain('title: "Secrets"')
+    expect(src).not.toContain('title: "Home"')
+    expect(src).not.toContain('title: "Team"')
+    expect(src).not.toContain("Platform")
     expect(src).toContain("OrgSwitcher")
     expect(src).toContain("Sign out")
     expect(src).toContain("CommandProvider")
     expect(src).toContain("CommandPalette")
     expect(src).toContain("CommandPaletteTrigger")
+    expect(src).toContain("Deploy")
+    expect(src).toContain("Observe")
+    expect(src).toContain('to="/observe"')
     expect(src).not.toContain("ContainerIcon")
   })
 
@@ -42,25 +48,31 @@ describe("UI shell structure", () => {
     expect(src).toContain("pushRecentCommand")
   })
 
-  it("project detail syncs section to search params", () => {
-    const src = readFileSync(
+  it("project layout nests overview/deployments/secrets/settings", () => {
+    const layout = readFileSync(
       path.join(root, "routes/projects/$projectId.tsx"),
       "utf8",
     )
-    expect(src).toContain("validateSearch")
-    expect(src).toContain("parseProjectSection")
-    expect(src).toContain("CommandAction")
-    expect(src).toContain("ActionDialog")
-    expect(src).toContain("EmptyState")
-    expect(src).toContain("Add service")
-    expect(src).toContain("Data services")
-    expect(src).toContain("AddServiceDialog")
-    expect(src).toContain("serviceId")
-    expect(src).toContain("fromGit")
-    expect(src).toContain("ProjectRail")
-    expect(src).not.toContain("BackupsPanel")
-    expect(src).not.toContain("DatabasePanel")
-    expect(src).toContain("/projects/$projectId/services/$serviceId")
+    const overview = readFileSync(
+      path.join(root, "routes/projects/$projectId.index.tsx"),
+      "utf8",
+    )
+    expect(layout).toContain("Outlet")
+    expect(layout).toContain("deployProjectId")
+    expect(layout).toContain("AddServiceDialog")
+    expect(layout).toContain("CommandAction")
+    expect(layout).not.toContain("ProjectRail")
+    expect(layout).not.toContain("validateSearch")
+    expect(overview).toContain("ProjectTopology")
+    expect(overview).toContain("EmptyState")
+    expect(overview).toContain("Add Postgres")
+    expect(overview).toContain("/projects/$projectId/services/$serviceId")
+    expect(overview).not.toContain("BackupsPanel")
+    expect(overview).not.toContain("DatabasePanel")
+    const tree = readFileSync(path.join(root, "routeTree.gen.ts"), "utf8")
+    expect(tree).toContain("id: '/projects/$projectId/deployments'")
+    expect(tree).toContain("id: '/projects/$projectId/secrets'")
+    expect(tree).toContain("id: '/projects/$projectId/settings'")
   })
 
   it("service detail is non-nested so it replaces the project page", () => {
@@ -163,7 +175,7 @@ describe("UI shell structure", () => {
     expect(src).toContain("DashboardCard")
     expect(src).toContain("PageHeader")
     expect(src).toContain("PageContent")
-    expect(src).not.toContain("accountHome")
+    expect(src).toContain("accountHome")
     expect(src).not.toContain("gitRepoUrl")
     expect(src).not.toContain("spawnBuildServer")
     expect(src).not.toContain("Checkbox")
@@ -175,7 +187,7 @@ describe("UI shell structure", () => {
   })
 
   it("nodes use empty state and add-node dialog", () => {
-    const src = readFileSync(path.join(root, "routes/nodes.tsx"), "utf8")
+    const src = readFileSync(path.join(root, "routes/settings.nodes.tsx"), "utf8")
     expect(src).toContain("ActionDialog")
     expect(src).toContain("EmptyState")
     expect(src).toContain("ensureLocal")
@@ -183,41 +195,50 @@ describe("UI shell structure", () => {
   })
 
   it("domains page edits platform ingress settings", () => {
-    const src = readFileSync(path.join(root, "routes/domains.tsx"), "utf8")
+    const src = readFileSync(
+      path.join(root, "routes/settings.domains.tsx"),
+      "utf8",
+    )
     expect(src).toContain("ingressUpdate")
     expect(src).toContain("base-domain")
     expect(src).toContain("Auto-assign subdomains")
   })
 
-  it("app shell nav includes Team, Settings, and Platform gates", () => {
-    const src = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
-    expect(src).toContain('to: "/organization"')
-    expect(src).toContain("Team")
-    expect(src).toContain('to: "/domains"')
-    expect(src).toContain("Domains")
-    expect(src).toContain('to: "/notifications"')
-    expect(src).toContain("Notifications")
-    expect(src).toContain('to: "/settings"')
-    expect(src).toContain("Settings")
-    expect(src).toContain("instanceAdmin")
+  it("settings hub hosts team and platform surfaces", () => {
+    const nav = readFileSync(
+      path.join(root, "components/settings/settings-nav.tsx"),
+      "utf8",
+    )
+    expect(nav).toContain('to: "/settings"')
+    expect(nav).toContain('to: "/settings/team"')
+    expect(nav).toContain('to: "/settings/domains"')
+    expect(nav).toContain('to: "/settings/notifications"')
+    expect(nav).toContain('to: "/settings/nodes"')
+    expect(nav).toContain("instanceAdmin")
+    const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
+    expect(shell).toContain('to="/settings"')
+    expect(shell).toContain("Settings")
   })
 
   it("platform pages use shared page layout primitives", () => {
     for (const file of [
-      "routes/integrations.tsx",
-      "routes/domains.tsx",
-      "routes/notifications.tsx",
-      "routes/nodes.tsx",
-      "routes/settings.tsx",
-      "routes/organization.tsx",
+      "routes/settings.integrations.tsx",
+      "routes/settings.domains.tsx",
+      "routes/settings.notifications.tsx",
+      "routes/settings.nodes.tsx",
+      "routes/settings.index.tsx",
+      "routes/settings.team.tsx",
     ]) {
       const src = readFileSync(path.join(root, file), "utf8")
       expect(src).toContain("PageHeader")
       expect(src).toContain("PageContent")
     }
-    const domains = readFileSync(path.join(root, "routes/domains.tsx"), "utf8")
+    const domains = readFileSync(
+      path.join(root, "routes/settings.domains.tsx"),
+      "utf8",
+    )
     expect(domains).toContain("SettingsPanel")
-    const org = readFileSync(path.join(root, "routes/organization.tsx"), "utf8")
+    const org = readFileSync(path.join(root, "routes/settings.team.tsx"), "utf8")
     expect(org).toContain("SettingsPanel")
     expect(org).toContain('title="Team"')
     expect(org).toContain("Members and organization settings")
@@ -232,7 +253,7 @@ describe("UI shell structure", () => {
   it("app shell content uses unified padding", () => {
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
     expect(shell).toContain("p-4 md:px-6 md:py-5")
-    expect(shell).not.toContain("accountHome")
+    expect(shell).toContain("accountHome && \"pt-2\"")
   })
 
   it("shell content uses shared content enter animation", () => {
@@ -259,12 +280,32 @@ describe("UI shell structure", () => {
   })
 
   it("domains and nodes loaders require instance admin", () => {
-    const domains = readFileSync(path.join(root, "routes/domains.tsx"), "utf8")
+    const domains = readFileSync(
+      path.join(root, "routes/settings.domains.tsx"),
+      "utf8",
+    )
     expect(domains).toContain("instanceAdmin")
     expect(domains).toContain('redirect({ to: "/" })')
-    const nodes = readFileSync(path.join(root, "routes/nodes.tsx"), "utf8")
+    const nodes = readFileSync(
+      path.join(root, "routes/settings.nodes.tsx"),
+      "utf8",
+    )
     expect(nodes).toContain("instanceAdmin")
     expect(nodes).toContain('redirect({ to: "/" })')
+  })
+
+  it("legacy platform URLs redirect into settings", () => {
+    for (const [file, dest] of [
+      ["routes/organization.tsx", "/settings/team"],
+      ["routes/integrations.tsx", "/settings/integrations"],
+      ["routes/domains.tsx", "/settings/domains"],
+      ["routes/notifications.tsx", "/settings/notifications"],
+      ["routes/nodes.tsx", "/settings/nodes"],
+    ] as const) {
+      const src = readFileSync(path.join(root, file), "utf8")
+      expect(src).toContain("redirect")
+      expect(src).toContain(dest)
+    }
   })
 
   it("organizations router exposes invite and setActive", () => {
@@ -284,10 +325,9 @@ describe("UI shell structure", () => {
     expect(src).toContain('from "@/components/ui/label"')
   })
 
-  it("root document defaults to light theme without TanStack Devtools", () => {
+  it("root document uses dark theme without TanStack Devtools", () => {
     const src = readFileSync(path.join(root, "routes/__root.tsx"), "utf8")
-    expect(src).toContain('<html lang="en">')
-    expect(src).not.toContain('className="dark"')
+    expect(src).toContain('<html lang="en" className="dark">')
     expect(src).not.toContain("TanStackDevtools")
   })
 })

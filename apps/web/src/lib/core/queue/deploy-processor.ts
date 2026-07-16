@@ -37,6 +37,42 @@ import {
   listActiveHostnames,
   upsertAutoHostname,
 } from "@/lib/service-hostnames"
+import { env as appEnv } from "@/lib/env"
+
+async function loadObserveDeployEnv(
+  projectId: string,
+  service: { id: string; name: string },
+): Promise<Record<string, string>> {
+  if (!appEnv.observeEnabled) return {}
+  const { and, eq, isNull, observeKeys, observeProjects } = await import(
+    "@deplow/db"
+  )
+  const { buildObserveDeployEnv } = await import("@/lib/observe/store")
+  const [op] = await db
+    .select()
+    .from(observeProjects)
+    .where(eq(observeProjects.projectId, projectId))
+    .limit(1)
+  if (!op?.enabled) return {}
+  const [key] = await db
+    .select()
+    .from(observeKeys)
+    .where(
+      and(
+        eq(observeKeys.observeProjectId, op.id),
+        isNull(observeKeys.revokedAt),
+      ),
+    )
+    .limit(1)
+  if (!key) return {}
+  return buildObserveDeployEnv({
+    sentryId: op.sentryId,
+    publicKey: key.publicKey,
+    serviceName: service.name,
+    projectId,
+    serviceId: service.id,
+  })
+}
 
 export async function processDeployJob(data: DeployJobData): Promise<void> {
   const { operationId, deploymentId, serviceId } = data
@@ -208,11 +244,21 @@ export async function processDeployJob(data: DeployJobData): Promise<void> {
         : {}),
     }
 
+    const observeExtra = await loadObserveDeployEnv(project.id, service).catch(
+      () => ({} as Record<string, string>),
+    )
+
     const env = bindingEnv
-      ? injectDeployEnvFromBindings(bindingEnv, platformConfig, baseExtra)
+      ? injectDeployEnvFromBindings(bindingEnv, platformConfig, {
+          ...baseExtra,
+          ...observeExtra,
+        })
       : credentials
-        ? injectDeployEnv(credentials, platformConfig, baseExtra)
-        : containerRuntimeEnv(baseExtra)
+        ? injectDeployEnv(credentials, platformConfig, {
+            ...baseExtra,
+            ...observeExtra,
+          })
+        : containerRuntimeEnv({ ...baseExtra, ...observeExtra })
 
     const result = await dockerNodeExecutor.deployApp(deployment.nodeId, {
       image,
@@ -416,6 +462,57 @@ export async function processDeployJob(data: DeployJobData): Promise<void> {
       logs: buildLogs || message,
     })
   }
+}
+
+/**
+ * When BullMQ marks a job stalled/failed outside the processor try/catch,
+ * leave the deployment out of "checking" / "building".
+ */
+export async function failDeployAfterQueueLoss(
+  data: DeployJobData,
+  err: Error,
+): Promise<void> {
+  const message = err.message || "Deploy job lost (stalled or worker crash)"
+  const [deployment] = await db
+    .select()
+    .from(deployments)
+    .where(eq(deployments.id, data.deploymentId))
+  if (
+    deployment &&
+    (deployment.status === "checking" ||
+      deployment.status === "building" ||
+      deployment.status === "queued" ||
+      deployment.status === "pending")
+  ) {
+    await db
+      .update(deployments)
+      .set({
+        status: "failed",
+        errorMessage: message,
+        failedStage: deployment.status,
+      })
+      .where(eq(deployments.id, data.deploymentId))
+  }
+  const [service] = await db
+    .select()
+    .from(services)
+    .where(eq(services.id, data.serviceId))
+  if (service && (service.status === "deploying" || service.status === "queued")) {
+    await db
+      .update(services)
+      .set({
+        status: "error",
+        errorMessage: message,
+        errorCode: "deploy_failed",
+        lastOperationId: data.operationId,
+      })
+      .where(eq(services.id, data.serviceId))
+  }
+  await markOperationFailed(data.operationId, {
+    message,
+    code: "deploy_job_lost",
+    symptom: "Deploy worker lost the job before completion",
+  }).catch(() => undefined)
 }
 
 function extractRootCause(runtimeLogs: string, buildLogs: string): string {

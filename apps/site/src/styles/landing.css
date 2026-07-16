@@ -166,7 +166,7 @@ code {
   letter-spacing: -0.04em;
   line-height: 1.15;
   margin-bottom: 0.9rem;
-  max-width: 22ch;
+  max-width: 18ch;
   opacity: 0;
   animation: fade-in 1s ease-out 0.05s forwards;
 }
@@ -332,16 +332,26 @@ code {
   text-overflow: ellipsis;
 }
 
-.shot img {
+.shot img,
+.shot-frame {
   width: 100%;
   height: auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-top: 0;
   border-radius: 0 0 14px 14px;
   background: #eef1f6;
+  overflow: hidden;
 }
 
-.shot--hero img {
+.shot-frame :global(svg) {
+  width: 100%;
+  height: auto;
+  display: block;
+  vertical-align: top;
+}
+
+.shot--hero img,
+.shot--hero .shot-frame {
   border-bottom: 0;
   border-radius: 0;
 }
@@ -359,9 +369,164 @@ code {
   -webkit-mask-image: none;
 }
 
-.band--shot .shot img {
+.band--shot .shot img,
+.band--shot .shot-frame {
   border-radius: 0 0 14px 14px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Split Deploy | Observe ── */
+
+.split {
+  width: min(92vw, var(--wide));
+  margin: 4.5rem auto 0;
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  opacity: 0;
+  animation: fade-in 1s ease-out 0.28s forwards;
+}
+
+@media (min-width: 800px) {
+  .split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.split-pane {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 1.75rem 1.6rem 1.85rem;
+  background: var(--bg);
+  text-align: left;
+  transition: background 0.35s var(--ease);
+}
+
+.split-pane:hover {
+  background: var(--surface);
+}
+
+.split-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+}
+
+.split-title {
+  font-size: 1.35rem;
+  font-weight: 550;
+  letter-spacing: -0.03em;
+}
+
+.split-body {
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 28rem;
+}
+
+.split-cta {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: rgba(250, 250, 250, 0.28);
+  text-underline-offset: 3px;
+}
+
+.split-pane:hover .split-cta {
+  text-decoration-color: var(--fg);
+}
+
+.split-pane--observe {
+  position: relative;
+}
+
+.split-pane--observe::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 80% at 100% 0%,
+    rgba(255, 255, 255, 0.035),
+    transparent 55%
+  );
+  pointer-events: none;
+}
+
+.mode-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  margin-bottom: 0.85rem;
+}
+
+.mode-label--observe {
+  color: #a8b0c0;
+}
+
+.feature-rail {
+  list-style: none;
+  border-top: 1px solid var(--border);
+  max-width: 44rem;
+}
+
+.feature-rail li {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: baseline;
+}
+
+.feature-label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+
+.feature-detail {
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.surface-grid {
+  display: grid;
+  gap: 2rem;
+  border-top: 1px solid var(--border);
+  padding-top: 2rem;
+}
+
+@media (min-width: 800px) {
+  .surface-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem 2.5rem;
+  }
+}
+
+.surface-item h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.45rem;
+}
+
+.surface-item p {
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 /* ── Content bands ── */
@@ -581,7 +746,8 @@ code {
   .lede,
   .hero-actions,
   .install,
-  .shot--hero {
+  .shot--hero,
+  .split {
     animation: none;
     opacity: 1;
     transform: none;
@@ -593,12 +759,22 @@ code {
     padding: 1.25rem;
   }
 
+  .nav-right .nav-link:nth-child(1),
+  .nav-right .nav-link:nth-child(2) {
+    display: none;
+  }
+
   .hero {
     padding-top: 4vh;
   }
 
   .install {
     font-size: 0.65rem;
+  }
+
+  .feature-rail li {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
   }
 
   .footer {

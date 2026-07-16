@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt, operations, db } from "@deplow/db"
+import { and, eq, inArray, lt, operations, deployments, db } from "@deplow/db"
 
 import { notifyOperatorWebhook } from "@/lib/core/operator-webhook"
 
@@ -182,7 +182,11 @@ export async function markOperationFailed(
 export async function reclaimStaleOperations(): Promise<number> {
   const cutoff = new Date(Date.now() - STALE_RUNNING_MS)
   const stale = await db
-    .select({ id: operations.id })
+    .select({
+      id: operations.id,
+      serviceId: operations.serviceId,
+      inputJson: operations.inputJson,
+    })
     .from(operations)
     .where(
       and(
@@ -195,6 +199,36 @@ export async function reclaimStaleOperations(): Promise<number> {
       message: "Operation timed out or worker restarted",
       code: "stale_operation",
     })
+    const input = row.inputJson ? safeJson(row.inputJson) : null
+    const deploymentId =
+      input &&
+      typeof input === "object" &&
+      input !== null &&
+      "deploymentId" in input
+        ? String((input as { deploymentId?: unknown }).deploymentId ?? "")
+        : ""
+    if (deploymentId) {
+      await db
+        .update(deployments)
+        .set({
+          status: "failed",
+          errorMessage: "Operation timed out or worker restarted",
+          failedStage: "stale",
+        })
+        .where(
+          and(
+            eq(deployments.id, deploymentId),
+            inArray(deployments.status, [
+              "pending",
+              "queued",
+              "analyzing",
+              "building",
+              "deploying",
+              "checking",
+            ]),
+          ),
+        )
+    }
   }
   return stale.length
 }

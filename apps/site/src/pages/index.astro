@@ -1,113 +1,91 @@
 ---
 import LandingLayout from '../layouts/LandingLayout.astro';
 import Logo from '../components/landing/Logo.astro';
+import DashboardMockup from '../components/landing/diagrams/DashboardMockup.astro';
+import TrendsMockup from '../components/landing/diagrams/TrendsMockup.astro';
 
 const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 const repoUrl = 'https://github.com/deplow/deplow';
 const installCmd =
 	'git clone https://github.com/deplow/deplow.git && cd deplow && bash scripts/install.sh && pnpm dev';
 
-const differentiators = [
+const deployPillars = [
 	{
 		title: 'One loop, not a catalog',
-		body: 'Add services, bind them, deploy, get a URL. No Compose files, no template marketplace, no database picker with twelve options.',
+		body: 'Add services, bind them, deploy, get a URL. No Compose files, no template marketplace.',
 	},
 	{
 		title: 'gVisor by default',
-		body: 'User apps run under runsc. Platform Postgres, Redis, and Caddy stay on runc. If gVisor is missing, the deploy fails — we do not fall back quietly.',
+		body: 'User apps run under runsc. Platform Postgres and Redis stay on runc. Missing gVisor fails the deploy — no quiet fallback.',
 	},
 	{
 		title: 'Bindings, not env dumps',
-		body: 'Wire DATABASE_URL and REDIS_URL explicitly between services. Credentials are scoped per binding, not pasted into one giant env block.',
+		body: 'Wire DATABASE_URL and REDIS_URL explicitly. Credentials scoped per binding, encrypted at rest.',
 	},
 ];
 
-const steps = [
-	{ kind: 'create' as const, n: '1', title: 'Create', body: 'Spin up postgres, redis, and a bucket. Credentials encrypted at rest.' },
-	{ kind: 'build' as const, n: '2', title: 'Build', body: 'Railpack, Dockerfile, or pull a prebuilt image. Same path every time.' },
-	{ kind: 'run' as const, n: '3', title: 'Run', body: 'Env vars injected. Container starts under gVisor on your host.' },
-	{ kind: 'backup' as const, n: '4', title: 'Back up', body: 'Scheduled pg_dump into the platform bucket. No extra cron to write.' },
+const deploySteps = [
+	{ n: '1', title: 'Create', body: 'Postgres, Redis, bucket. Credentials encrypted at rest.' },
+	{ n: '2', title: 'Build', body: 'Railpack, Dockerfile, or pull a prebuilt image.' },
+	{ n: '3', title: 'Run', body: 'Env injected. Container starts under gVisor on your host.' },
+	{ n: '4', title: 'Back up', body: 'Scheduled pg_dump into the platform bucket.' },
 ];
 
-const stackItems = [
-	'SQLite holds project metadata',
-	'Postgres, redis, minio hold workload data',
-	'Docker runs the host; user apps run under gVisor',
-	'No ssh nodes, no swarm, no kube operator',
-];
-
-const sandboxChecks = [
-	{ strong: 'gVisor, not runc.', rest: 'User apps get a forged kernel — syscalls like ptrace and /proc poking are blocked at the boundary.' },
-	{ strong: 'Platform services stay privileged.', rest: 'Postgres, redis, and the control plane run on runc. Trusted, fast, no perf tax where you don’t need it.' },
-	{ strong: 'Per-project isolation.', rest: 'Docker networks and volumes separate every project’s data plane. One noisy neighbour can’t read another’s rows.' },
-	{ strong: 'Secrets never touch images.', rest: 'Env vars are injected at runtime and encrypted at rest. <b>Zero</b> plaintext leakage into build logs.' },
-];
-
-const competitors = [
-	{ name: 'Heroku', blurb: 'deplow runs in your cloud, one host, with a real sandbox — no dyno dynasty to outgrow.' },
-	{ name: 'Vercel', blurb: 'Bring your backend, not just your frontend. <b>Full-stack</b> per project, not per preview.' },
-	{ name: 'Render', blurb: 'One host, one bill. gVisor isolation where Render charges you per service for it.' },
-	{ name: 'Railway', blurb: 'Self-hosted and self-owned. <b>No usage grid</b>, no surprise dollar graph at 3am.' },
-	{ name: 'Dokploy', blurb: 'A control plane with a sandbox-first runtime. deplow ships gVisor by default, full stop.' },
-	{ name: 'Coolify', blurb: 'Faster local setup, a smaller surface, and the loop you can explain in one breath.' },
-	{ name: 'Dokku', blurb: 'Same single-host honesty. deplow adds a typed API, scheduled backups, and a real UI.' },
-	{ name: 'Porter', blurb: 'For when you’ve outgrown hand-tuned kube — <b>drift back</b> to one host without losing the platform.' },
-];
-
-const faqs = [
+const observePillars = [
 	{
-		n: '01',
-		title: 'Install',
-		body: 'One script checks BuildKit, Railpack, and gVisor, then starts platform services on your Docker host.',
+		title: 'Trends query builder',
+		body: 'Multi-series A/B/C, arithmetic formulas, nested filter groups, breakdowns, baseline overlay — chart plus exact results table.',
 	},
 	{
-		n: '02',
-		title: 'Wildcard domain',
-		body: 'Set a base domain in Domains. Cloudflare Tunnel handles TLS; Caddy on the host stays HTTP-only.',
+		title: 'Traces, logs, issues',
+		body: 'Explore heatmaps, dig-down into traces and logs, group errors into issues. Same Context time range across surfaces.',
 	},
 	{
-		n: '03',
-		title: 'Stack & bind',
-		body: 'Create a project, add web + Postgres + Redis, bind the app to data, deploy from git or the dashboard.',
+		title: 'Dashboards from saved charts',
+		body: 'Save a Trends query as an Insight, place it on a dashboard, override period and group-by without rebuilding the chart.',
 	},
-	{
-		n: '04',
-		title: 'Run it',
-		body: 'Live logs, retries, clean teardown. Scheduled pg_dump goes to platform MinIO.',
-	},
+];
+
+const trendsFeatures = [
+	{ label: 'Series', detail: 'Spans, root spans, logs, errors — count, rate, percentiles, error rate' },
+	{ label: 'Formulas', detail: 'B/A×100 and friends over aligned buckets' },
+	{ label: 'Filters', detail: 'Nested AND / OR / NOT groups, per-series and global' },
+	{ label: 'Breakdowns', detail: 'Top-N + Other, cardinality warnings' },
+	{ label: 'Compare', detail: 'Previous-period baseline on the same chart' },
+	{ label: 'Export', detail: 'CSV of exact buckets, or query + result JSON' },
 ];
 
 const notFor = [
 	'Compose as a deploy path',
 	'MySQL, Mongo, or template marketplaces',
-	'Custom domains or PR previews (v2)',
-	'Multi-server fleets',
-	'SSO or a public CLI',
+	'Product analytics funnels / retention / paths',
+	'Multi-server fleets or kube operators',
+	'SSO or a public CLI (v1)',
 ];
 
 const faqs = [
 	{
 		q: 'How is this different from Coolify or Dokploy?',
-		a: 'They cover more surface area — Compose, templates, many databases, fleets. deplow does one thing: a Railway-style loop on a single host, with gVisor on user code. Need the kitchen sink? Use them. Need sandboxed app + Postgres + Redis + git push? Use us.',
+		a: 'They cover more surface area — Compose, templates, fleets. deplow is a Railway-style loop on one host with gVisor on user code, plus an Observe mode for OTEL traces, logs, and Trends charts.',
+	},
+	{
+		q: 'What is Observe?',
+		a: 'Optional ClickHouse-backed observability in the same control plane. Ingest OpenTelemetry / Sentry-compatible envelopes, then query with Trends, Explore, Traces, Logs, and Issues.',
+	},
+	{
+		q: 'Do I have to use Observe to deploy?',
+		a: 'No. Deploy works alone. Enable Observe per project when you want charts and dig-down on the same host.',
 	},
 	{
 		q: 'Where does HTTPS come from?',
 		a: 'TLS terminates at Cloudflare on the tunnel. Caddy on the host is HTTP-only in v1.',
 	},
-	{
-		q: 'Can I attach a custom domain?',
-		a: 'Not in v1. Web services get URLs under your platform wildcard (*.{baseDomain}). Custom domains are planned for v2.',
-	},
-	{
-		q: 'Is there a CLI or public API?',
-		a: 'No typed CLI and no general REST API in v1. Dashboard-first. MCP tokens exist for agents — they are not a product API.',
-	},
 ];
 ---
 
 <LandingLayout
-	title="deplow — self-hosted apps under gVisor"
-	description="Deploy web apps, Postgres, and Redis on your Docker host. Explicit bindings, git push deploys, wildcard URLs — with user code sandboxed under gVisor."
+	title="deplow — deploy & observe on your host"
+	description="Self-hosted deploy under gVisor, plus Trends observability: multi-series charts, traces, logs, and dashboards on your Docker host."
 >
 	<nav class="nav">
 		<a href="/" class="nav-brand" aria-label="deplow home">
@@ -115,6 +93,8 @@ const faqs = [
 			<span class="nav-wordmark">deplow</span>
 		</a>
 		<div class="nav-right">
+			<a href="#deploy" class="nav-link">Deploy</a>
+			<a href="#observe" class="nav-link">Observe</a>
 			<a href="/docs/" class="nav-link">Docs</a>
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="nav-link">
 				GitHub
@@ -125,15 +105,16 @@ const faqs = [
 
 	<main>
 		<section class="hero">
-			<h1 class="tagline">Deploy on your host.<br />Sandboxed by default.</h1>
+			<p class="brand-mark">deplow</p>
+			<h1 class="tagline">Deploy and observe<br />on your host.</h1>
 			<p class="lede">
-				A control plane for one Docker machine — add services, bind Postgres and
-				Redis, deploy from git, get a wildcard URL. User code runs under gVisor.
+				One Docker machine: ship apps under gVisor, then dig into traces, logs, and
+				Trends charts without bolting on a second SaaS.
 			</p>
 
 			<div class="hero-actions">
 				<a class="hero-button" href="/docs/getting-started/quick-start/">Get started</a>
-				<a class="secondary-link" href="/docs/concepts/scope/">What we don’t build</a>
+				<a class="secondary-link" href="#observe">See Observe →</a>
 			</div>
 
 			<div class="install" data-install>
@@ -143,30 +124,35 @@ const faqs = [
 					Copy
 				</button>
 			</div>
-
-			<figure class="shot shot--hero">
-				<div class="browser-chrome" aria-hidden="true">
-					<span class="dot"></span>
-					<span class="dot"></span>
-					<span class="dot"></span>
-				<span class="url">localhost:3000 / projects / acme-shop</span>
-			</div>
-			<img
-				src="/screenshots/dashboard.jpeg"
-				alt="deplow project overview for acme-shop with web, postgres, and redis services"
-				width="1440"
-				height="900"
-				loading="eager"
-			/>
-			<figcaption>
-				Project stack — apps on the left, data on the right, bindings in between.
-			</figcaption>
-			</figure>
 		</section>
 
-		<section class="band" id="different">
+		<!-- Split product rail -->
+		<section class="split" aria-label="Deploy and Observe">
+			<a class="split-pane split-pane--deploy" href="#deploy">
+				<span class="split-kicker">01 · Deploy</span>
+				<strong class="split-title">Ship the stack</strong>
+				<p class="split-body">
+					Web + Postgres + Redis, explicit bindings, git push, wildcard URL.
+					User code sandboxed under gVisor.
+				</p>
+				<span class="split-cta">Explore Deploy →</span>
+			</a>
+			<a class="split-pane split-pane--observe" href="#observe">
+				<span class="split-kicker">02 · Observe</span>
+				<strong class="split-title">Query the signal</strong>
+				<p class="split-body">
+					Trends multi-series builder, Explore dig-down, traces, logs, issues,
+					and dashboards from saved charts.
+				</p>
+				<span class="split-cta">Explore Observe →</span>
+			</a>
+		</section>
+
+		<!-- DEPLOY -->
+		<section class="band" id="deploy">
+			<div class="mode-label">Deploy</div>
 			<div class="band-head">
-				<h2>What we actually do</h2>
+				<h2>What Deploy actually does</h2>
 				<p>
 					Most self-hosted panels try to run everything. We run the stack most
 					apps need — and isolate the code you did not write.
@@ -174,7 +160,7 @@ const faqs = [
 			</div>
 			<div class="diff-list">
 				{
-					differentiators.map((d) => (
+					deployPillars.map((d) => (
 						<div class="diff-item">
 							<h3>{d.title}</h3>
 							<p>{d.body}</p>
@@ -184,14 +170,14 @@ const faqs = [
 			</div>
 		</section>
 
-		<section class="band" id="how">
+		<section class="band" id="how-deploy">
 			<div class="band-head">
-				<h2>How it works</h2>
+				<h2>How Deploy works</h2>
 				<p>Four steps from install to running app. No resource catalog in the middle.</p>
 			</div>
 			<ol class="steps">
 				{
-					steps.map((s) => (
+					deploySteps.map((s) => (
 						<li>
 							<span class="step-n">{s.n}</span>
 							<div>
@@ -210,27 +196,110 @@ const faqs = [
 					<span class="dot"></span>
 					<span class="dot"></span>
 					<span class="dot"></span>
-				<span class="url">localhost:3000 / home</span>
-			</div>
-			<img
-				src="/screenshots/home.jpeg"
-				alt="deplow home dashboard showing projects, nodes, and GitHub integration"
-				width="1440"
-				height="900"
-				loading="lazy"
-			/>
-			<figcaption>
-				Home — your projects and platform settings in one place.
-			</figcaption>
+					<span class="url">localhost:3000 / projects / acme-shop</span>
+				</div>
+				<div class="shot-frame">
+					<DashboardMockup />
+				</div>
+				<figcaption>
+					Project stack — apps on the left, data on the right, bindings in between.
+				</figcaption>
 			</figure>
+		</section>
+
+		<!-- OBSERVE -->
+		<section class="band" id="observe">
+			<div class="mode-label mode-label--observe">Observe</div>
+			<div class="band-head">
+				<h2>Observability that lives next to Deploy</h2>
+				<p>
+					Ingest OpenTelemetry on the same host. Build charts with Trends, dig
+					into traces and logs, save Insights onto dashboards — one Context bar
+					for time and filters.
+				</p>
+			</div>
+			<div class="diff-list">
+				{
+					observePillars.map((d) => (
+						<div class="diff-item">
+							<h3>{d.title}</h3>
+							<p>{d.body}</p>
+						</div>
+					))
+				}
+			</div>
+		</section>
+
+		<section class="band band--shot" id="trends">
+			<figure class="shot">
+				<div class="browser-chrome" aria-hidden="true">
+					<span class="dot"></span>
+					<span class="dot"></span>
+					<span class="dot"></span>
+					<span class="url">localhost:3010 / observe / projects / … / trends</span>
+				</div>
+				<div class="shot-frame">
+					<TrendsMockup />
+				</div>
+				<figcaption>
+					Trends — left builder (series, formulas, filters, breakdown), chart with
+					baseline, exact results grid, CSV / JSON export.
+				</figcaption>
+			</figure>
+		</section>
+
+		<section class="band" id="trends-features">
+			<div class="band-head">
+				<h2>Trends, in one pass</h2>
+				<p>
+					PostHog-style visual query builder for ops signals — not product
+					analytics. Phase 1 ships the loop you use every day.
+				</p>
+			</div>
+			<ul class="feature-rail">
+				{
+					trendsFeatures.map((f) => (
+						<li>
+							<span class="feature-label">{f.label}</span>
+							<span class="feature-detail">{f.detail}</span>
+						</li>
+					))
+				}
+			</ul>
+		</section>
+
+		<section class="band" id="observe-surfaces">
+			<div class="band-head">
+				<h2>The rest of Observe</h2>
+				<p>Trends is the deep builder. These surfaces share the same Context.</p>
+			</div>
+			<div class="surface-grid">
+				<div class="surface-item">
+					<h3>Explore</h3>
+					<p>Duration heatmap with brush dig-down into the time window that matters.</p>
+				</div>
+				<div class="surface-item">
+					<h3>Traces &amp; logs</h3>
+					<p>Waterfalls, correlated logs, attribute filters — jump from chart to span.</p>
+				</div>
+				<div class="surface-item">
+					<h3>Issues</h3>
+					<p>Grouped errors with stack frames, status, and links back into traces.</p>
+				</div>
+				<div class="surface-item">
+					<h3>Dashboards</h3>
+					<p>Place saved Trends charts as widgets; override period and group-by per board.</p>
+				</div>
+			</div>
 		</section>
 
 		<section class="band" id="not-for">
 			<div class="band-head">
 				<h2>Out of scope</h2>
 				<p>
-					Narrow on purpose. If you need Coolify’s breadth, use Coolify.
-					<a class="inline-link" href="/docs/concepts/scope/">Full list →</a>
+					Narrow on purpose. If you need Coolify’s breadth or a full product-analytics
+					suite, use those tools.
+					<a class="inline-link" href="/docs/concepts/scope/">Full Deploy list →</a>
 				</p>
 			</div>
 			<ul class="out-list">
@@ -256,7 +325,7 @@ const faqs = [
 
 		<section class="cta">
 			<h2>Install on your host</h2>
-			<p>Bootstrap, set your wildcard, deploy. That is the whole launch path.</p>
+			<p>Bootstrap Deploy. Flip on Observe when you want Trends and dig-down.</p>
 			<div class="hero-actions">
 				<a class="hero-button" href="/docs/getting-started/quick-start/">Read quick start</a>
 				<a class="secondary-link" href={appUrl}>Open dashboard</a>
@@ -267,8 +336,9 @@ const faqs = [
 	<footer class="footer">
 		<span>&copy; {new Date().getFullYear()} deplow · MIT</span>
 		<div class="footer-links">
+			<a href="#deploy">Deploy</a>
+			<a href="#observe">Observe</a>
 			<a href="/docs/">Docs</a>
-			<a href="/docs/concepts/scope/">Scope</a>
 			<a href={appUrl}>Dashboard</a>
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 		</div>

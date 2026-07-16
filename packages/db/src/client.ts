@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url"
 import Database from "better-sqlite3"
 import { drizzle } from "drizzle-orm/better-sqlite3"
 
-import { ensureGitOAuthSchema, ensureOrganizationsSchema, ensureServicesSchema } from "./ensure-schema"
+import {
+  ensureGitOAuthSchema,
+  ensureOrganizationsSchema,
+  ensureObserveSchema,
+  ensureServicesSchema,
+} from "./ensure-schema"
 import * as schema from "./schema"
 
 /** Package root (`packages/db`) — keeps migrate + web on the same SQLite file. */
@@ -34,6 +39,7 @@ function openSqlite(filePath: string) {
   ensureGitOAuthSchema(sqlite)
   ensureServicesSchema(sqlite)
   ensureOrganizationsSchema(sqlite)
+  ensureObserveSchema(sqlite)
   return sqlite
 }
 

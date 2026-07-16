@@ -1,4 +1,8 @@
-import type { ProjectSection } from "@/components/project-rail"
+export type ProjectSection =
+  | "overview"
+  | "deployments"
+  | "settings"
+  | "secrets"
 
 export const PROJECT_SECTION_IDS = [
   "overview",
@@ -14,7 +18,16 @@ export function isProjectSection(value: unknown): value is ProjectSection {
   )
 }
 
-/** Parse `?section=` from the URL; unknown values fall back to overview. */
+/** Derive section from `/projects/$id[/surface]` pathname. */
+export function projectSectionFromPath(pathname: string): ProjectSection | null {
+  const match = pathname.match(/^\/projects\/[^/]+(?:\/([^/]+))?/)
+  if (!match) return null
+  const surface = match[1]
+  if (!surface) return "overview"
+  return isProjectSection(surface) ? surface : "overview"
+}
+
+/** @deprecated Prefer projectSectionFromPath; kept for search-param fallbacks. */
 export function parseProjectSection(value: unknown): ProjectSection {
   return isProjectSection(value) ? value : "overview"
 }

@@ -742,3 +742,153 @@ function migrateResourceLinksToServices(sqlite: Database.Database): void {
     // migration best-effort
   }
 }
+
+const OBSERVE_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS observe_projects (
+    id text PRIMARY KEY NOT NULL,
+    project_id text NOT NULL REFERENCES projects(id) ON DELETE cascade,
+    sentry_id integer NOT NULL,
+    enabled integer NOT NULL DEFAULT 1,
+    retention_max_event_count integer NOT NULL DEFAULT 10000,
+    retention_max_age_days integer NOT NULL DEFAULT 30,
+    span_retention_days integer NOT NULL DEFAULT 7,
+    quota_per_5m integer NOT NULL DEFAULT 1000,
+    quota_per_hour integer NOT NULL DEFAULT 5000,
+    quota_per_month integer NOT NULL DEFAULT 1000000,
+    grouping_mechanism text NOT NULL DEFAULT 'deplow-v1',
+    digest_counter integer NOT NULL DEFAULT 0,
+    stored_event_count integer NOT NULL DEFAULT 0,
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS observe_projects_project_idx ON observe_projects (project_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS observe_projects_sentry_id_idx ON observe_projects (sentry_id)`,
+  `CREATE TABLE IF NOT EXISTS observe_keys (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    public_key text NOT NULL,
+    name text NOT NULL DEFAULT 'default',
+    revoked_at integer,
+    created_at integer NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS observe_keys_public_key_idx ON observe_keys (public_key)`,
+  `CREATE INDEX IF NOT EXISTS observe_keys_observe_project_idx ON observe_keys (observe_project_id)`,
+  `CREATE TABLE IF NOT EXISTS observe_issues (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    title text NOT NULL,
+    culprit text NOT NULL DEFAULT '',
+    level text NOT NULL DEFAULT 'error',
+    status text NOT NULL DEFAULT 'unresolved',
+    digested_event_count integer NOT NULL DEFAULT 0,
+    first_seen integer NOT NULL,
+    last_seen integer NOT NULL,
+    last_event_id text,
+    last_trace_id text,
+    is_deleted integer NOT NULL DEFAULT 0,
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS observe_issues_project_idx ON observe_issues (observe_project_id)`,
+  `CREATE INDEX IF NOT EXISTS observe_issues_status_idx ON observe_issues (observe_project_id, status)`,
+  `CREATE TABLE IF NOT EXISTS observe_groupings (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    mechanism text NOT NULL,
+    grouping_key text NOT NULL,
+    grouping_key_hash text NOT NULL,
+    issue_id text NOT NULL REFERENCES observe_issues(id) ON DELETE cascade,
+    created_at integer NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS observe_groupings_hash_idx ON observe_groupings (observe_project_id, mechanism, grouping_key_hash)`,
+  `CREATE INDEX IF NOT EXISTS observe_groupings_issue_idx ON observe_groupings (issue_id)`,
+  `CREATE TABLE IF NOT EXISTS observe_event_counts_hourly (
+    id text PRIMARY KEY NOT NULL,
+    scope text NOT NULL,
+    scope_id text NOT NULL,
+    hour text NOT NULL,
+    count integer NOT NULL DEFAULT 0
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS observe_event_counts_hourly_uidx ON observe_event_counts_hourly (scope, scope_id, hour)`,
+  `CREATE TABLE IF NOT EXISTS observe_members (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    user_id text NOT NULL,
+    role text NOT NULL DEFAULT 'viewer',
+    created_at integer NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS observe_members_uidx ON observe_members (observe_project_id, user_id)`,
+  `CREATE INDEX IF NOT EXISTS observe_members_project_idx ON observe_members (observe_project_id)`,
+  `CREATE TABLE IF NOT EXISTS observe_saved_views (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    name text NOT NULL,
+    surface text NOT NULL DEFAULT 'explore',
+    context_json text NOT NULL,
+    created_by text,
+    created_at integer NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS observe_saved_views_project_idx ON observe_saved_views (observe_project_id)`,
+  `CREATE TABLE IF NOT EXISTS observe_insights (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    name text NOT NULL,
+    description text,
+    spec_json text NOT NULL,
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS observe_insights_project_idx ON observe_insights (observe_project_id)`,
+  `CREATE TABLE IF NOT EXISTS observe_dashboards (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    name text NOT NULL,
+    template text NOT NULL DEFAULT 'blank',
+    layout_json text NOT NULL DEFAULT '{"widgets":[]}',
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS observe_dashboards_project_idx ON observe_dashboards (observe_project_id)`,
+  `CREATE TABLE IF NOT EXISTS observe_alerts (
+    id text PRIMARY KEY NOT NULL,
+    observe_project_id text NOT NULL REFERENCES observe_projects(id) ON DELETE cascade,
+    name text NOT NULL,
+    enabled integer NOT NULL DEFAULT 1,
+    kind text NOT NULL DEFAULT 'threshold',
+    metric text NOT NULL DEFAULT 'error_rate',
+    operator text NOT NULL DEFAULT 'gt',
+    threshold text NOT NULL DEFAULT '0.05',
+    window text NOT NULL DEFAULT '5m',
+    context_json text NOT NULL DEFAULT '{}',
+    channel_email text,
+    channel_webhook text,
+    last_triggered_at integer,
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS observe_alerts_project_idx ON observe_alerts (observe_project_id)`,
+  `CREATE TABLE IF NOT EXISTS message_channels (
+    id text PRIMARY KEY NOT NULL,
+    name text NOT NULL,
+    kind text NOT NULL,
+    config_json text NOT NULL DEFAULT '{}',
+    enabled integer NOT NULL DEFAULT 1,
+    created_by text,
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL
+  )`,
+  // Additive column for alerts → channel ids (JSON array)
+  `ALTER TABLE observe_alerts ADD COLUMN channel_ids_json text NOT NULL DEFAULT '[]'`,
+]
+
+export function ensureObserveSchema(sqlite: Database.Database): void {
+  for (const sql of OBSERVE_STATEMENTS) {
+    try {
+      sqlite.exec(sql)
+    } catch (err) {
+      // SQLite: duplicate column on re-run of ALTER TABLE
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!/duplicate column/i.test(msg)) throw err
+    }
+  }
+}

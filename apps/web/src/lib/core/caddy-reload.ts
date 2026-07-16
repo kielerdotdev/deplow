@@ -111,19 +111,35 @@ export function createCaddyReloadOnChange(
   }
 }
 
+const DEFAULT_RUN_TIMEOUT_MS = 20_000
+
 function defaultRun(
   cmd: string,
   args: string[],
+  timeoutMs = DEFAULT_RUN_TIMEOUT_MS,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, { env: process.env })
     let stdout = ""
     let stderr = ""
+    let settled = false
+    const finish = (code: number, errMsg?: string) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve({
+        code,
+        stdout,
+        stderr: errMsg ? `${stderr}${stderr ? "\n" : ""}${errMsg}` : stderr,
+      })
+    }
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL")
+      finish(1, `timed out after ${timeoutMs}ms`)
+    }, timeoutMs)
     child.stdout.on("data", (d: Buffer) => (stdout += d.toString()))
     child.stderr.on("data", (d: Buffer) => (stderr += d.toString()))
-    child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }))
-    child.on("error", (err) =>
-      resolve({ code: 1, stdout, stderr: err.message }),
-    )
+    child.on("close", (code) => finish(code ?? 1))
+    child.on("error", (err) => finish(1, err.message))
   })
 }

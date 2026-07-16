@@ -939,6 +939,10 @@ if (typeof process !== "undefined" && process.env.VITEST !== "true") {
         )
         return processProvisionJob(job.data)
       },
+      observeDigest: async (job) => {
+        const { runObserveDigest } = await import("@/lib/observe/store")
+        return runObserveDigest(job.data)
+      },
     })
   }
 }

@@ -34,6 +34,12 @@ create empty project (pinned to local node)
 | **Ops UX**                | Create / list / destroy, deploy, stop, logs, backups                                                                            |
 | **Organizations**         | Soft multi-user: invite members (`owner` / `member`); system settings gated to instance admins                                  |
 
+## Optional addon (not GTM)
+
+| Addon | Spec |
+| --- | --- |
+| **Observe** | Sentry-compatible errors + OTLP traces/metrics/logs; ClickHouse required; Deploy\|Observe UI — [observe.md](./observe.md) |
+
 ## Designed for later (do not build in v1; don’t paint into a corner)
 
 | Later                        | Design now                                                                              |
@@ -55,8 +61,9 @@ create empty project (pinned to local node)
 - One-click templates / app marketplace
 - SSO / fine-grained RBAC (soft orgs with `owner`/`member` invites are in scope)
 - CLI, general-purpose public API keys
-- Browser terminal, volume browser, metrics dashboards
+- Browser terminal, volume browser
 - Slack/Discord/Telegram/email notification **hubs**
+- Full metrics dashboards as Deploy core (optional **Observe** addon — [observe.md](./observe.md))
 
 ### Thin notify exception (GTM)
 

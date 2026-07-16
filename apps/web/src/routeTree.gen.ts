@@ -17,13 +17,45 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as DomainsRouteImport } from './routes/domains'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as ObserveIndexRouteImport } from './routes/observe/index'
+import { Route as SettingsTeamRouteImport } from './routes/settings.team'
+import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
+import { Route as SettingsNodesRouteImport } from './routes/settings.nodes'
+import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
+import { Route as SettingsDomainsRouteImport } from './routes/settings.domains'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as InvitesTokenRouteImport } from './routes/invites.$token'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
+import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId.index'
+import { Route as ProjectsProjectIdSettingsRouteImport } from './routes/projects/$projectId.settings'
+import { Route as ProjectsProjectIdSecretsRouteImport } from './routes/projects/$projectId.secrets'
+import { Route as ProjectsProjectIdDeploymentsRouteImport } from './routes/projects/$projectId.deployments'
+import { Route as ObserveProjectsProjectIdRouteImport } from './routes/observe/projects/$projectId'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
+import { Route as ApiInternalDogfoodRouteImport } from './routes/api/internal.dogfood'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiSentryIdStoreRouteImport } from './routes/api/$sentryId.store'
+import { Route as ApiSentryIdEnvelopeRouteImport } from './routes/api/$sentryId.envelope'
+import { Route as ObserveProjectsProjectIdIndexRouteImport } from './routes/observe/projects/$projectId.index'
 import { Route as ProjectsProjectIdServicesServiceIdRouteImport } from './routes/projects/$projectId_/services/$serviceId'
+import { Route as ObserveProjectsProjectIdTrendsRouteImport } from './routes/observe/projects/$projectId.trends'
+import { Route as ObserveProjectsProjectIdTracesRouteImport } from './routes/observe/projects/$projectId.traces'
+import { Route as ObserveProjectsProjectIdSetupRouteImport } from './routes/observe/projects/$projectId.setup'
+import { Route as ObserveProjectsProjectIdServicesRouteImport } from './routes/observe/projects/$projectId.services'
+import { Route as ObserveProjectsProjectIdReleasesRouteImport } from './routes/observe/projects/$projectId.releases'
+import { Route as ObserveProjectsProjectIdLogsRouteImport } from './routes/observe/projects/$projectId.logs'
+import { Route as ObserveProjectsProjectIdIssuesRouteImport } from './routes/observe/projects/$projectId.issues'
+import { Route as ObserveProjectsProjectIdInsightsRouteImport } from './routes/observe/projects/$projectId.insights'
+import { Route as ObserveProjectsProjectIdExploreRouteImport } from './routes/observe/projects/$projectId.explore'
+import { Route as ObserveProjectsProjectIdDashboardsRouteImport } from './routes/observe/projects/$projectId.dashboards'
+import { Route as ObserveProjectsProjectIdAlertsRouteImport } from './routes/observe/projects/$projectId.alerts'
 import { Route as ApiWebhooksGitServiceIdRouteImport } from './routes/api/webhooks/git.$serviceId'
+import { Route as ApiSentryIdOtlpSplatRouteImport } from './routes/api/$sentryId.otlp.$'
+import { Route as ObserveProjectsProjectIdTracesTraceIdRouteImport } from './routes/observe/projects/$projectId.traces_.$traceId'
+import { Route as ObserveProjectsProjectIdServicesServiceNameRouteImport } from './routes/observe/projects/$projectId.services_.$serviceName'
+import { Route as ObserveProjectsProjectIdIssuesIssueIdRouteImport } from './routes/observe/projects/$projectId.issues_.$issueId'
+import { Route as ObserveProjectsProjectIdDashboardsDashboardIdRouteImport } from './routes/observe/projects/$projectId.dashboards_.$dashboardId'
 import { Route as ApiGitOauthGitlabCallbackRouteImport } from './routes/api/git/oauth/gitlab/callback'
 import { Route as ApiGitOauthGithubCallbackRouteImport } from './routes/api/git/oauth/github/callback'
 import { Route as ApiGitGithubAppManifestCallbackRouteImport } from './routes/api/git/github/app-manifest/callback'
@@ -68,6 +100,41 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const ObserveIndexRoute = ObserveIndexRouteImport.update({
+  id: '/observe/',
+  path: '/observe/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsTeamRoute = SettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNodesRoute = SettingsNodesRouteImport.update({
+  id: '/nodes',
+  path: '/nodes',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsDomainsRoute = SettingsDomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
@@ -83,9 +150,43 @@ const ApiMcpRoute = ApiMcpRouteImport.update({
   path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdSettingsRoute =
+  ProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const ProjectsProjectIdSecretsRoute =
+  ProjectsProjectIdSecretsRouteImport.update({
+    id: '/secrets',
+    path: '/secrets',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const ProjectsProjectIdDeploymentsRoute =
+  ProjectsProjectIdDeploymentsRouteImport.update({
+    id: '/deployments',
+    path: '/deployments',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdRoute =
+  ObserveProjectsProjectIdRouteImport.update({
+    id: '/observe/projects/$projectId',
+    path: '/observe/projects/$projectId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
   id: '/api/rpc/$',
   path: '/api/rpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInternalDogfoodRoute = ApiInternalDogfoodRouteImport.update({
+  id: '/api/internal/dogfood',
+  path: '/api/internal/dogfood',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -93,17 +194,128 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSentryIdStoreRoute = ApiSentryIdStoreRouteImport.update({
+  id: '/api/$sentryId/store',
+  path: '/api/$sentryId/store',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSentryIdEnvelopeRoute = ApiSentryIdEnvelopeRouteImport.update({
+  id: '/api/$sentryId/envelope',
+  path: '/api/$sentryId/envelope',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObserveProjectsProjectIdIndexRoute =
+  ObserveProjectsProjectIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
 const ProjectsProjectIdServicesServiceIdRoute =
   ProjectsProjectIdServicesServiceIdRouteImport.update({
     id: '/projects/$projectId_/services/$serviceId',
     path: '/projects/$projectId/services/$serviceId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ObserveProjectsProjectIdTrendsRoute =
+  ObserveProjectsProjectIdTrendsRouteImport.update({
+    id: '/trends',
+    path: '/trends',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdTracesRoute =
+  ObserveProjectsProjectIdTracesRouteImport.update({
+    id: '/traces',
+    path: '/traces',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdSetupRoute =
+  ObserveProjectsProjectIdSetupRouteImport.update({
+    id: '/setup',
+    path: '/setup',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdServicesRoute =
+  ObserveProjectsProjectIdServicesRouteImport.update({
+    id: '/services',
+    path: '/services',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdReleasesRoute =
+  ObserveProjectsProjectIdReleasesRouteImport.update({
+    id: '/releases',
+    path: '/releases',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdLogsRoute =
+  ObserveProjectsProjectIdLogsRouteImport.update({
+    id: '/logs',
+    path: '/logs',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdIssuesRoute =
+  ObserveProjectsProjectIdIssuesRouteImport.update({
+    id: '/issues',
+    path: '/issues',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdInsightsRoute =
+  ObserveProjectsProjectIdInsightsRouteImport.update({
+    id: '/insights',
+    path: '/insights',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdExploreRoute =
+  ObserveProjectsProjectIdExploreRouteImport.update({
+    id: '/explore',
+    path: '/explore',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdDashboardsRoute =
+  ObserveProjectsProjectIdDashboardsRouteImport.update({
+    id: '/dashboards',
+    path: '/dashboards',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdAlertsRoute =
+  ObserveProjectsProjectIdAlertsRouteImport.update({
+    id: '/alerts',
+    path: '/alerts',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
 const ApiWebhooksGitServiceIdRoute = ApiWebhooksGitServiceIdRouteImport.update({
   id: '/api/webhooks/git/$serviceId',
   path: '/api/webhooks/git/$serviceId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSentryIdOtlpSplatRoute = ApiSentryIdOtlpSplatRouteImport.update({
+  id: '/api/$sentryId/otlp/$',
+  path: '/api/$sentryId/otlp/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObserveProjectsProjectIdTracesTraceIdRoute =
+  ObserveProjectsProjectIdTracesTraceIdRouteImport.update({
+    id: '/traces_/$traceId',
+    path: '/traces/$traceId',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdServicesServiceNameRoute =
+  ObserveProjectsProjectIdServicesServiceNameRouteImport.update({
+    id: '/services_/$serviceName',
+    path: '/services/$serviceName',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdIssuesIssueIdRoute =
+  ObserveProjectsProjectIdIssuesIssueIdRouteImport.update({
+    id: '/issues_/$issueId',
+    path: '/issues/$issueId',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdDashboardsDashboardIdRoute =
+  ObserveProjectsProjectIdDashboardsDashboardIdRouteImport.update({
+    id: '/dashboards_/$dashboardId',
+    path: '/dashboards/$dashboardId',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
 const ApiGitOauthGitlabCallbackRoute =
   ApiGitOauthGitlabCallbackRouteImport.update({
     id: '/api/git/oauth/gitlab/callback',
@@ -131,17 +343,49 @@ export interface FileRoutesByFullPath {
   '/nodes': typeof NodesRoute
   '/notifications': typeof NotificationsRoute
   '/organization': typeof OrganizationRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/api/mcp': typeof ApiMcpRoute
   '/invites/$token': typeof InvitesTokenRoute
-  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/settings/domains': typeof SettingsDomainsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/nodes': typeof SettingsNodesRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/team': typeof SettingsTeamRoute
+  '/observe/': typeof ObserveIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
+  '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/observe/projects/$projectId': typeof ObserveProjectsProjectIdRouteWithChildren
+  '/projects/$projectId/deployments': typeof ProjectsProjectIdDeploymentsRoute
+  '/projects/$projectId/secrets': typeof ProjectsProjectIdSecretsRoute
+  '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/api/$sentryId/otlp/$': typeof ApiSentryIdOtlpSplatRoute
   '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
+  '/observe/projects/$projectId/alerts': typeof ObserveProjectsProjectIdAlertsRoute
+  '/observe/projects/$projectId/dashboards': typeof ObserveProjectsProjectIdDashboardsRoute
+  '/observe/projects/$projectId/explore': typeof ObserveProjectsProjectIdExploreRoute
+  '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
+  '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
+  '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
+  '/observe/projects/$projectId/releases': typeof ObserveProjectsProjectIdReleasesRoute
+  '/observe/projects/$projectId/services': typeof ObserveProjectsProjectIdServicesRoute
+  '/observe/projects/$projectId/setup': typeof ObserveProjectsProjectIdSetupRoute
+  '/observe/projects/$projectId/traces': typeof ObserveProjectsProjectIdTracesRoute
+  '/observe/projects/$projectId/trends': typeof ObserveProjectsProjectIdTrendsRoute
   '/projects/$projectId/services/$serviceId': typeof ProjectsProjectIdServicesServiceIdRoute
+  '/observe/projects/$projectId/': typeof ObserveProjectsProjectIdIndexRoute
   '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
   '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
   '/api/git/oauth/gitlab/callback': typeof ApiGitOauthGitlabCallbackRoute
+  '/observe/projects/$projectId/dashboards/$dashboardId': typeof ObserveProjectsProjectIdDashboardsDashboardIdRoute
+  '/observe/projects/$projectId/issues/$issueId': typeof ObserveProjectsProjectIdIssuesIssueIdRoute
+  '/observe/projects/$projectId/services/$serviceName': typeof ObserveProjectsProjectIdServicesServiceNameRoute
+  '/observe/projects/$projectId/traces/$traceId': typeof ObserveProjectsProjectIdTracesTraceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,17 +395,46 @@ export interface FileRoutesByTo {
   '/nodes': typeof NodesRoute
   '/notifications': typeof NotificationsRoute
   '/organization': typeof OrganizationRoute
-  '/settings': typeof SettingsRoute
   '/api/mcp': typeof ApiMcpRoute
   '/invites/$token': typeof InvitesTokenRoute
-  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/settings/domains': typeof SettingsDomainsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/nodes': typeof SettingsNodesRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/team': typeof SettingsTeamRoute
+  '/observe': typeof ObserveIndexRoute
+  '/settings': typeof SettingsIndexRoute
+  '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
+  '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/projects/$projectId/deployments': typeof ProjectsProjectIdDeploymentsRoute
+  '/projects/$projectId/secrets': typeof ProjectsProjectIdSecretsRoute
+  '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
+  '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
+  '/api/$sentryId/otlp/$': typeof ApiSentryIdOtlpSplatRoute
   '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
+  '/observe/projects/$projectId/alerts': typeof ObserveProjectsProjectIdAlertsRoute
+  '/observe/projects/$projectId/dashboards': typeof ObserveProjectsProjectIdDashboardsRoute
+  '/observe/projects/$projectId/explore': typeof ObserveProjectsProjectIdExploreRoute
+  '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
+  '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
+  '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
+  '/observe/projects/$projectId/releases': typeof ObserveProjectsProjectIdReleasesRoute
+  '/observe/projects/$projectId/services': typeof ObserveProjectsProjectIdServicesRoute
+  '/observe/projects/$projectId/setup': typeof ObserveProjectsProjectIdSetupRoute
+  '/observe/projects/$projectId/traces': typeof ObserveProjectsProjectIdTracesRoute
+  '/observe/projects/$projectId/trends': typeof ObserveProjectsProjectIdTrendsRoute
   '/projects/$projectId/services/$serviceId': typeof ProjectsProjectIdServicesServiceIdRoute
+  '/observe/projects/$projectId': typeof ObserveProjectsProjectIdIndexRoute
   '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
   '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
   '/api/git/oauth/gitlab/callback': typeof ApiGitOauthGitlabCallbackRoute
+  '/observe/projects/$projectId/dashboards/$dashboardId': typeof ObserveProjectsProjectIdDashboardsDashboardIdRoute
+  '/observe/projects/$projectId/issues/$issueId': typeof ObserveProjectsProjectIdIssuesIssueIdRoute
+  '/observe/projects/$projectId/services/$serviceName': typeof ObserveProjectsProjectIdServicesServiceNameRoute
+  '/observe/projects/$projectId/traces/$traceId': typeof ObserveProjectsProjectIdTracesTraceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,17 +445,49 @@ export interface FileRoutesById {
   '/nodes': typeof NodesRoute
   '/notifications': typeof NotificationsRoute
   '/organization': typeof OrganizationRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/api/mcp': typeof ApiMcpRoute
   '/invites/$token': typeof InvitesTokenRoute
-  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/settings/domains': typeof SettingsDomainsRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/nodes': typeof SettingsNodesRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/team': typeof SettingsTeamRoute
+  '/observe/': typeof ObserveIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
+  '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/observe/projects/$projectId': typeof ObserveProjectsProjectIdRouteWithChildren
+  '/projects/$projectId/deployments': typeof ProjectsProjectIdDeploymentsRoute
+  '/projects/$projectId/secrets': typeof ProjectsProjectIdSecretsRoute
+  '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/api/$sentryId/otlp/$': typeof ApiSentryIdOtlpSplatRoute
   '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
+  '/observe/projects/$projectId/alerts': typeof ObserveProjectsProjectIdAlertsRoute
+  '/observe/projects/$projectId/dashboards': typeof ObserveProjectsProjectIdDashboardsRoute
+  '/observe/projects/$projectId/explore': typeof ObserveProjectsProjectIdExploreRoute
+  '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
+  '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
+  '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
+  '/observe/projects/$projectId/releases': typeof ObserveProjectsProjectIdReleasesRoute
+  '/observe/projects/$projectId/services': typeof ObserveProjectsProjectIdServicesRoute
+  '/observe/projects/$projectId/setup': typeof ObserveProjectsProjectIdSetupRoute
+  '/observe/projects/$projectId/traces': typeof ObserveProjectsProjectIdTracesRoute
+  '/observe/projects/$projectId/trends': typeof ObserveProjectsProjectIdTrendsRoute
   '/projects/$projectId_/services/$serviceId': typeof ProjectsProjectIdServicesServiceIdRoute
+  '/observe/projects/$projectId/': typeof ObserveProjectsProjectIdIndexRoute
   '/api/git/github/app-manifest/callback': typeof ApiGitGithubAppManifestCallbackRoute
   '/api/git/oauth/github/callback': typeof ApiGitOauthGithubCallbackRoute
   '/api/git/oauth/gitlab/callback': typeof ApiGitOauthGitlabCallbackRoute
+  '/observe/projects/$projectId/dashboards_/$dashboardId': typeof ObserveProjectsProjectIdDashboardsDashboardIdRoute
+  '/observe/projects/$projectId/issues_/$issueId': typeof ObserveProjectsProjectIdIssuesIssueIdRoute
+  '/observe/projects/$projectId/services_/$serviceName': typeof ObserveProjectsProjectIdServicesServiceNameRoute
+  '/observe/projects/$projectId/traces_/$traceId': typeof ObserveProjectsProjectIdTracesTraceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -198,13 +503,45 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/invites/$token'
     | '/projects/$projectId'
+    | '/settings/domains'
+    | '/settings/integrations'
+    | '/settings/nodes'
+    | '/settings/notifications'
+    | '/settings/team'
+    | '/observe/'
+    | '/settings/'
+    | '/api/$sentryId/envelope'
+    | '/api/$sentryId/store'
     | '/api/auth/$'
+    | '/api/internal/dogfood'
     | '/api/rpc/$'
+    | '/observe/projects/$projectId'
+    | '/projects/$projectId/deployments'
+    | '/projects/$projectId/secrets'
+    | '/projects/$projectId/settings'
+    | '/projects/$projectId/'
+    | '/api/$sentryId/otlp/$'
     | '/api/webhooks/git/$serviceId'
+    | '/observe/projects/$projectId/alerts'
+    | '/observe/projects/$projectId/dashboards'
+    | '/observe/projects/$projectId/explore'
+    | '/observe/projects/$projectId/insights'
+    | '/observe/projects/$projectId/issues'
+    | '/observe/projects/$projectId/logs'
+    | '/observe/projects/$projectId/releases'
+    | '/observe/projects/$projectId/services'
+    | '/observe/projects/$projectId/setup'
+    | '/observe/projects/$projectId/traces'
+    | '/observe/projects/$projectId/trends'
     | '/projects/$projectId/services/$serviceId'
+    | '/observe/projects/$projectId/'
     | '/api/git/github/app-manifest/callback'
     | '/api/git/oauth/github/callback'
     | '/api/git/oauth/gitlab/callback'
+    | '/observe/projects/$projectId/dashboards/$dashboardId'
+    | '/observe/projects/$projectId/issues/$issueId'
+    | '/observe/projects/$projectId/services/$serviceName'
+    | '/observe/projects/$projectId/traces/$traceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -214,17 +551,46 @@ export interface FileRouteTypes {
     | '/nodes'
     | '/notifications'
     | '/organization'
-    | '/settings'
     | '/api/mcp'
     | '/invites/$token'
-    | '/projects/$projectId'
+    | '/settings/domains'
+    | '/settings/integrations'
+    | '/settings/nodes'
+    | '/settings/notifications'
+    | '/settings/team'
+    | '/observe'
+    | '/settings'
+    | '/api/$sentryId/envelope'
+    | '/api/$sentryId/store'
     | '/api/auth/$'
+    | '/api/internal/dogfood'
     | '/api/rpc/$'
+    | '/projects/$projectId/deployments'
+    | '/projects/$projectId/secrets'
+    | '/projects/$projectId/settings'
+    | '/projects/$projectId'
+    | '/api/$sentryId/otlp/$'
     | '/api/webhooks/git/$serviceId'
+    | '/observe/projects/$projectId/alerts'
+    | '/observe/projects/$projectId/dashboards'
+    | '/observe/projects/$projectId/explore'
+    | '/observe/projects/$projectId/insights'
+    | '/observe/projects/$projectId/issues'
+    | '/observe/projects/$projectId/logs'
+    | '/observe/projects/$projectId/releases'
+    | '/observe/projects/$projectId/services'
+    | '/observe/projects/$projectId/setup'
+    | '/observe/projects/$projectId/traces'
+    | '/observe/projects/$projectId/trends'
     | '/projects/$projectId/services/$serviceId'
+    | '/observe/projects/$projectId'
     | '/api/git/github/app-manifest/callback'
     | '/api/git/oauth/github/callback'
     | '/api/git/oauth/gitlab/callback'
+    | '/observe/projects/$projectId/dashboards/$dashboardId'
+    | '/observe/projects/$projectId/issues/$issueId'
+    | '/observe/projects/$projectId/services/$serviceName'
+    | '/observe/projects/$projectId/traces/$traceId'
   id:
     | '__root__'
     | '/'
@@ -238,13 +604,45 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/invites/$token'
     | '/projects/$projectId'
+    | '/settings/domains'
+    | '/settings/integrations'
+    | '/settings/nodes'
+    | '/settings/notifications'
+    | '/settings/team'
+    | '/observe/'
+    | '/settings/'
+    | '/api/$sentryId/envelope'
+    | '/api/$sentryId/store'
     | '/api/auth/$'
+    | '/api/internal/dogfood'
     | '/api/rpc/$'
+    | '/observe/projects/$projectId'
+    | '/projects/$projectId/deployments'
+    | '/projects/$projectId/secrets'
+    | '/projects/$projectId/settings'
+    | '/projects/$projectId/'
+    | '/api/$sentryId/otlp/$'
     | '/api/webhooks/git/$serviceId'
+    | '/observe/projects/$projectId/alerts'
+    | '/observe/projects/$projectId/dashboards'
+    | '/observe/projects/$projectId/explore'
+    | '/observe/projects/$projectId/insights'
+    | '/observe/projects/$projectId/issues'
+    | '/observe/projects/$projectId/logs'
+    | '/observe/projects/$projectId/releases'
+    | '/observe/projects/$projectId/services'
+    | '/observe/projects/$projectId/setup'
+    | '/observe/projects/$projectId/traces'
+    | '/observe/projects/$projectId/trends'
     | '/projects/$projectId_/services/$serviceId'
+    | '/observe/projects/$projectId/'
     | '/api/git/github/app-manifest/callback'
     | '/api/git/oauth/github/callback'
     | '/api/git/oauth/gitlab/callback'
+    | '/observe/projects/$projectId/dashboards_/$dashboardId'
+    | '/observe/projects/$projectId/issues_/$issueId'
+    | '/observe/projects/$projectId/services_/$serviceName'
+    | '/observe/projects/$projectId/traces_/$traceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -255,12 +653,18 @@ export interface RootRouteChildren {
   NodesRoute: typeof NodesRoute
   NotificationsRoute: typeof NotificationsRoute
   OrganizationRoute: typeof OrganizationRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   ApiMcpRoute: typeof ApiMcpRoute
   InvitesTokenRoute: typeof InvitesTokenRoute
-  ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
+  ObserveIndexRoute: typeof ObserveIndexRoute
+  ApiSentryIdEnvelopeRoute: typeof ApiSentryIdEnvelopeRoute
+  ApiSentryIdStoreRoute: typeof ApiSentryIdStoreRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiInternalDogfoodRoute: typeof ApiInternalDogfoodRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
+  ObserveProjectsProjectIdRoute: typeof ObserveProjectsProjectIdRouteWithChildren
+  ApiSentryIdOtlpSplatRoute: typeof ApiSentryIdOtlpSplatRoute
   ApiWebhooksGitServiceIdRoute: typeof ApiWebhooksGitServiceIdRoute
   ProjectsProjectIdServicesServiceIdRoute: typeof ProjectsProjectIdServicesServiceIdRoute
   ApiGitGithubAppManifestCallbackRoute: typeof ApiGitGithubAppManifestCallbackRoute
@@ -326,6 +730,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/observe/': {
+      id: '/observe/'
+      path: '/observe'
+      fullPath: '/observe/'
+      preLoaderRoute: typeof ObserveIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/team': {
+      id: '/settings/team'
+      path: '/team'
+      fullPath: '/settings/team'
+      preLoaderRoute: typeof SettingsTeamRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/nodes': {
+      id: '/settings/nodes'
+      path: '/nodes'
+      fullPath: '/settings/nodes'
+      preLoaderRoute: typeof SettingsNodesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/integrations': {
+      id: '/settings/integrations'
+      path: '/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof SettingsIntegrationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/domains': {
+      id: '/settings/domains'
+      path: '/domains'
+      fullPath: '/settings/domains'
+      preLoaderRoute: typeof SettingsDomainsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/projects/$projectId': {
       id: '/projects/$projectId'
       path: '/projects/$projectId'
@@ -347,11 +800,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId/': {
+      id: '/projects/$projectId/'
+      path: '/'
+      fullPath: '/projects/$projectId/'
+      preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/settings': {
+      id: '/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/projects/$projectId/settings'
+      preLoaderRoute: typeof ProjectsProjectIdSettingsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/secrets': {
+      id: '/projects/$projectId/secrets'
+      path: '/secrets'
+      fullPath: '/projects/$projectId/secrets'
+      preLoaderRoute: typeof ProjectsProjectIdSecretsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/deployments': {
+      id: '/projects/$projectId/deployments'
+      path: '/deployments'
+      fullPath: '/projects/$projectId/deployments'
+      preLoaderRoute: typeof ProjectsProjectIdDeploymentsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId': {
+      id: '/observe/projects/$projectId'
+      path: '/observe/projects/$projectId'
+      fullPath: '/observe/projects/$projectId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rpc/$': {
       id: '/api/rpc/$'
       path: '/api/rpc/$'
       fullPath: '/api/rpc/$'
       preLoaderRoute: typeof ApiRpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/dogfood': {
+      id: '/api/internal/dogfood'
+      path: '/api/internal/dogfood'
+      fullPath: '/api/internal/dogfood'
+      preLoaderRoute: typeof ApiInternalDogfoodRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -361,12 +856,110 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/$sentryId/store': {
+      id: '/api/$sentryId/store'
+      path: '/api/$sentryId/store'
+      fullPath: '/api/$sentryId/store'
+      preLoaderRoute: typeof ApiSentryIdStoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/$sentryId/envelope': {
+      id: '/api/$sentryId/envelope'
+      path: '/api/$sentryId/envelope'
+      fullPath: '/api/$sentryId/envelope'
+      preLoaderRoute: typeof ApiSentryIdEnvelopeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/observe/projects/$projectId/': {
+      id: '/observe/projects/$projectId/'
+      path: '/'
+      fullPath: '/observe/projects/$projectId/'
+      preLoaderRoute: typeof ObserveProjectsProjectIdIndexRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
     '/projects/$projectId_/services/$serviceId': {
       id: '/projects/$projectId_/services/$serviceId'
       path: '/projects/$projectId/services/$serviceId'
       fullPath: '/projects/$projectId/services/$serviceId'
       preLoaderRoute: typeof ProjectsProjectIdServicesServiceIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/observe/projects/$projectId/trends': {
+      id: '/observe/projects/$projectId/trends'
+      path: '/trends'
+      fullPath: '/observe/projects/$projectId/trends'
+      preLoaderRoute: typeof ObserveProjectsProjectIdTrendsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/traces': {
+      id: '/observe/projects/$projectId/traces'
+      path: '/traces'
+      fullPath: '/observe/projects/$projectId/traces'
+      preLoaderRoute: typeof ObserveProjectsProjectIdTracesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/setup': {
+      id: '/observe/projects/$projectId/setup'
+      path: '/setup'
+      fullPath: '/observe/projects/$projectId/setup'
+      preLoaderRoute: typeof ObserveProjectsProjectIdSetupRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/services': {
+      id: '/observe/projects/$projectId/services'
+      path: '/services'
+      fullPath: '/observe/projects/$projectId/services'
+      preLoaderRoute: typeof ObserveProjectsProjectIdServicesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/releases': {
+      id: '/observe/projects/$projectId/releases'
+      path: '/releases'
+      fullPath: '/observe/projects/$projectId/releases'
+      preLoaderRoute: typeof ObserveProjectsProjectIdReleasesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/logs': {
+      id: '/observe/projects/$projectId/logs'
+      path: '/logs'
+      fullPath: '/observe/projects/$projectId/logs'
+      preLoaderRoute: typeof ObserveProjectsProjectIdLogsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/issues': {
+      id: '/observe/projects/$projectId/issues'
+      path: '/issues'
+      fullPath: '/observe/projects/$projectId/issues'
+      preLoaderRoute: typeof ObserveProjectsProjectIdIssuesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/insights': {
+      id: '/observe/projects/$projectId/insights'
+      path: '/insights'
+      fullPath: '/observe/projects/$projectId/insights'
+      preLoaderRoute: typeof ObserveProjectsProjectIdInsightsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/explore': {
+      id: '/observe/projects/$projectId/explore'
+      path: '/explore'
+      fullPath: '/observe/projects/$projectId/explore'
+      preLoaderRoute: typeof ObserveProjectsProjectIdExploreRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/dashboards': {
+      id: '/observe/projects/$projectId/dashboards'
+      path: '/dashboards'
+      fullPath: '/observe/projects/$projectId/dashboards'
+      preLoaderRoute: typeof ObserveProjectsProjectIdDashboardsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/alerts': {
+      id: '/observe/projects/$projectId/alerts'
+      path: '/alerts'
+      fullPath: '/observe/projects/$projectId/alerts'
+      preLoaderRoute: typeof ObserveProjectsProjectIdAlertsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
     }
     '/api/webhooks/git/$serviceId': {
       id: '/api/webhooks/git/$serviceId'
@@ -375,26 +968,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksGitServiceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/git/oauth/gitlab/callback': {
-      id: '/api/git/oauth/gitlab/callback'
-      path: '/api/git/oauth/gitlab/callback'
-      fullPath: '/api/git/oauth/gitlab/callback'
-      preLoaderRoute: typeof ApiGitOauthGitlabCallbackRouteImport
+    '/api/$sentryId/otlp/$': {
+      id: '/api/$sentryId/otlp/$'
+      path: '/api/$sentryId/otlp/$'
+      fullPath: '/api/$sentryId/otlp/$'
+      preLoaderRoute: typeof ApiSentryIdOtlpSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/git/oauth/github/callback': {
-      id: '/api/git/oauth/github/callback'
-      path: '/api/git/oauth/github/callback'
-      fullPath: '/api/git/oauth/github/callback'
-      preLoaderRoute: typeof ApiGitOauthGithubCallbackRouteImport
-      parentRoute: typeof rootRouteImport
+    '/observe/projects/$projectId/traces_/$traceId': {
+      id: '/observe/projects/$projectId/traces_/$traceId'
+      path: '/traces/$traceId'
+      fullPath: '/observe/projects/$projectId/traces/$traceId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdTracesTraceIdRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
     }
-    '/api/git/github/app-manifest/callback': {
-      id: '/api/git/github/app-manifest/callback'
-      path: '/api/git/github/app-manifest/callback'
-      fullPath: '/api/git/github/app-manifest/callback'
-      preLoaderRoute: typeof ApiGitGithubAppManifestCallbackRouteImport
-      parentRoute: typeof rootRouteImport
+    '/observe/projects/$projectId/services_/$serviceName': {
+      id: '/observe/projects/$projectId/services_/$serviceName'
+      path: '/services/$serviceName'
+      fullPath: '/observe/projects/$projectId/services/$serviceName'
+      preLoaderRoute: typeof ObserveProjectsProjectIdServicesServiceNameRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/issues_/$issueId': {
+      id: '/observe/projects/$projectId/issues_/$issueId'
+      path: '/issues/$issueId'
+      fullPath: '/observe/projects/$projectId/issues/$issueId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdIssuesIssueIdRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/dashboards_/$dashboardId': {
+      id: '/observe/projects/$projectId/dashboards_/$dashboardId'
+      path: '/dashboards/$dashboardId'
+      fullPath: '/observe/projects/$projectId/dashboards/$dashboardId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdDashboardsDashboardIdRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
     }
     '/api/git/oauth/gitlab/callback': {
       id: '/api/git/oauth/gitlab/callback'
@@ -420,6 +1027,97 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SettingsRouteChildren {
+  SettingsDomainsRoute: typeof SettingsDomainsRoute
+  SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
+  SettingsNodesRoute: typeof SettingsNodesRoute
+  SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsTeamRoute: typeof SettingsTeamRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsDomainsRoute: SettingsDomainsRoute,
+  SettingsIntegrationsRoute: SettingsIntegrationsRoute,
+  SettingsNodesRoute: SettingsNodesRoute,
+  SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsTeamRoute: SettingsTeamRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
+interface ProjectsProjectIdRouteChildren {
+  ProjectsProjectIdDeploymentsRoute: typeof ProjectsProjectIdDeploymentsRoute
+  ProjectsProjectIdSecretsRoute: typeof ProjectsProjectIdSecretsRoute
+  ProjectsProjectIdSettingsRoute: typeof ProjectsProjectIdSettingsRoute
+  ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+}
+
+const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
+  ProjectsProjectIdDeploymentsRoute: ProjectsProjectIdDeploymentsRoute,
+  ProjectsProjectIdSecretsRoute: ProjectsProjectIdSecretsRoute,
+  ProjectsProjectIdSettingsRoute: ProjectsProjectIdSettingsRoute,
+  ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+}
+
+const ProjectsProjectIdRouteWithChildren =
+  ProjectsProjectIdRoute._addFileChildren(ProjectsProjectIdRouteChildren)
+
+interface ObserveProjectsProjectIdRouteChildren {
+  ObserveProjectsProjectIdAlertsRoute: typeof ObserveProjectsProjectIdAlertsRoute
+  ObserveProjectsProjectIdDashboardsRoute: typeof ObserveProjectsProjectIdDashboardsRoute
+  ObserveProjectsProjectIdExploreRoute: typeof ObserveProjectsProjectIdExploreRoute
+  ObserveProjectsProjectIdInsightsRoute: typeof ObserveProjectsProjectIdInsightsRoute
+  ObserveProjectsProjectIdIssuesRoute: typeof ObserveProjectsProjectIdIssuesRoute
+  ObserveProjectsProjectIdLogsRoute: typeof ObserveProjectsProjectIdLogsRoute
+  ObserveProjectsProjectIdReleasesRoute: typeof ObserveProjectsProjectIdReleasesRoute
+  ObserveProjectsProjectIdServicesRoute: typeof ObserveProjectsProjectIdServicesRoute
+  ObserveProjectsProjectIdSetupRoute: typeof ObserveProjectsProjectIdSetupRoute
+  ObserveProjectsProjectIdTracesRoute: typeof ObserveProjectsProjectIdTracesRoute
+  ObserveProjectsProjectIdTrendsRoute: typeof ObserveProjectsProjectIdTrendsRoute
+  ObserveProjectsProjectIdIndexRoute: typeof ObserveProjectsProjectIdIndexRoute
+  ObserveProjectsProjectIdDashboardsDashboardIdRoute: typeof ObserveProjectsProjectIdDashboardsDashboardIdRoute
+  ObserveProjectsProjectIdIssuesIssueIdRoute: typeof ObserveProjectsProjectIdIssuesIssueIdRoute
+  ObserveProjectsProjectIdServicesServiceNameRoute: typeof ObserveProjectsProjectIdServicesServiceNameRoute
+  ObserveProjectsProjectIdTracesTraceIdRoute: typeof ObserveProjectsProjectIdTracesTraceIdRoute
+}
+
+const ObserveProjectsProjectIdRouteChildren: ObserveProjectsProjectIdRouteChildren =
+  {
+    ObserveProjectsProjectIdAlertsRoute: ObserveProjectsProjectIdAlertsRoute,
+    ObserveProjectsProjectIdDashboardsRoute:
+      ObserveProjectsProjectIdDashboardsRoute,
+    ObserveProjectsProjectIdExploreRoute: ObserveProjectsProjectIdExploreRoute,
+    ObserveProjectsProjectIdInsightsRoute:
+      ObserveProjectsProjectIdInsightsRoute,
+    ObserveProjectsProjectIdIssuesRoute: ObserveProjectsProjectIdIssuesRoute,
+    ObserveProjectsProjectIdLogsRoute: ObserveProjectsProjectIdLogsRoute,
+    ObserveProjectsProjectIdReleasesRoute:
+      ObserveProjectsProjectIdReleasesRoute,
+    ObserveProjectsProjectIdServicesRoute:
+      ObserveProjectsProjectIdServicesRoute,
+    ObserveProjectsProjectIdSetupRoute: ObserveProjectsProjectIdSetupRoute,
+    ObserveProjectsProjectIdTracesRoute: ObserveProjectsProjectIdTracesRoute,
+    ObserveProjectsProjectIdTrendsRoute: ObserveProjectsProjectIdTrendsRoute,
+    ObserveProjectsProjectIdIndexRoute: ObserveProjectsProjectIdIndexRoute,
+    ObserveProjectsProjectIdDashboardsDashboardIdRoute:
+      ObserveProjectsProjectIdDashboardsDashboardIdRoute,
+    ObserveProjectsProjectIdIssuesIssueIdRoute:
+      ObserveProjectsProjectIdIssuesIssueIdRoute,
+    ObserveProjectsProjectIdServicesServiceNameRoute:
+      ObserveProjectsProjectIdServicesServiceNameRoute,
+    ObserveProjectsProjectIdTracesTraceIdRoute:
+      ObserveProjectsProjectIdTracesTraceIdRoute,
+  }
+
+const ObserveProjectsProjectIdRouteWithChildren =
+  ObserveProjectsProjectIdRoute._addFileChildren(
+    ObserveProjectsProjectIdRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DomainsRoute: DomainsRoute,
@@ -428,12 +1126,18 @@ const rootRouteChildren: RootRouteChildren = {
   NodesRoute: NodesRoute,
   NotificationsRoute: NotificationsRoute,
   OrganizationRoute: OrganizationRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   ApiMcpRoute: ApiMcpRoute,
   InvitesTokenRoute: InvitesTokenRoute,
-  ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
+  ObserveIndexRoute: ObserveIndexRoute,
+  ApiSentryIdEnvelopeRoute: ApiSentryIdEnvelopeRoute,
+  ApiSentryIdStoreRoute: ApiSentryIdStoreRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiInternalDogfoodRoute: ApiInternalDogfoodRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
+  ObserveProjectsProjectIdRoute: ObserveProjectsProjectIdRouteWithChildren,
+  ApiSentryIdOtlpSplatRoute: ApiSentryIdOtlpSplatRoute,
   ApiWebhooksGitServiceIdRoute: ApiWebhooksGitServiceIdRoute,
   ProjectsProjectIdServicesServiceIdRoute:
     ProjectsProjectIdServicesServiceIdRoute,

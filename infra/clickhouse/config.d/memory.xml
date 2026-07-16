@@ -1,0 +1,7 @@
+<clickhouse>
+  <!-- Required so web/otelcol on the compose network can reach HTTP :8123 / native :9000. -->
+  <listen_host>0.0.0.0</listen_host>
+  <!-- Cap RAM so Observe cannot starve user app containers on a single VPS. -->
+  <max_server_memory_usage_to_ram_ratio>0.4</max_server_memory_usage_to_ram_ratio>
+  <max_concurrent_queries>20</max_concurrent_queries>
+</clickhouse>

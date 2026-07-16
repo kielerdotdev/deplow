@@ -5,6 +5,7 @@ export {
   ensureIngressSchema,
   ensureMcpTokensSchema,
   ensureOrganizationsSchema,
+  ensureObserveSchema,
   ensureServicesSchema,
 } from "./ensure-schema"
 

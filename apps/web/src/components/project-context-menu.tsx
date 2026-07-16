@@ -54,9 +54,8 @@ export function ProjectContextMenu({
         <ContextMenuItem
           render={
             <Link
-              to="/projects/$projectId"
+              to="/projects/$projectId/settings"
               params={{ projectId: project.id }}
-              search={{ section: "settings" }}
             />
           }
         >

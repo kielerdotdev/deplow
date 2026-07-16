@@ -111,6 +111,7 @@ export {
   enqueueBackup,
   enqueueRestore,
   enqueueDestroy,
+  enqueueObserveDigest,
   startQueueWorkers,
   closeQueueWorkers,
   QUEUE_NAMES,
@@ -121,6 +122,7 @@ export type {
   BackupJobData,
   RestoreJobData,
   DestroyJobData,
+  ObserveDigestJobData,
 } from "./queue"
 export {
   createOperation,

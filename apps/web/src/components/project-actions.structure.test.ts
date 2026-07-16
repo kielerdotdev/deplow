@@ -23,7 +23,8 @@ describe("Project context menu", () => {
     expect(menu).toContain("Open")
     expect(menu).toContain("Settings")
     expect(menu).toContain("Destroy project")
-    expect(menu).toContain('section: "settings"')
+    expect(menu).toContain('"/projects/$projectId/settings"')
+    expect(menu).not.toContain('section: "settings"')
   })
 
   it("wraps home dashboard project rows in a context menu", () => {

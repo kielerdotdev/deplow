@@ -28,6 +28,9 @@ export interface DoctorProbeResults {
   baseDomain: string
   secretsConfigured: boolean
   nodeEnv?: string
+  observeEnabled?: boolean
+  clickhouseOk?: boolean
+  clickhouseDetail?: string
 }
 
 /**
@@ -109,6 +112,25 @@ export function evaluateDoctorChecks(
       ? "BETTER_AUTH_SECRET / DEPLOW_SECRETS_KEY configured"
       : "Set BETTER_AUTH_SECRET and DEPLOW_SECRETS_KEY before production use.",
   })
+
+  if (probes.observeEnabled) {
+    rows.push({
+      id: "observe-clickhouse",
+      label: "Observe ClickHouse",
+      status: probes.clickhouseOk ? "ok" : "fail",
+      detail: probes.clickhouseOk
+        ? (probes.clickhouseDetail ?? "ClickHouse reachable")
+        : (probes.clickhouseDetail ??
+          "Observe enabled but ClickHouse unreachable. Start compose profile observe."),
+    })
+  } else {
+    rows.push({
+      id: "observe-clickhouse",
+      label: "Observe ClickHouse",
+      status: "skip",
+      detail: "DEPLOW_OBSERVE_ENABLED is off",
+    })
+  }
 
   return rows
 }

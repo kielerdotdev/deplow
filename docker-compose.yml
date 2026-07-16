@@ -121,5 +121,50 @@ services:
       caddy:
         condition: service_healthy
 
+  # Observe profile: ClickHouse + OTel collector (required when DEPLOW_OBSERVE_ENABLED=1)
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: deplow-clickhouse
+    profiles: ["observe"]
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: deplow_observe
+      CLICKHOUSE_USER: deplow
+      CLICKHOUSE_PASSWORD: deplow
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "8123:8123"
+      # Avoid clashing with host MinIO :9000 — native protocol stays internal.
+      - "19000:9000"
+    volumes:
+      - deplow_observe_ch:/var/lib/clickhouse
+      - ./infra/clickhouse/config.d:/etc/clickhouse-server/config.d:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: deplow-otelcol
+    profiles: ["observe"]
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./infra/otelcol/config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
 volumes:
   deplow_platform_redis_data:
+  deplow_observe_ch:

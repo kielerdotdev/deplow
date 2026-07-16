@@ -5,6 +5,7 @@ import {
   ClockIcon,
   FolderIcon,
   GlobeIcon,
+  KeyRoundIcon,
   LayoutDashboardIcon,
   PlugIcon,
   SearchIcon,
@@ -35,8 +36,6 @@ import { cn } from "@/lib/utils"
 
 const SECTION_LABELS: Record<(typeof PROJECT_SECTION_IDS)[number], string> = {
   overview: "Overview",
-  database: "Database",
-  backups: "Backups",
   deployments: "Deployments",
   settings: "Settings",
   secrets: "Secrets",
@@ -128,8 +127,17 @@ export function CommandPalette() {
         group: "Navigation",
         mode: "goto",
         icon: LayoutDashboardIcon,
-        keywords: ["dashboard", "projects"],
+        keywords: ["dashboard", "projects", "landing"],
         perform: () => void navigate({ to: "/" }),
+      },
+      {
+        id: "nav.settings",
+        label: "Settings",
+        group: "Navigation",
+        mode: "goto",
+        icon: KeyRoundIcon,
+        keywords: ["mcp", "tokens", "account"],
+        perform: () => void navigate({ to: "/settings" }),
       },
       {
         id: "nav.integrations",
@@ -138,7 +146,7 @@ export function CommandPalette() {
         mode: "goto",
         icon: PlugIcon,
         keywords: ["github", "gitlab", "git"],
-        perform: () => void navigate({ to: "/integrations" }),
+        perform: () => void navigate({ to: "/settings/integrations" }),
       },
       {
         id: "nav.domains",
@@ -147,7 +155,7 @@ export function CommandPalette() {
         mode: "goto",
         icon: GlobeIcon,
         keywords: ["dns", "proxy", "caddy", "base"],
-        perform: () => void navigate({ to: "/domains" }),
+        perform: () => void navigate({ to: "/settings/domains" }),
       },
       {
         id: "nav.notifications",
@@ -156,7 +164,7 @@ export function CommandPalette() {
         mode: "goto",
         icon: BellIcon,
         keywords: ["webhook", "notify", "failure"],
-        perform: () => void navigate({ to: "/notifications" }),
+        perform: () => void navigate({ to: "/settings/notifications" }),
       },
       {
         id: "nav.nodes",
@@ -165,7 +173,7 @@ export function CommandPalette() {
         mode: "goto",
         icon: ServerIcon,
         keywords: ["docker", "build"],
-        perform: () => void navigate({ to: "/nodes" }),
+        perform: () => void navigate({ to: "/settings/nodes" }),
       },
     ]
 
@@ -181,12 +189,36 @@ export function CommandPalette() {
           void navigate({
             to: "/projects/$projectId",
             params: { projectId: project.id },
-            search: { section: "overview" },
           }),
       })
     }
 
     if (projectId) {
+      const sectionNav: Record<
+        (typeof PROJECT_SECTION_IDS)[number],
+        () => void
+      > = {
+        overview: () =>
+          void navigate({
+            to: "/projects/$projectId",
+            params: { projectId },
+          }),
+        deployments: () =>
+          void navigate({
+            to: "/projects/$projectId/deployments",
+            params: { projectId },
+          }),
+        secrets: () =>
+          void navigate({
+            to: "/projects/$projectId/secrets",
+            params: { projectId },
+          }),
+        settings: () =>
+          void navigate({
+            to: "/projects/$projectId/settings",
+            params: { projectId },
+          }),
+      }
       for (const section of PROJECT_SECTION_IDS) {
         items.push({
           id: `section.${projectId}.${section}`,
@@ -194,12 +226,7 @@ export function CommandPalette() {
           group: "Project sections",
           mode: "goto",
           keywords: ["section", section, projectId],
-          perform: () =>
-            void navigate({
-              to: "/projects/$projectId",
-              params: { projectId },
-              search: { section },
-            }),
+          perform: sectionNav[section],
         })
       }
     }

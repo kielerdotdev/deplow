@@ -5,6 +5,8 @@ import * as deployments from "./deployments"
 import * as git from "./git"
 import * as mcp from "./mcp"
 import * as nodes from "./nodes"
+import * as observe from "./observe"
+import * as observeQuery from "./observe-query"
 import * as operations from "./operations"
 import * as organizations from "./organizations"
 import * as platform from "./platform"
@@ -128,5 +130,93 @@ export const router = {
     listTokens: mcp.listTokens,
     createToken: mcp.createToken,
     revokeToken: mcp.revokeToken,
+  },
+  observe: {
+    status: observe.status,
+    projects: {
+      get: observe.projectsGet,
+      enable: observe.projectsEnable,
+      setup: observe.projectsSetup,
+      updateRetention: observeQuery.projectsUpdateRetention,
+    },
+    issues: {
+      list: observe.issuesList,
+      get: observe.issuesGet,
+      updateStatus: observe.issuesUpdateStatus,
+      bulkUpdateStatus: observe.issuesBulkUpdateStatus,
+    },
+    events: {
+      get: observe.eventsGet,
+      listForIssue: observe.eventsListForIssue,
+    },
+    services: {
+      list: observeQuery.servicesList,
+      overview: observeQuery.servicesOverview,
+      operations: observeQuery.servicesOperations,
+      recentErrors: observeQuery.servicesRecentErrors,
+    },
+    traces: {
+      list: observeQuery.tracesList,
+      get: observeQuery.tracesGet,
+    },
+    logs: {
+      search: observeQuery.logsSearch,
+      histogram: observeQuery.logsHistogramQuery,
+    },
+    charts: {
+      series: observeQuery.chartsSeries,
+    },
+    explore: {
+      heatmap: observeQuery.exploreHeatmap,
+      selection: observeQuery.exploreSelection,
+      anomalies: observeQuery.exploreAnomalies,
+    },
+    releases: {
+      list: observeQuery.releasesList,
+    },
+    savedViews: {
+      list: observeQuery.savedViewsList,
+      create: observeQuery.savedViewsCreate,
+    },
+    dashboards: {
+      list: observeQuery.dashboardsList,
+      create: observeQuery.dashboardsCreate,
+      get: observeQuery.dashboardsGet,
+      update: observeQuery.dashboardsUpdate,
+      delete: observeQuery.dashboardsDelete,
+    },
+    insights: {
+      list: observeQuery.insightsList,
+      get: observeQuery.insightsGet,
+      create: observeQuery.insightsCreate,
+      update: observeQuery.insightsUpdate,
+      delete: observeQuery.insightsDelete,
+      run: observeQuery.insightsRun,
+    },
+    trends: {
+      run: observeQuery.trendsRun,
+      export: observeQuery.trendsExport,
+    },
+    fields: {
+      suggest: observeQuery.fieldsSuggest,
+      values: observeQuery.fieldsValues,
+    },
+    alerts: {
+      list: observeQuery.alertsList,
+      create: observeQuery.alertsCreate,
+      update: observeQuery.alertsUpdate,
+    },
+    members: {
+      list: observeQuery.membersList,
+      upsert: observeQuery.membersUpsert,
+    },
+    export: {
+      csv: observeQuery.exportCsv,
+    },
+  },
+  messageChannels: {
+    list: observeQuery.messageChannelsList,
+    create: observeQuery.messageChannelsCreate,
+    delete: observeQuery.messageChannelsDelete,
   },
 }

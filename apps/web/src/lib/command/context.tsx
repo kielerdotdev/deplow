@@ -8,7 +8,7 @@ import {
 } from "react"
 import { useRouterState } from "@tanstack/react-router"
 
-import { parseProjectSection } from "@/lib/command/project-section"
+import { projectSectionFromPath } from "@/lib/command/project-section"
 import type {
   AppCommand,
   CommandMode,
@@ -41,15 +41,12 @@ export function CommandProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<CommandMode>("goto")
 
-  const { pathname, search } = useRouterState({
-    select: (s) => ({
-      pathname: s.location.pathname,
-      search: s.location.search as Record<string, unknown>,
-    }),
+  const pathname = useRouterState({
+    select: (s) => s.location.pathname,
   })
 
   const projectId = projectIdFromPath(pathname)
-  const section = projectId ? parseProjectSection(search.section) : null
+  const section = projectSectionFromPath(pathname)
 
   const register = useCallback((command: CommandRegistration) => {
     setById((prev) => {

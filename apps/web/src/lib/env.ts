@@ -381,6 +381,87 @@ class Env {
       .trim()
       .replace(/\/$/, "")
   }
+
+  /* ── Observe (optional; requires ClickHouse when enabled) ───── */
+
+  get observeEnabled(): boolean {
+    return boolEnv("DEPLOW_OBSERVE_ENABLED", false)
+  }
+
+  get clickhouseUrl(): string {
+    return (
+      process.env.DEPLOW_CLICKHOUSE_URL ?? "http://127.0.0.1:8123"
+    ).trim()
+  }
+
+  get clickhouseDatabase(): string {
+    return (process.env.DEPLOW_CLICKHOUSE_DATABASE ?? "deplow_observe").trim()
+  }
+
+  get clickhouseUser(): string {
+    return (process.env.DEPLOW_CLICKHOUSE_USER ?? "deplow").trim()
+  }
+
+  get clickhousePassword(): string {
+    return process.env.DEPLOW_CLICKHOUSE_PASSWORD ?? "deplow"
+  }
+
+  get observeIngestUrl(): string {
+    const explicit = (process.env.DEPLOW_OBSERVE_INGEST_URL ?? "").trim()
+    if (explicit) return explicit.replace(/\/$/, "")
+    return this.betterAuthUrl.replace(/\/$/, "")
+  }
+
+  get observeStagingDir(): string {
+    return (
+      process.env.DEPLOW_OBSERVE_STAGING_DIR ??
+      pathFromCwd("data/observe/ingest")
+    )
+  }
+
+  get observeDefaultMaxEvents(): number {
+    return numEnv("DEPLOW_OBSERVE_DEFAULT_MAX_EVENTS", 10_000)
+  }
+
+  get observeDefaultRetentionDays(): number {
+    return numEnv("DEPLOW_OBSERVE_DEFAULT_RETENTION_DAYS", 30)
+  }
+
+  /**
+   * Dogfood: send this app's own Sentry SDK traffic into Observe.
+   * Defaults ON in development when Observe is enabled.
+   * Set DEPLOW_OBSERVE_DOGFOOD=0 to disable. Production needs
+   * DEPLOW_OBSERVE_DOGFOOD_FORCE=1.
+   */
+  get observeDogfood(): boolean {
+    if (!this.observeEnabled) return false
+    const raw = process.env.DEPLOW_OBSERVE_DOGFOOD
+    if (raw !== undefined && raw !== "") {
+      return !["0", "false", "no", "off"].includes(raw.toLowerCase())
+    }
+    if (this.isDev) return true
+    return boolEnv("DEPLOW_OBSERVE_DOGFOOD_FORCE", false)
+  }
+
+  /** Explicit DSN (http://key@host/sentryId). Also accepted as VITE_… for the browser. */
+  get observeDogfoodDsn(): string {
+    return (
+      process.env.DEPLOW_OBSERVE_DOGFOOD_DSN ??
+      process.env.VITE_DEPLOW_OBSERVE_DOGFOOD_DSN ??
+      ""
+    ).trim()
+  }
+
+  /** Optional Deploy project UUID to auto-build a dogfood DSN from. */
+  get observeDogfoodProjectId(): string {
+    return (process.env.DEPLOW_OBSERVE_DOGFOOD_PROJECT_ID ?? "").trim()
+  }
+
+  get otelcolUrl(): string {
+    return (
+      process.env.DEPLOW_OTELCOL_URL ?? "http://127.0.0.1:4318"
+    ).trim()
+  }
 }
 
 export const env = new Env()

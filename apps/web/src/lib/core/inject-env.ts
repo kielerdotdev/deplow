@@ -11,6 +11,10 @@ export function containerRuntimeEnv(
     XDG_CONFIG_HOME: "/tmp/.config",
     XDG_CACHE_HOME: "/tmp/.cache",
     XDG_DATA_HOME: "/tmp/.local/share",
+    // Railpack mise shims otherwise spam / hang on read-only /mise/cache
+    MISE_CACHE_DIR: "/tmp/.mise-cache",
+    MISE_DATA_DIR: "/tmp/.mise-data",
+    MISE_STATE_DIR: "/tmp/.mise-state",
     ASTRO_TELEMETRY_DISABLED: "1",
     NEXT_TELEMETRY_DISABLED: "1",
     ...extra,

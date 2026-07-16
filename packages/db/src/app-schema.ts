@@ -890,3 +890,327 @@ export const backupsRelations = relations(backups, ({ one }) => ({
     references: [services.id],
   }),
 }))
+
+/* ── Observe (errors / telemetry metadata — payloads live in ClickHouse) ─ */
+
+export const observeProjects = sqliteTable(
+  "observe_projects",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    sentryId: integer("sentry_id").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    retentionMaxEventCount: integer("retention_max_event_count")
+      .notNull()
+      .default(10_000),
+    retentionMaxAgeDays: integer("retention_max_age_days")
+      .notNull()
+      .default(30),
+    spanRetentionDays: integer("span_retention_days").notNull().default(7),
+    quotaPer5m: integer("quota_per_5m").notNull().default(1000),
+    quotaPerHour: integer("quota_per_hour").notNull().default(5000),
+    quotaPerMonth: integer("quota_per_month").notNull().default(1_000_000),
+    groupingMechanism: text("grouping_mechanism").notNull().default("deplow-v1"),
+    digestCounter: integer("digest_counter").notNull().default(0),
+    storedEventCount: integer("stored_event_count").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("observe_projects_project_idx").on(t.projectId),
+    uniqueIndex("observe_projects_sentry_id_idx").on(t.sentryId),
+  ],
+)
+
+export const observeKeys = sqliteTable(
+  "observe_keys",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    publicKey: text("public_key").notNull(),
+    name: text("name").notNull().default("default"),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("observe_keys_public_key_idx").on(t.publicKey),
+    index("observe_keys_observe_project_idx").on(t.observeProjectId),
+  ],
+)
+
+export const observeIssues = sqliteTable(
+  "observe_issues",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    culprit: text("culprit").notNull().default(""),
+    level: text("level").notNull().default("error"),
+    status: text("status", {
+      enum: ["unresolved", "resolved", "muted"],
+    })
+      .notNull()
+      .default("unresolved"),
+    digestedEventCount: integer("digested_event_count").notNull().default(0),
+    firstSeen: integer("first_seen", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    lastSeen: integer("last_seen", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    lastEventId: text("last_event_id"),
+    lastTraceId: text("last_trace_id"),
+    isDeleted: integer("is_deleted", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("observe_issues_project_idx").on(t.observeProjectId),
+    index("observe_issues_status_idx").on(t.observeProjectId, t.status),
+  ],
+)
+
+export const observeGroupings = sqliteTable(
+  "observe_groupings",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    mechanism: text("mechanism").notNull(),
+    groupingKey: text("grouping_key").notNull(),
+    groupingKeyHash: text("grouping_key_hash").notNull(),
+    issueId: text("issue_id")
+      .notNull()
+      .references(() => observeIssues.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("observe_groupings_hash_idx").on(
+      t.observeProjectId,
+      t.mechanism,
+      t.groupingKeyHash,
+    ),
+    index("observe_groupings_issue_idx").on(t.issueId),
+  ],
+)
+
+export const observeEventCountsHourly = sqliteTable(
+  "observe_event_counts_hourly",
+  {
+    id: text("id").primaryKey(),
+    scope: text("scope", { enum: ["project", "issue"] }).notNull(),
+    scopeId: text("scope_id").notNull(),
+    hour: text("hour").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("observe_event_counts_hourly_uidx").on(
+      t.scope,
+      t.scopeId,
+      t.hour,
+    ),
+  ],
+)
+
+export const observeMembers = sqliteTable(
+  "observe_members",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    role: text("role", {
+      enum: ["owner", "admin", "editor", "viewer"],
+    })
+      .notNull()
+      .default("viewer"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("observe_members_uidx").on(t.observeProjectId, t.userId),
+    index("observe_members_project_idx").on(t.observeProjectId),
+  ],
+)
+
+export const observeSavedViews = sqliteTable(
+  "observe_saved_views",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    surface: text("surface").notNull().default("explore"),
+    contextJson: text("context_json").notNull(),
+    createdBy: text("created_by"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("observe_saved_views_project_idx").on(t.observeProjectId)],
+)
+
+export const observeInsights = sqliteTable(
+  "observe_insights",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    specJson: text("spec_json").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("observe_insights_project_idx").on(t.observeProjectId)],
+)
+
+export const observeDashboards = sqliteTable(
+  "observe_dashboards",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    template: text("template").notNull().default("blank"),
+    layoutJson: text("layout_json").notNull().default('{"widgets":[]}'),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("observe_dashboards_project_idx").on(t.observeProjectId)],
+)
+
+export const observeAlerts = sqliteTable(
+  "observe_alerts",
+  {
+    id: text("id").primaryKey(),
+    observeProjectId: text("observe_project_id")
+      .notNull()
+      .references(() => observeProjects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    kind: text("kind", { enum: ["threshold", "relative"] })
+      .notNull()
+      .default("threshold"),
+    metric: text("metric").notNull().default("error_rate"),
+    operator: text("operator").notNull().default("gt"),
+    threshold: text("threshold").notNull().default("0.05"),
+    window: text("window").notNull().default("5m"),
+    contextJson: text("context_json").notNull().default("{}"),
+    channelEmail: text("channel_email"),
+    channelWebhook: text("channel_webhook"),
+    /** JSON string array of message_channels.id */
+    channelIdsJson: text("channel_ids_json").notNull().default("[]"),
+    lastTriggeredAt: integer("last_triggered_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("observe_alerts_project_idx").on(t.observeProjectId)],
+)
+
+/** Slack / Discord / webhook / email destinations for alerts & notifications. */
+export const messageChannels = sqliteTable("message_channels", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  kind: text("kind", {
+    enum: ["slack", "discord", "webhook", "email"],
+  }).notNull(),
+  configJson: text("config_json").notNull().default("{}"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdBy: text("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
+export const observeProjectsRelations = relations(
+  observeProjects,
+  ({ one, many }) => ({
+    project: one(projects, {
+      fields: [observeProjects.projectId],
+      references: [projects.id],
+    }),
+    keys: many(observeKeys),
+    issues: many(observeIssues),
+    groupings: many(observeGroupings),
+  }),
+)
+
+export const observeKeysRelations = relations(observeKeys, ({ one }) => ({
+  observeProject: one(observeProjects, {
+    fields: [observeKeys.observeProjectId],
+    references: [observeProjects.id],
+  }),
+}))
+
+export const observeIssuesRelations = relations(
+  observeIssues,
+  ({ one, many }) => ({
+    observeProject: one(observeProjects, {
+      fields: [observeIssues.observeProjectId],
+      references: [observeProjects.id],
+    }),
+    groupings: many(observeGroupings),
+  }),
+)
+
+export const observeGroupingsRelations = relations(
+  observeGroupings,
+  ({ one }) => ({
+    observeProject: one(observeProjects, {
+      fields: [observeGroupings.observeProjectId],
+      references: [observeProjects.id],
+    }),
+    issue: one(observeIssues, {
+      fields: [observeGroupings.issueId],
+      references: [observeIssues.id],
+    }),
+  }),
+)

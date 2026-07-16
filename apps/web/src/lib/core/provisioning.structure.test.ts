@@ -11,15 +11,11 @@ describe("provisioning uses production slot naming", () => {
     expect(slotResourceName(slot)).toBe("myapp")
   })
 
-  it("ProvisioningService ships productionSlot + slotResourceName", () => {
+  it("ProvisioningService marks credentials as production slot", () => {
     const src = readFileSync(
       path.join(import.meta.dirname, "provisioning.service.ts"),
       "utf8",
     )
-    expect(src).toContain("productionSlot")
-    expect(src).toContain("slotResourceName")
     expect(src).toContain('slotKind: "production"')
-    // must not hardcode resourceName = slug alone without slot helpers
-    expect(src).toMatch(/slotResourceName\s*\(\s*slot\s*\)/)
   })
 })

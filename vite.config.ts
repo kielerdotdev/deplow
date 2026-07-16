@@ -89,6 +89,7 @@ export default defineConfig({
       "apps/web/src/**/*.{test,spec}.{ts,tsx}",
       "packages/shared/src/**/*.{test,spec}.ts",
       "packages/db/src/**/*.{test,spec}.ts",
+      "packages/observe/src/**/*.{test,spec}.ts",
     ],
     environment: "node",
     // React component tests need a DOM

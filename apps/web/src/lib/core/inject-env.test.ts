@@ -46,6 +46,7 @@ describe("injectDeployEnv", () => {
     expect(env.S3_SECRET_KEY).toBe("supersecretkey")
     expect(env.S3_ACCESS_KEY).not.toBe(config.s3.accessKeyId)
     expect(env.HOME).toBe("/tmp")
+    expect(env.MISE_CACHE_DIR).toBe("/tmp/.mise-cache")
     expect(env.ASTRO_TELEMETRY_DISABLED).toBe("1")
   })
 })

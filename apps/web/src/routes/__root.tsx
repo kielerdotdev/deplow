@@ -3,7 +3,19 @@ import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
-  head: () => ({
+  loader: async () => {
+    // Soft-bootstrap dogfood DSN for SSR HTML inject (best-effort).
+    try {
+      const { env } = await import("@/lib/env")
+      if (!env.observeDogfood) return { dogfoodDsn: null as string | null }
+      const { ensureDogfoodBootstrap } = await import("@/lib/observe/dogfood")
+      const boot = await ensureDogfoodBootstrap()
+      return { dogfoodDsn: boot?.dsn ?? null }
+    } catch {
+      return { dogfoodDsn: null as string | null }
+    }
+  },
+  head: ({ loaderData }) => ({
     meta: [
       {
         charSet: "utf-8",
@@ -22,6 +34,13 @@ export const Route = createRootRoute({
         href: appCss,
       },
     ],
+    scripts: loaderData?.dogfoodDsn
+      ? [
+          {
+            children: `window.__DEPLOW_DOGFOOD_DSN__=${JSON.stringify(loaderData.dogfoodDsn)};`,
+          },
+        ]
+      : [],
   }),
   notFoundComponent: () => (
     <main className="container mx-auto p-4 pt-16">

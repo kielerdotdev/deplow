@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 type DashboardCardProps = {
   title: string
   count?: number
-  href?: "/" | "/domains" | "/integrations" | "/nodes"
+  href?: "/" | "/settings/domains" | "/settings/integrations" | "/settings/nodes"
   onAdd?: () => void
   children: React.ReactNode
   className?: string
@@ -86,7 +86,12 @@ type DashboardRowProps = {
       onClick?: never
     }
   | {
-      to: "/domains" | "/integrations" | "/nodes"
+      to:
+        | "/settings/domains"
+        | "/settings/integrations"
+        | "/settings/nodes"
+        | "/settings/notifications"
+        | "/settings/team"
       params?: never
       onClick?: never
     }

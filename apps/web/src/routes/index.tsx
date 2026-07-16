@@ -176,18 +176,18 @@ function DashboardPage() {
 
   const nextSteps: {
     label: string
-    to: "/integrations" | "/nodes"
+    to: "/settings/integrations" | "/settings/nodes"
     done: boolean
   }[] = shell.instanceAdmin
     ? [
         {
           label: "Connect GitHub or GitLab",
-          to: "/integrations",
+          to: "/settings/integrations",
           done: Boolean(githubLinked || gitlabLinked),
         },
         {
           label: "Register a build node",
-          to: "/nodes",
+          to: "/settings/nodes",
           done: nodes.length > 0,
         },
       ]
@@ -243,6 +243,8 @@ function DashboardPage() {
       instanceAdmin={shell.instanceAdmin}
       organizations={shell.organizations}
       activeOrganization={shell.activeOrganization}
+      accountHome
+      deployProjects={projects.map((p) => ({ id: p.id, name: p.name }))}
     >
       <PageHeader
         title={`Welcome back, ${firstName}`}
@@ -438,7 +440,7 @@ function DashboardPage() {
             {shell.instanceAdmin ? (
               <DashboardCard title="Quick links">
                 <DashboardRow
-                  to="/integrations"
+                  to="/settings/integrations"
                   leading={
                     <div className="icon-well size-7 shrink-0">
                       <PlugIcon className="size-3.5" />
@@ -448,7 +450,7 @@ function DashboardPage() {
                   subtitle={integrationStatus}
                 />
                 <DashboardRow
-                  to="/nodes"
+                  to="/settings/nodes"
                   leading={
                     <div className="icon-well size-7 shrink-0">
                       <ServerIcon className="size-3.5" />
@@ -462,7 +464,7 @@ function DashboardPage() {
                   }
                 />
                 <DashboardRow
-                  to="/domains"
+                  to="/settings/domains"
                   leading={
                     <div className="icon-well size-7 shrink-0">
                       <GlobeIcon className="size-3.5" />

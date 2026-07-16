@@ -3,6 +3,7 @@ export {
   isProjectSection,
   parseProjectSection,
   PROJECT_SECTION_IDS,
+  projectSectionFromPath,
   projectSectionSearch,
 } from "@/lib/command/project-section"
 export { loadRecentCommands, pushRecentCommand } from "@/lib/command/recents"
