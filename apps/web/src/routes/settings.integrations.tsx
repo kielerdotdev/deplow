@@ -2,7 +2,6 @@ import { useState } from "react"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import {
   CheckIcon,
-  ChevronDownIcon,
   CopyIcon,
   EllipsisIcon,
   Link2Icon,
@@ -12,7 +11,7 @@ import {
 import { CommandAction } from "@/components/command-action"
 import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
 import { IntegrationCard } from "@/components/integration-card"
-import { PageContent, PageHeader } from "@/components/page-layout"
+import { SettingsPage } from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,7 +28,6 @@ import { Label } from "@/components/ui/label"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
 import { loadShellContext } from "@/lib/shell-context"
-import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/settings/integrations")({
   loader: async () => {
@@ -67,7 +65,8 @@ function IntegrationsPage() {
     | null
   >(null)
   const [gitlabBase, setGitlabBase] = useState("https://gitlab.com")
-  const [showGithubHelp, setShowGithubHelp] = useState(false)
+  const [showGithubManage, setShowGithubManage] = useState(false)
+  const [showGitlabSetup, setShowGitlabSetup] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const githubLink = status.links.find((l) => l.provider === "github")
@@ -221,10 +220,10 @@ function IntegrationsPage() {
 
   return (
     <>
-      <PageHeader
+      <SettingsPage
         title="Integrations"
         description="Connect Git once. Projects reuse it for clone and deploy webhooks."
-      />
+      >
       {!status.githubAppConfigured ? (
         <CommandAction
           id="integrations.github.create-app"
@@ -290,7 +289,6 @@ function IntegrationsPage() {
         </Alert>
       ) : null}
 
-      <PageContent width="narrow">
         <IntegrationCard
           title="GitHub"
           icon={PlugIcon}
@@ -306,15 +304,15 @@ function IntegrationsPage() {
               >
                 Create App
               </Button>
-            ) : (
+            ) : githubLink ? (
               <>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={pending}
-                  onClick={() => void connect("github")}
+                  onClick={() => setShowGithubManage((v) => !v)}
                 >
-                  {githubLink ? "Reconnect" : "Connect"}
+                  Manage
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -343,18 +341,14 @@ function IntegrationsPage() {
                           Install on GitHub
                         </DropdownMenuItem>
                       ) : null}
-                      {githubLink ? (
-                        <DropdownMenuItem
-                          disabled={pending}
-                          onClick={() => setConfirmAction("disconnect-github")}
-                        >
-                          Disconnect account
-                        </DropdownMenuItem>
-                      ) : null}
+                      <DropdownMenuItem
+                        disabled={pending}
+                        onClick={() => setConfirmAction("disconnect-github")}
+                      >
+                        Disconnect
+                      </DropdownMenuItem>
                     </DropdownMenuGroup>
-                    {(status.installUrl || githubLink) && (
-                      <DropdownMenuSeparator />
-                    )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                       <DropdownMenuItem
                         disabled={pending}
@@ -367,54 +361,61 @@ function IntegrationsPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                onClick={() => void connect("github")}
+              >
+                Connect
+              </Button>
             )
           }
         >
-          {status.githubAppConfigured && status.githubOAuthCallbackUrl ? (
-            <div className="border-t border-border/60 pt-3">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-2 text-left text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setShowGithubHelp((v) => !v)}
-                aria-expanded={showGithubHelp}
-              >
-                <span>Connect failing?</span>
-                <ChevronDownIcon
-                  className={cn(
-                    "size-3.5 transition-transform",
-                    showGithubHelp && "rotate-180",
-                  )}
-                />
-              </button>
-              {showGithubHelp ? (
-                <div className="flex flex-col mt-3 gap-2">
-                  <p className="text-xs text-muted-foreground">
-                    Add this callback URL on the GitHub App, then try Connect
-                    again.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <code className="min-w-0 flex-1 truncate rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px]">
-                      {status.githubOAuthCallbackUrl}
-                    </code>
-                    <Button
-                      size="icon-sm"
-                      variant="outline"
-                      onClick={() => void copyCallbackUrl()}
-                      aria-label="Copy callback URL"
-                    >
-                      {copied ? <CheckIcon /> : <CopyIcon />}
-                    </Button>
-                  </div>
+          {showGithubManage &&
+          status.githubAppConfigured &&
+          status.githubOAuthCallbackUrl ? (
+            <div className="space-y-3 border-t border-border/60 pt-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => void connect("github")}
+                >
+                  Reconnect
+                </Button>
+                {status.installUrl ? (
                   <a
-                    className="inline-block text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                    href="https://github.com/settings/apps"
+                    href={status.installUrl}
                     target="_blank"
                     rel="noreferrer"
+                    className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
                   >
-                    Open GitHub Apps settings
+                    Install on GitHub
                   </a>
+                ) : null}
+              </div>
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-medium">Troubleshoot connection</p>
+                <p className="text-xs text-muted-foreground">
+                  Confirm this callback URL is configured on the GitHub App.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="min-w-0 flex-1 truncate rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px]">
+                    {status.githubOAuthCallbackUrl}
+                  </code>
+                  <Button
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() => void copyCallbackUrl()}
+                    aria-label="Copy callback URL"
+                  >
+                    {copied ? <CheckIcon /> : <CopyIcon />}
+                  </Button>
                 </div>
-              ) : null}
+              </div>
             </div>
           ) : null}
         </IntegrationCard>
@@ -422,7 +423,13 @@ function IntegrationsPage() {
         <IntegrationCard
           title="GitLab"
           icon={Link2Icon}
-          detail={gitlabDetail}
+          detail={
+            status.gitlabOAuthConfigured
+              ? gitlabDetail
+              : showGitlabSetup
+                ? "Set up OAuth application"
+                : "Not connected"
+          }
           connected={Boolean(gitlabLink)}
           actions={
             status.gitlabOAuthConfigured ? (
@@ -433,7 +440,7 @@ function IntegrationsPage() {
                   disabled={pending}
                   onClick={() => void connect("gitlab")}
                 >
-                  {gitlabLink ? "Reconnect" : "Connect"}
+                  {gitlabLink ? "Manage" : "Connect"}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -454,7 +461,7 @@ function IntegrationsPage() {
                           disabled={pending}
                           onClick={() => setConfirmAction("disconnect-gitlab")}
                         >
-                          Disconnect account
+                          Disconnect
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
                     ) : null}
@@ -471,10 +478,18 @@ function IntegrationsPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
-            ) : undefined
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowGitlabSetup((v) => !v)}
+              >
+                {showGitlabSetup ? "Cancel" : "Connect"}
+              </Button>
+            )
           }
         >
-          {!status.gitlabOAuthConfigured ? (
+          {!status.gitlabOAuthConfigured && showGitlabSetup ? (
             <form
               className="flex flex-col gap-3 border-t border-border/60 pt-4"
               onSubmit={(e) => {
@@ -482,6 +497,41 @@ function IntegrationsPage() {
                 void saveGitLab()
               }}
             >
+              <ol className="list-decimal space-y-1 pl-4 text-xs text-muted-foreground">
+                <li>Copy the callback URL below</li>
+                <li>
+                  Create a GitLab OAuth application with{" "}
+                  <code className="text-[10px]">api</code> and{" "}
+                  <code className="text-[10px]">read_user</code> scopes
+                </li>
+                <li>Paste the Application ID and Secret</li>
+                <li>Connect GitLab</li>
+              </ol>
+              {status.publicControlPlaneUrl ? (
+                <div className="space-y-1.5">
+                  <Label>Callback URL</Label>
+                  <div className="flex items-center gap-2">
+                    <code className="min-w-0 flex-1 truncate rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px]">
+                      {`${status.publicControlPlaneUrl}/api/git/oauth/gitlab/callback`}
+                    </code>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="outline"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(
+                          `${status.publicControlPlaneUrl}/api/git/oauth/gitlab/callback`,
+                        )
+                        setCopied(true)
+                        window.setTimeout(() => setCopied(false), 1500)
+                      }}
+                      aria-label="Copy GitLab callback URL"
+                    >
+                      {copied ? <CheckIcon /> : <CopyIcon />}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               <FieldGroup className="gap-3">
                 <Field>
                   <Label htmlFor="gitlab-client-id">Application ID</Label>
@@ -515,15 +565,19 @@ function IntegrationsPage() {
               <Button
                 type="submit"
                 size="sm"
-                variant="outline"
                 disabled={pending || !gitlabClientId || !gitlabSecret}
               >
-                Save
+                Connect GitLab
               </Button>
+              {!gitlabClientId || !gitlabSecret ? (
+                <p className="text-xs text-muted-foreground">
+                  Enter the Application ID and Secret from GitLab to continue.
+                </p>
+              ) : null}
             </form>
           ) : null}
         </IntegrationCard>
-      </PageContent>
+      </SettingsPage>
 
       <ConfirmActionDialog
         open={confirmAction === "disconnect-github"}
@@ -531,7 +585,7 @@ function IntegrationsPage() {
           if (!open) setConfirmAction(null)
         }}
         title="Disconnect GitHub"
-        description="Disconnect this GitHub account from Deplow? Deployments that use it will stop syncing until you reconnect."
+        description="Disconnect this GitHub account from Hostrig? Deployments that use it will stop syncing until you reconnect."
         confirmLabel="Disconnect"
         pending={pending}
         onConfirm={() => disconnect("github")}
@@ -542,7 +596,7 @@ function IntegrationsPage() {
           if (!open) setConfirmAction(null)
         }}
         title="Disconnect GitLab"
-        description="Disconnect this GitLab account from Deplow? Deployments that use it will stop syncing until you reconnect."
+        description="Disconnect this GitLab account from Hostrig? Deployments that use it will stop syncing until you reconnect."
         confirmLabel="Disconnect"
         pending={pending}
         onConfirm={() => disconnect("gitlab")}

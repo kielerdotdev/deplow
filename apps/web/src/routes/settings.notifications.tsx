@@ -1,7 +1,8 @@
+import { useState } from "react"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 
-import { PageContent, PageHeader } from "@/components/page-layout"
+import { SettingsPage } from "@/components/page-layout"
 import { MessageChannelsPanel } from "@/components/settings/message-channels-panel"
 import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
@@ -18,29 +19,24 @@ export const Route = createFileRoute("/settings/notifications")({
 })
 
 function NotificationsPage() {
+  const [addOpen, setAddOpen] = useState(false)
+
   return (
-    <>
-      <PageHeader
-        title="Notifications"
-        description="Slack, Discord, email, and webhook channels for Observe alerts."
-        actions={
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => {
-              document
-                .querySelector<HTMLButtonElement>("[data-add-channel]")
-                ?.click()
-            }}
-          >
-            <PlusIcon className="size-3.5" />
-            Add channel
-          </Button>
-        }
+    <SettingsPage
+      title="Notifications"
+      description="Slack, Discord, email, and webhook channels for Observe alerts."
+      actions={
+        <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+          <PlusIcon className="size-3.5" />
+          Add channel
+        </Button>
+      }
+    >
+      <MessageChannelsPanel
+        pageMode
+        addOpen={addOpen}
+        onAddOpenChange={setAddOpen}
       />
-      <PageContent width="narrow">
-        <MessageChannelsPanel pageMode />
-      </PageContent>
-    </>
+    </SettingsPage>
   )
 }

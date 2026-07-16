@@ -458,7 +458,7 @@ export function buildGitHubAppManifest(input: {
     name: input.name.slice(0, 34),
     description:
       input.description ??
-      "deplow — self-hosted deploy with gVisor-sandboxed apps",
+      "Hostrig — self-hosted deploy with gVisor-sandboxed apps",
     url: base,
     redirect_url: `${base}/api/git/github/app-manifest/callback`,
     callback_urls: [...callbackOrigins].map(

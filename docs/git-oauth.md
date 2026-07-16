@@ -1,6 +1,6 @@
 # Git OAuth — GitHub App + GitLab OAuth
 
-You are implementing **first-class git identity** for deplow. Follow this document.
+You are implementing **first-class git identity** for Hostrig. Follow this document.
 
 - Product: [`sequencing.md`](./sequencing.md) · [`product.md`](./product.md)
 - Stance: PAT is **Advanced** only; happy path is Connect provider → pick repo → auto webhook → private clone

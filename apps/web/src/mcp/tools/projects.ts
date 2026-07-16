@@ -8,7 +8,7 @@ import { callAuthed, sessionFromMcpContext } from "./call"
 export const projectCreateTool = createTool({
   id: "project_create",
   description:
-    "Create an empty Deplow project. Name must be lowercase letters, numbers, and hyphens (used as slug).",
+    "Create an empty Hostrig project. Name must be lowercase letters, numbers, and hyphens (used as slug).",
   inputSchema: z.object({
     name: z
       .string()

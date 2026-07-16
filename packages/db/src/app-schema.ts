@@ -15,6 +15,10 @@ export const organizations = sqliteTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    /** Optional icon URL (HTTPS) or data URL for the organization avatar. */
+    iconUrl: text("icon_url"),
+    /** IANA timezone used as the org default (e.g. Europe/Berlin). */
+    timezone: text("timezone").notNull().default("UTC"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -377,16 +381,22 @@ export const nodes = sqliteTable(
     id: text("id").primaryKey(),
     name: text("name").notNull().unique(),
     provider: text("provider", {
-      enum: ["docker", "ssh", "hetzner"],
+      enum: ["docker", "ssh", "hetzner", "agent"],
     })
       .notNull()
       .default("docker"),
-    /** Host for SSH, or "local" for docker socket */
+    /** Host for SSH, or "local" for docker socket, or agent advertise hint */
     host: text("host").notNull(),
     port: integer("port").notNull().default(22),
     username: text("username"),
     /** AES-GCM encrypted private key or empty for local docker */
     sshKeyEncrypted: text("ssh_key_encrypted"),
+    /** sha256 of long-lived agent node token (provider=agent) */
+    agentTokenHash: text("agent_token_hash"),
+    /** Host the control plane should proxy to (public IP / DNS) */
+    advertiseHost: text("advertise_host"),
+    agentVersion: text("agent_version"),
+    capabilitiesJson: text("capabilities_json"),
     labelsJson: text("labels_json"),
     status: text("status", {
       enum: ["online", "offline", "unknown"],
@@ -402,7 +412,69 @@ export const nodes = sqliteTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (t) => [index("nodes_provider_idx").on(t.provider)],
+  (t) => [
+    index("nodes_provider_idx").on(t.provider),
+    index("nodes_agent_token_idx").on(t.agentTokenHash),
+  ],
+)
+
+export const nodeJoinTokens = sqliteTable(
+  "node_join_tokens",
+  {
+    id: text("id").primaryKey(),
+    tokenHash: text("token_hash").notNull().unique(),
+    tokenPrefix: text("token_prefix").notNull(),
+    label: text("label"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    redeemedAt: integer("redeemed_at", { mode: "timestamp_ms" }),
+    createdBy: text("created_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    nodeId: text("node_id").references(() => nodes.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("node_join_tokens_hash_idx").on(t.tokenHash)],
+)
+
+export const nodeJobs = sqliteTable(
+  "node_jobs",
+  {
+    id: text("id").primaryKey(),
+    nodeId: text("node_id")
+      .notNull()
+      .references(() => nodes.id, { onDelete: "cascade" }),
+    operationId: text("operation_id").references(() => operations.id, {
+      onDelete: "set null",
+    }),
+    type: text("type", {
+      enum: ["deploy", "provision", "destroy", "stop", "logs"],
+    }).notNull(),
+    payloadJson: text("payload_json").notNull(),
+    status: text("status", {
+      enum: ["pending", "claimed", "running", "succeeded", "failed"],
+    })
+      .notNull()
+      .default("pending"),
+    claimedAt: integer("claimed_at", { mode: "timestamp_ms" }),
+    leaseExpiresAt: integer("lease_expires_at", { mode: "timestamp_ms" }),
+    resultJson: text("result_json"),
+    errorJson: text("error_json"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("node_jobs_node_status_idx").on(t.nodeId, t.status),
+    index("node_jobs_operation_idx").on(t.operationId),
+  ],
 )
 
 export const deployments = sqliteTable(
@@ -705,6 +777,9 @@ export const mcpTokens = sqliteTable(
     tokenHash: text("token_hash").notNull().unique(),
     /** First 8 chars of token for display (e.g. deplow_ab12…) */
     prefix: text("prefix").notNull(),
+    /** JSON string array of scopes; `["*"]` means full account access. */
+    scopesJson: text("scopes_json").notNull().default('["*"]'),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -1147,6 +1222,13 @@ export const observeAlerts = sqliteTable(
     /** JSON string array of message_channels.id */
     channelIdsJson: text("channel_ids_json").notNull().default("[]"),
     lastTriggeredAt: integer("last_triggered_at", { mode: "timestamp_ms" }),
+    /** OK | pending | firing | recovering */
+    state: text("state").notNull().default("ok"),
+    pendingSince: integer("pending_since", { mode: "timestamp_ms" }),
+    severity: text("severity").notNull().default("warning"),
+    evaluationIntervalSec: integer("evaluation_interval_sec")
+      .notNull()
+      .default(60),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -1156,6 +1238,26 @@ export const observeAlerts = sqliteTable(
       .notNull(),
   },
   (t) => [index("observe_alerts_project_idx").on(t.observeProjectId)],
+)
+
+/** Alert state transition history for detail views. */
+export const observeAlertHistory = sqliteTable(
+  "observe_alert_history",
+  {
+    id: text("id").primaryKey(),
+    alertId: text("alert_id")
+      .notNull()
+      .references(() => observeAlerts.id, { onDelete: "cascade" }),
+    fromState: text("from_state").notNull(),
+    toState: text("to_state").notNull(),
+    value: text("value"),
+    threshold: text("threshold"),
+    message: text("message"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("observe_alert_history_alert_idx").on(t.alertId)],
 )
 
 /** Slack / Discord / webhook / email destinations for alerts & notifications. */
@@ -1168,6 +1270,11 @@ export const messageChannels = sqliteTable("message_channels", {
   configJson: text("config_json").notNull().default("{}"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   createdBy: text("created_by"),
+  lastTestedAt: integer("last_tested_at", { mode: "timestamp_ms" }),
+  lastTestOk: integer("last_test_ok", { mode: "boolean" }),
+  lastDeliveryAt: integer("last_delivery_at", { mode: "timestamp_ms" }),
+  lastDeliveryOk: integer("last_delivery_ok", { mode: "boolean" }),
+  lastError: text("last_error"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .$defaultFn(() => new Date())
     .notNull(),

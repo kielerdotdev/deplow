@@ -1,6 +1,6 @@
 ---
 title: Projects
-description: What a deplow project is and how services get added.
+description: What a Hostrig project is and how services get added.
 ---
 
 A **project** is a container for typed **services** on one Docker node. Creating a project pins it to the local node and starts a backup schedule; it does **not** auto-provision databases. You add web/worker/postgres/redis services, then bind apps to data.
@@ -42,7 +42,7 @@ S3_ACCESS_KEY
 S3_SECRET_KEY
 ```
 
-Your application reads standard env vars — no deplow SDK required.
+Your application reads standard env vars — no Hostrig SDK required.
 
 ## Public URLs (v1)
 

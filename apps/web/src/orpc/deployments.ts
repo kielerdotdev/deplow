@@ -19,8 +19,6 @@ import {
   deployments,
   dockerNodeExecutor,
   ensureLocalNodeId,
-  getProjectCredentials,
-  gitService,
   nodes,
   operations,
   projects,
@@ -115,8 +113,18 @@ export async function runServiceDeploy(input: DeployInput) {
     await db.update(projects).set({ nodeId }).where(eq(projects.id, project.id))
   }
   const [node] = await db.select().from(nodes).where(eq(nodes.id, nodeId))
-  if (!node || node.provider !== "docker") {
-    throw new ORPCError("BAD_REQUEST", { message: "A Docker node is required" })
+  if (!node || (node.provider !== "docker" && node.provider !== "agent")) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "A Docker or agent node is required",
+    })
+  }
+  if (node.provider === "agent") {
+    const { isAgentOnline } = await import("@/lib/agent/tokens")
+    if (!isAgentOnline(node)) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "Agent node is offline — wait for a heartbeat and retry",
+      })
+    }
   }
 
   const image = input.image ?? input.options?.image
@@ -177,36 +185,54 @@ export async function runServiceDeploy(input: DeployInput) {
 
   await markOperationQueued(operation.id)
 
-  const jobData = {
-    operationId: operation.id,
-    deploymentId: id,
-    serviceId: service.id,
-    fromGit: input.fromGit,
-    image,
-    sourcePath: input.sourcePath,
-    triggeredBy: input.triggeredBy,
-    options: input.options as Record<string, unknown> | undefined,
-  }
+  if (node.provider === "agent") {
+    const { enqueueAgentDeploy } = await import("@/lib/agent/dispatch")
+    await enqueueAgentDeploy({
+      nodeId,
+      operationId: operation.id,
+      deploymentId: id,
+      service,
+      project,
+      fromGit: input.fromGit,
+      image,
+      sourcePath: input.sourcePath,
+      options: input.options,
+    })
+  } else {
+    const jobData = {
+      operationId: operation.id,
+      deploymentId: id,
+      serviceId: service.id,
+      fromGit: input.fromGit,
+      image,
+      sourcePath: input.sourcePath,
+      triggeredBy: input.triggeredBy,
+      options: input.options as Record<string, unknown> | undefined,
+    }
 
-  if (env.useQueue) {
-    try {
-      await enqueueDeploy(jobData)
-    } catch (error) {
-      console.error("[deplow] enqueue deploy failed; running in-process", error)
+    if (env.useQueue) {
+      try {
+        await enqueueDeploy(jobData)
+      } catch (error) {
+        console.error(
+          "[deplow] enqueue deploy failed; running in-process",
+          error,
+        )
+        const { processDeployJob } = await import(
+          "@/lib/core/queue/deploy-processor"
+        )
+        void processDeployJob(jobData).catch((err) => {
+          console.error(`[deplow] service deploy ${id} crashed`, err)
+        })
+      }
+    } else {
       const { processDeployJob } = await import(
         "@/lib/core/queue/deploy-processor"
       )
-      void processDeployJob(jobData).catch((err) => {
-        console.error(`[deplow] service deploy ${id} crashed`, err)
+      void processDeployJob(jobData).catch((error) => {
+        console.error(`[deplow] service deploy ${id} crashed`, error)
       })
     }
-  } else {
-    const { processDeployJob } = await import(
-      "@/lib/core/queue/deploy-processor"
-    )
-    void processDeployJob(jobData).catch((error) => {
-      console.error(`[deplow] service deploy ${id} crashed`, error)
-    })
   }
 
   const [row] = await db

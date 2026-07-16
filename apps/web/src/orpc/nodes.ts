@@ -2,10 +2,20 @@ import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
 import { eq } from "@deplow/db"
-import { registerNodeInputSchema } from "@deplow/shared"
+import {
+  createJoinTokenInputSchema,
+  registerNodeInputSchema,
+} from "@deplow/shared"
 
 import { encryptString } from "@/lib/core"
 import { assertInstanceAdmin } from "@/lib/access"
+import {
+  createJoinToken as createJoinTokenRecord,
+  isAgentOnline,
+  listJoinTokens as listJoinTokenRecords,
+  revokeJoinToken as revokeJoinTokenRecord,
+} from "@/lib/agent/tokens"
+import { env } from "@/lib/env"
 import {
   db,
   dockerNodeExecutor,
@@ -24,20 +34,29 @@ function toSummary(
     appRuntimeRequired?: boolean
   },
 ) {
+  const agentOnline =
+    row.provider === "agent" ? isAgentOnline(row) : undefined
   return {
     id: row.id,
     name: row.name,
     provider: row.provider,
     host: row.host,
-    status: row.status,
+    status:
+      row.provider === "agent"
+        ? agentOnline
+          ? ("online" as const)
+          : ("offline" as const)
+        : row.status,
     createdAt: row.createdAt.toISOString(),
+    lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
+    advertiseHost: row.advertiseHost,
+    agentVersion: row.agentVersion,
     ...runtime,
   }
 }
 
 export const list = authedProcedure.handler(async () => {
   const rows = await db.select().from(nodes)
-  // One runtime probe for the host — all local docker nodes share the daemon
   let runtime:
     | {
         appRuntime: string
@@ -84,7 +103,6 @@ export const register = authedProcedure
       ? encryptString(input.sshPrivateKey, platformConfig.secretsEncryptionKey)
       : null
 
-    // Probe docker for local nodes
     let status: "online" | "offline" | "unknown" = "unknown"
     if (input.provider === "docker") {
       const probe = await dockerNodeExecutor.getStatus(id)
@@ -115,7 +133,6 @@ export const remove = authedProcedure
     if (!row) {
       throw new ORPCError("NOT_FOUND", { message: "Node not found" })
     }
-    // Protect the default "local" node from accidental deletion
     if (row.name === "local") {
       throw new ORPCError("BAD_REQUEST", {
         message: "The local node cannot be removed",
@@ -143,6 +160,19 @@ export const status = authedProcedure
         .where(eq(nodes.id, row.id))
       return result
     }
+    if (row.provider === "agent") {
+      const online = isAgentOnline(row)
+      return {
+        online,
+        docker: online ? ("running" as const) : ("unknown" as const),
+        message: online
+          ? `Agent online${row.agentVersion ? ` · v${row.agentVersion}` : ""}`
+          : "Agent offline (no recent heartbeat)",
+        appRuntime: undefined,
+        appRuntimeAvailable: undefined,
+        appRuntimeRequired: undefined,
+      }
+    }
     return {
       online: false,
       docker: "unknown" as const,
@@ -155,3 +185,42 @@ export const ensureLocal = authedProcedure.handler(async () => {
   const [row] = await db.select().from(nodes).where(eq(nodes.id, id))
   return toSummary(row!)
 })
+
+export const createJoinToken = authedProcedure
+  .input(createJoinTokenInputSchema)
+  .handler(async ({ context, input }) => {
+    await assertInstanceAdmin(context.session!)
+    const created = await createJoinTokenRecord({
+      userId: context.session!.user.id,
+      label: input.label,
+      ttlSeconds: input.ttlSeconds,
+    })
+    const publicUrl = env.publicControlPlaneUrl.replace(/\/$/, "")
+    const installCommand = `curl -sSL ${publicUrl}/install-agent.sh | sudo bash -s -- --url ${publicUrl} --token ${created.token}`
+    return {
+      id: created.id,
+      token: created.token,
+      prefix: created.prefix,
+      expiresAt: created.expiresAt.toISOString(),
+      installCommand,
+      publicUrl,
+    }
+  })
+
+export const listJoinTokens = authedProcedure.handler(async ({ context }) => {
+  await assertInstanceAdmin(context.session!)
+  return listJoinTokenRecords()
+})
+
+export const revokeJoinToken = authedProcedure
+  .input(z.object({ id: z.string().min(1) }))
+  .handler(async ({ context, input }) => {
+    await assertInstanceAdmin(context.session!)
+    const ok = await revokeJoinTokenRecord(input.id)
+    if (!ok) {
+      throw new ORPCError("NOT_FOUND", {
+        message: "Join token not found or already redeemed",
+      })
+    }
+    return { ok: true as const }
+  })

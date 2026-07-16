@@ -15,6 +15,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as NodesRouteImport } from './routes/nodes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as InstallAgentDotshRouteImport } from './routes/install-agent[.]sh'
 import { Route as DomainsRouteImport } from './routes/domains'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
@@ -23,8 +24,11 @@ import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsOperatorRouteImport } from './routes/settings.operator'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsNodesRouteImport } from './routes/settings.nodes'
+import { Route as SettingsNetworkingRouteImport } from './routes/settings.networking'
+import { Route as SettingsMembersRouteImport } from './routes/settings.members'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsDomainsRouteImport } from './routes/settings.domains'
+import { Route as SettingsApiRouteImport } from './routes/settings.api'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as InvitesTokenRouteImport } from './routes/invites.$token'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
@@ -36,6 +40,7 @@ import { Route as ObserveProjectsProjectIdRouteImport } from './routes/observe/p
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
 import { Route as ApiInternalDogfoodRouteImport } from './routes/api/internal.dogfood'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiAgentSplatRouteImport } from './routes/api/agent.$'
 import { Route as ApiSentryIdStoreRouteImport } from './routes/api/$sentryId.store'
 import { Route as ApiSentryIdEnvelopeRouteImport } from './routes/api/$sentryId.envelope'
 import { Route as ObserveProjectsProjectIdIndexRouteImport } from './routes/observe/projects/$projectId.index'
@@ -45,6 +50,7 @@ import { Route as ObserveProjectsProjectIdTracesRouteImport } from './routes/obs
 import { Route as ObserveProjectsProjectIdSetupRouteImport } from './routes/observe/projects/$projectId.setup'
 import { Route as ObserveProjectsProjectIdServicesRouteImport } from './routes/observe/projects/$projectId.services'
 import { Route as ObserveProjectsProjectIdReleasesRouteImport } from './routes/observe/projects/$projectId.releases'
+import { Route as ObserveProjectsProjectIdMetricsRouteImport } from './routes/observe/projects/$projectId.metrics'
 import { Route as ObserveProjectsProjectIdLogsRouteImport } from './routes/observe/projects/$projectId.logs'
 import { Route as ObserveProjectsProjectIdIssuesRouteImport } from './routes/observe/projects/$projectId.issues'
 import { Route as ObserveProjectsProjectIdInsightsRouteImport } from './routes/observe/projects/$projectId.insights'
@@ -60,6 +66,7 @@ import { Route as ObserveProjectsProjectIdDashboardsDashboardIdRouteImport } fro
 import { Route as ApiGitOauthGitlabCallbackRouteImport } from './routes/api/git/oauth/gitlab/callback'
 import { Route as ApiGitOauthGithubCallbackRouteImport } from './routes/api/git/oauth/github/callback'
 import { Route as ApiGitGithubAppManifestCallbackRouteImport } from './routes/api/git/github/app-manifest/callback'
+import { Route as ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRouteImport } from './routes/projects/$projectId_/services/$serviceId_.deployments.$deploymentId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -89,6 +96,11 @@ const LoginRoute = LoginRouteImport.update({
 const IntegrationsRoute = IntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstallAgentDotshRoute = InstallAgentDotshRouteImport.update({
+  id: '/install-agent.sh',
+  path: '/install-agent.sh',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DomainsRoute = DomainsRouteImport.update({
@@ -131,6 +143,16 @@ const SettingsNodesRoute = SettingsNodesRouteImport.update({
   path: '/nodes',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsNetworkingRoute = SettingsNetworkingRouteImport.update({
+  id: '/networking',
+  path: '/networking',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsMembersRoute = SettingsMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -139,6 +161,11 @@ const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
 const SettingsDomainsRoute = SettingsDomainsRouteImport.update({
   id: '/domains',
   path: '/domains',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsApiRoute = SettingsApiRouteImport.update({
+  id: '/api',
+  path: '/api',
   getParentRoute: () => SettingsRoute,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -200,6 +227,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentSplatRoute = ApiAgentSplatRouteImport.update({
+  id: '/api/agent/$',
+  path: '/api/agent/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSentryIdStoreRoute = ApiSentryIdStoreRouteImport.update({
   id: '/api/$sentryId/store',
   path: '/api/$sentryId/store',
@@ -250,6 +282,12 @@ const ObserveProjectsProjectIdReleasesRoute =
   ObserveProjectsProjectIdReleasesRouteImport.update({
     id: '/releases',
     path: '/releases',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdMetricsRoute =
+  ObserveProjectsProjectIdMetricsRouteImport.update({
+    id: '/metrics',
+    path: '/metrics',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
 const ObserveProjectsProjectIdLogsRoute =
@@ -340,10 +378,17 @@ const ApiGitGithubAppManifestCallbackRoute =
     path: '/api/git/github/app-manifest/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute =
+  ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRouteImport.update({
+    id: '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId',
+    path: '/projects/$projectId/services/$serviceId/deployments/$deploymentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/domains': typeof DomainsRoute
+  '/install-agent.sh': typeof InstallAgentDotshRoute
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
@@ -353,8 +398,11 @@ export interface FileRoutesByFullPath {
   '/api/mcp': typeof ApiMcpRoute
   '/invites/$token': typeof InvitesTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/settings/api': typeof SettingsApiRoute
   '/settings/domains': typeof SettingsDomainsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/members': typeof SettingsMembersRoute
+  '/settings/networking': typeof SettingsNetworkingRoute
   '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/operator': typeof SettingsOperatorRoute
@@ -363,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
   '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
+  '/api/agent/$': typeof ApiAgentSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
@@ -379,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
   '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
   '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
+  '/observe/projects/$projectId/metrics': typeof ObserveProjectsProjectIdMetricsRoute
   '/observe/projects/$projectId/releases': typeof ObserveProjectsProjectIdReleasesRoute
   '/observe/projects/$projectId/services': typeof ObserveProjectsProjectIdServicesRoute
   '/observe/projects/$projectId/setup': typeof ObserveProjectsProjectIdSetupRoute
@@ -393,10 +443,12 @@ export interface FileRoutesByFullPath {
   '/observe/projects/$projectId/issues/$issueId': typeof ObserveProjectsProjectIdIssuesIssueIdRoute
   '/observe/projects/$projectId/services/$serviceName': typeof ObserveProjectsProjectIdServicesServiceNameRoute
   '/observe/projects/$projectId/traces/$traceId': typeof ObserveProjectsProjectIdTracesTraceIdRoute
+  '/projects/$projectId/services/$serviceId/deployments/$deploymentId': typeof ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/domains': typeof DomainsRoute
+  '/install-agent.sh': typeof InstallAgentDotshRoute
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
@@ -404,8 +456,11 @@ export interface FileRoutesByTo {
   '/organization': typeof OrganizationRoute
   '/api/mcp': typeof ApiMcpRoute
   '/invites/$token': typeof InvitesTokenRoute
+  '/settings/api': typeof SettingsApiRoute
   '/settings/domains': typeof SettingsDomainsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/members': typeof SettingsMembersRoute
+  '/settings/networking': typeof SettingsNetworkingRoute
   '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/operator': typeof SettingsOperatorRoute
@@ -414,6 +469,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
   '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
+  '/api/agent/$': typeof ApiAgentSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
@@ -429,6 +485,7 @@ export interface FileRoutesByTo {
   '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
   '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
   '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
+  '/observe/projects/$projectId/metrics': typeof ObserveProjectsProjectIdMetricsRoute
   '/observe/projects/$projectId/releases': typeof ObserveProjectsProjectIdReleasesRoute
   '/observe/projects/$projectId/services': typeof ObserveProjectsProjectIdServicesRoute
   '/observe/projects/$projectId/setup': typeof ObserveProjectsProjectIdSetupRoute
@@ -443,11 +500,13 @@ export interface FileRoutesByTo {
   '/observe/projects/$projectId/issues/$issueId': typeof ObserveProjectsProjectIdIssuesIssueIdRoute
   '/observe/projects/$projectId/services/$serviceName': typeof ObserveProjectsProjectIdServicesServiceNameRoute
   '/observe/projects/$projectId/traces/$traceId': typeof ObserveProjectsProjectIdTracesTraceIdRoute
+  '/projects/$projectId/services/$serviceId/deployments/$deploymentId': typeof ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/domains': typeof DomainsRoute
+  '/install-agent.sh': typeof InstallAgentDotshRoute
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
@@ -457,8 +516,11 @@ export interface FileRoutesById {
   '/api/mcp': typeof ApiMcpRoute
   '/invites/$token': typeof InvitesTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
+  '/settings/api': typeof SettingsApiRoute
   '/settings/domains': typeof SettingsDomainsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/members': typeof SettingsMembersRoute
+  '/settings/networking': typeof SettingsNetworkingRoute
   '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/operator': typeof SettingsOperatorRoute
@@ -467,6 +529,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
   '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
+  '/api/agent/$': typeof ApiAgentSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
@@ -483,6 +546,7 @@ export interface FileRoutesById {
   '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
   '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
   '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
+  '/observe/projects/$projectId/metrics': typeof ObserveProjectsProjectIdMetricsRoute
   '/observe/projects/$projectId/releases': typeof ObserveProjectsProjectIdReleasesRoute
   '/observe/projects/$projectId/services': typeof ObserveProjectsProjectIdServicesRoute
   '/observe/projects/$projectId/setup': typeof ObserveProjectsProjectIdSetupRoute
@@ -497,12 +561,14 @@ export interface FileRoutesById {
   '/observe/projects/$projectId/issues_/$issueId': typeof ObserveProjectsProjectIdIssuesIssueIdRoute
   '/observe/projects/$projectId/services_/$serviceName': typeof ObserveProjectsProjectIdServicesServiceNameRoute
   '/observe/projects/$projectId/traces_/$traceId': typeof ObserveProjectsProjectIdTracesTraceIdRoute
+  '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId': typeof ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/domains'
+    | '/install-agent.sh'
     | '/integrations'
     | '/login'
     | '/nodes'
@@ -512,8 +578,11 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/invites/$token'
     | '/projects/$projectId'
+    | '/settings/api'
     | '/settings/domains'
     | '/settings/integrations'
+    | '/settings/members'
+    | '/settings/networking'
     | '/settings/nodes'
     | '/settings/notifications'
     | '/settings/operator'
@@ -522,6 +591,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/$sentryId/envelope'
     | '/api/$sentryId/store'
+    | '/api/agent/$'
     | '/api/auth/$'
     | '/api/internal/dogfood'
     | '/api/rpc/$'
@@ -538,6 +608,7 @@ export interface FileRouteTypes {
     | '/observe/projects/$projectId/insights'
     | '/observe/projects/$projectId/issues'
     | '/observe/projects/$projectId/logs'
+    | '/observe/projects/$projectId/metrics'
     | '/observe/projects/$projectId/releases'
     | '/observe/projects/$projectId/services'
     | '/observe/projects/$projectId/setup'
@@ -552,10 +623,12 @@ export interface FileRouteTypes {
     | '/observe/projects/$projectId/issues/$issueId'
     | '/observe/projects/$projectId/services/$serviceName'
     | '/observe/projects/$projectId/traces/$traceId'
+    | '/projects/$projectId/services/$serviceId/deployments/$deploymentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/domains'
+    | '/install-agent.sh'
     | '/integrations'
     | '/login'
     | '/nodes'
@@ -563,8 +636,11 @@ export interface FileRouteTypes {
     | '/organization'
     | '/api/mcp'
     | '/invites/$token'
+    | '/settings/api'
     | '/settings/domains'
     | '/settings/integrations'
+    | '/settings/members'
+    | '/settings/networking'
     | '/settings/nodes'
     | '/settings/notifications'
     | '/settings/operator'
@@ -573,6 +649,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/$sentryId/envelope'
     | '/api/$sentryId/store'
+    | '/api/agent/$'
     | '/api/auth/$'
     | '/api/internal/dogfood'
     | '/api/rpc/$'
@@ -588,6 +665,7 @@ export interface FileRouteTypes {
     | '/observe/projects/$projectId/insights'
     | '/observe/projects/$projectId/issues'
     | '/observe/projects/$projectId/logs'
+    | '/observe/projects/$projectId/metrics'
     | '/observe/projects/$projectId/releases'
     | '/observe/projects/$projectId/services'
     | '/observe/projects/$projectId/setup'
@@ -602,10 +680,12 @@ export interface FileRouteTypes {
     | '/observe/projects/$projectId/issues/$issueId'
     | '/observe/projects/$projectId/services/$serviceName'
     | '/observe/projects/$projectId/traces/$traceId'
+    | '/projects/$projectId/services/$serviceId/deployments/$deploymentId'
   id:
     | '__root__'
     | '/'
     | '/domains'
+    | '/install-agent.sh'
     | '/integrations'
     | '/login'
     | '/nodes'
@@ -615,8 +695,11 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/invites/$token'
     | '/projects/$projectId'
+    | '/settings/api'
     | '/settings/domains'
     | '/settings/integrations'
+    | '/settings/members'
+    | '/settings/networking'
     | '/settings/nodes'
     | '/settings/notifications'
     | '/settings/operator'
@@ -625,6 +708,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/$sentryId/envelope'
     | '/api/$sentryId/store'
+    | '/api/agent/$'
     | '/api/auth/$'
     | '/api/internal/dogfood'
     | '/api/rpc/$'
@@ -641,6 +725,7 @@ export interface FileRouteTypes {
     | '/observe/projects/$projectId/insights'
     | '/observe/projects/$projectId/issues'
     | '/observe/projects/$projectId/logs'
+    | '/observe/projects/$projectId/metrics'
     | '/observe/projects/$projectId/releases'
     | '/observe/projects/$projectId/services'
     | '/observe/projects/$projectId/setup'
@@ -655,11 +740,13 @@ export interface FileRouteTypes {
     | '/observe/projects/$projectId/issues_/$issueId'
     | '/observe/projects/$projectId/services_/$serviceName'
     | '/observe/projects/$projectId/traces_/$traceId'
+    | '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DomainsRoute: typeof DomainsRoute
+  InstallAgentDotshRoute: typeof InstallAgentDotshRoute
   IntegrationsRoute: typeof IntegrationsRoute
   LoginRoute: typeof LoginRoute
   NodesRoute: typeof NodesRoute
@@ -672,6 +759,7 @@ export interface RootRouteChildren {
   ObserveIndexRoute: typeof ObserveIndexRoute
   ApiSentryIdEnvelopeRoute: typeof ApiSentryIdEnvelopeRoute
   ApiSentryIdStoreRoute: typeof ApiSentryIdStoreRoute
+  ApiAgentSplatRoute: typeof ApiAgentSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiInternalDogfoodRoute: typeof ApiInternalDogfoodRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
@@ -682,6 +770,7 @@ export interface RootRouteChildren {
   ApiGitGithubAppManifestCallbackRoute: typeof ApiGitGithubAppManifestCallbackRoute
   ApiGitOauthGithubCallbackRoute: typeof ApiGitOauthGithubCallbackRoute
   ApiGitOauthGitlabCallbackRoute: typeof ApiGitOauthGitlabCallbackRoute
+  ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute: typeof ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -726,6 +815,13 @@ declare module '@tanstack/react-router' {
       path: '/integrations'
       fullPath: '/integrations'
       preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/install-agent.sh': {
+      id: '/install-agent.sh'
+      path: '/install-agent.sh'
+      fullPath: '/install-agent.sh'
+      preLoaderRoute: typeof InstallAgentDotshRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/domains': {
@@ -784,6 +880,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsNodesRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/networking': {
+      id: '/settings/networking'
+      path: '/networking'
+      fullPath: '/settings/networking'
+      preLoaderRoute: typeof SettingsNetworkingRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/members': {
+      id: '/settings/members'
+      path: '/members'
+      fullPath: '/settings/members'
+      preLoaderRoute: typeof SettingsMembersRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/integrations': {
       id: '/settings/integrations'
       path: '/integrations'
@@ -796,6 +906,13 @@ declare module '@tanstack/react-router' {
       path: '/domains'
       fullPath: '/settings/domains'
       preLoaderRoute: typeof SettingsDomainsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/api': {
+      id: '/settings/api'
+      path: '/api'
+      fullPath: '/settings/api'
+      preLoaderRoute: typeof SettingsApiRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/projects/$projectId': {
@@ -875,6 +992,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/$': {
+      id: '/api/agent/$'
+      path: '/api/agent/$'
+      fullPath: '/api/agent/$'
+      preLoaderRoute: typeof ApiAgentSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/$sentryId/store': {
       id: '/api/$sentryId/store'
       path: '/api/$sentryId/store'
@@ -936,6 +1060,13 @@ declare module '@tanstack/react-router' {
       path: '/releases'
       fullPath: '/observe/projects/$projectId/releases'
       preLoaderRoute: typeof ObserveProjectsProjectIdReleasesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/metrics': {
+      id: '/observe/projects/$projectId/metrics'
+      path: '/metrics'
+      fullPath: '/observe/projects/$projectId/metrics'
+      preLoaderRoute: typeof ObserveProjectsProjectIdMetricsRouteImport
       parentRoute: typeof ObserveProjectsProjectIdRoute
     }
     '/observe/projects/$projectId/logs': {
@@ -1043,12 +1174,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGitGithubAppManifestCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId': {
+      id: '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId'
+      path: '/projects/$projectId/services/$serviceId/deployments/$deploymentId'
+      fullPath: '/projects/$projectId/services/$serviceId/deployments/$deploymentId'
+      preLoaderRoute: typeof ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface SettingsRouteChildren {
+  SettingsApiRoute: typeof SettingsApiRoute
   SettingsDomainsRoute: typeof SettingsDomainsRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
+  SettingsMembersRoute: typeof SettingsMembersRoute
+  SettingsNetworkingRoute: typeof SettingsNetworkingRoute
   SettingsNodesRoute: typeof SettingsNodesRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsOperatorRoute: typeof SettingsOperatorRoute
@@ -1057,8 +1198,11 @@ interface SettingsRouteChildren {
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsApiRoute: SettingsApiRoute,
   SettingsDomainsRoute: SettingsDomainsRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
+  SettingsMembersRoute: SettingsMembersRoute,
+  SettingsNetworkingRoute: SettingsNetworkingRoute,
   SettingsNodesRoute: SettingsNodesRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsOperatorRoute: SettingsOperatorRoute,
@@ -1094,6 +1238,7 @@ interface ObserveProjectsProjectIdRouteChildren {
   ObserveProjectsProjectIdInsightsRoute: typeof ObserveProjectsProjectIdInsightsRoute
   ObserveProjectsProjectIdIssuesRoute: typeof ObserveProjectsProjectIdIssuesRoute
   ObserveProjectsProjectIdLogsRoute: typeof ObserveProjectsProjectIdLogsRoute
+  ObserveProjectsProjectIdMetricsRoute: typeof ObserveProjectsProjectIdMetricsRoute
   ObserveProjectsProjectIdReleasesRoute: typeof ObserveProjectsProjectIdReleasesRoute
   ObserveProjectsProjectIdServicesRoute: typeof ObserveProjectsProjectIdServicesRoute
   ObserveProjectsProjectIdSetupRoute: typeof ObserveProjectsProjectIdSetupRoute
@@ -1116,6 +1261,7 @@ const ObserveProjectsProjectIdRouteChildren: ObserveProjectsProjectIdRouteChildr
       ObserveProjectsProjectIdInsightsRoute,
     ObserveProjectsProjectIdIssuesRoute: ObserveProjectsProjectIdIssuesRoute,
     ObserveProjectsProjectIdLogsRoute: ObserveProjectsProjectIdLogsRoute,
+    ObserveProjectsProjectIdMetricsRoute: ObserveProjectsProjectIdMetricsRoute,
     ObserveProjectsProjectIdReleasesRoute:
       ObserveProjectsProjectIdReleasesRoute,
     ObserveProjectsProjectIdServicesRoute:
@@ -1142,6 +1288,7 @@ const ObserveProjectsProjectIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DomainsRoute: DomainsRoute,
+  InstallAgentDotshRoute: InstallAgentDotshRoute,
   IntegrationsRoute: IntegrationsRoute,
   LoginRoute: LoginRoute,
   NodesRoute: NodesRoute,
@@ -1154,6 +1301,7 @@ const rootRouteChildren: RootRouteChildren = {
   ObserveIndexRoute: ObserveIndexRoute,
   ApiSentryIdEnvelopeRoute: ApiSentryIdEnvelopeRoute,
   ApiSentryIdStoreRoute: ApiSentryIdStoreRoute,
+  ApiAgentSplatRoute: ApiAgentSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiInternalDogfoodRoute: ApiInternalDogfoodRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
@@ -1165,6 +1313,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGitGithubAppManifestCallbackRoute: ApiGitGithubAppManifestCallbackRoute,
   ApiGitOauthGithubCallbackRoute: ApiGitOauthGithubCallbackRoute,
   ApiGitOauthGitlabCallbackRoute: ApiGitOauthGitlabCallbackRoute,
+  ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute:
+    ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

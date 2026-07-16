@@ -12,11 +12,11 @@ import { serviceCreateAndDeployTool } from "./tools/services"
 import { sourceAnalyzeTool } from "./tools/source"
 
 export const deplowMcpServer = new MCPServer({
-  id: "deplow",
-  name: "Deplow",
+  id: "hostrig",
+  name: "Hostrig",
   version: "0.1.0",
   description:
-    "Deploy and manage Deplow projects: create projects, analyze git sources, deploy services, and read status/logs.",
+    "Deploy and manage Hostrig projects: create projects, analyze git sources, deploy services, and read status/logs.",
   instructions: [
     "Prefer deploy_from_git for end-to-end deploys from a git URL.",
     "Use atomic tools (project_create, source_analyze, service_create_and_deploy, deployment_get, deployment_logs) when you need finer control or debugging.",

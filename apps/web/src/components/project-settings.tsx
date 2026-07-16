@@ -268,7 +268,7 @@ function ConnectedSource({
         <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-3">
           <SettingsHint>
             {git?.webhookManaged
-              ? "Webhook is managed by deplow. Copy the URL only if you need to re-add it manually."
+              ? "Webhook is managed by Hostrig. Copy the URL only if you need to re-add it manually."
               : "Add this URL as a push webhook in your repo settings. Use the secret shown when connect could not register the hook automatically."}
           </SettingsHint>
           <div className="flex flex-wrap items-center gap-2">

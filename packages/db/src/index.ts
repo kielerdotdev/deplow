@@ -1,6 +1,7 @@
 export { db } from "./client"
 export * from "./schema"
 export {
+  ensureAgentNodesSchema,
   ensureGitOAuthSchema,
   ensureIngressSchema,
   ensureMcpTokensSchema,

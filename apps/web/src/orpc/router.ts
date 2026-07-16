@@ -48,6 +48,7 @@ export const router = {
     list: projects.list,
     get: projects.get,
     create: projects.create,
+    setNode: projects.setNode,
     destroy: projects.destroy,
     secrets: projects.secrets,
     envSecrets: projects.envSecrets,
@@ -116,6 +117,9 @@ export const router = {
     remove: nodes.remove,
     status: nodes.status,
     ensureLocal: nodes.ensureLocal,
+    createJoinToken: nodes.createJoinToken,
+    listJoinTokens: nodes.listJoinTokens,
+    revokeJoinToken: nodes.revokeJoinToken,
   },
   deployments: {
     list: deployments.list,
@@ -203,6 +207,13 @@ export const router = {
       run: observeQuery.trendsRun,
       export: observeQuery.trendsExport,
     },
+    query: {
+      run: observeQuery.queryRun,
+      facets: observeQuery.queryFacets,
+    },
+    metrics: {
+      catalog: observeQuery.metricsCatalog,
+    },
     fields: {
       suggest: observeQuery.fieldsSuggest,
       values: observeQuery.fieldsValues,
@@ -212,6 +223,8 @@ export const router = {
       create: observeQuery.alertsCreate,
       update: observeQuery.alertsUpdate,
       delete: observeQuery.alertsDelete,
+      history: observeQuery.alertsHistory,
+      evaluateNow: observeQuery.alertsEvaluateNow,
     },
     members: {
       list: observeQuery.membersList,
@@ -224,6 +237,7 @@ export const router = {
   messageChannels: {
     list: observeQuery.messageChannelsList,
     create: observeQuery.messageChannelsCreate,
+    update: observeQuery.messageChannelsUpdate,
     delete: observeQuery.messageChannelsDelete,
     test: observeQuery.messageChannelsTest,
   },

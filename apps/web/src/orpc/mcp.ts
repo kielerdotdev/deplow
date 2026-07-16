@@ -17,6 +17,9 @@ export const createToken = authedProcedure
   .input(
     z.object({
       name: z.string().min(1).max(64),
+      scopes: z.array(z.enum(["*", "read"])).min(1).max(8).optional(),
+      /** null / omitted = never expires */
+      expiresInDays: z.number().int().min(1).max(3650).nullable().optional(),
     }),
   )
   .handler(async ({ context, input }) => {
@@ -24,6 +27,8 @@ export const createToken = authedProcedure
       return await createMcpToken({
         userId: context.session!.user.id,
         name: input.name,
+        scopes: input.scopes,
+        expiresInDays: input.expiresInDays,
       })
     } catch (error) {
       throw new ORPCError("BAD_REQUEST", {

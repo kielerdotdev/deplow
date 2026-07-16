@@ -1,10 +1,10 @@
-# deplow
+# Hostrig
 
 Opinionated self-hosted project runtime: **one project = typed services (web, worker, postgres, redis) + bindings + S3**, built with **Railpack or Dockerfile**, run on **local Docker under gVisor**, with **public URLs via Caddy + cloudflared** (platform wildcard), per-service **git push-to-deploy**, and scheduled Postgres backups.
 
 Launch bar: [docs/gtm.md](./docs/gtm.md) — **service-first stack + gVisor + wildcard Domains + git push**, not Coolify/Dokploy catalog sprawl. Custom domains and previews are v2; multi-node is v3.
 
-Most apps only need a database, object storage, and a runtime. deplow runs that stack on a host you control — no spinning up hosted Postgres/Redis/S3 per project, and no hand-rolled backup cron.
+Most apps only need a database, object storage, and a runtime. Hostrig runs that stack on a host you control — no spinning up hosted Postgres/Redis/S3 per project, and no hand-rolled backup cron.
 
 **Canonical docs:** [`docs/`](./docs/) — start with [philosophy](./docs/philosophy.md), [product](./docs/product.md), [gtm](./docs/gtm.md), and [security](./docs/security.md).
 
@@ -126,7 +126,7 @@ pnpm e2e               # requires pnpm infra:up && pnpm dev — service deploy +
 
 ## Public URLs (Caddy + cloudflared)
 
-deplow owns the local reverse proxy (**Caddy**). **Domains are configured in the app** (Domains tab), not by editing env for day-to-day changes. Edges only forward HTTP with the `Host` header intact. The v1 edge is **cloudflared**.
+Hostrig owns the local reverse proxy (**Caddy**). **Domains are configured in the app** (Domains tab), not by editing env for day-to-day changes. Edges only forward HTTP with the `Host` header intact. The v1 edge is **cloudflared**.
 
 ```text
 Internet → cloudflared → Caddy (Host: {slug}.{baseDomain}) → user app (gVisor)

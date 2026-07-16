@@ -1,6 +1,6 @@
 # GTM readiness — launch bar
 
-Canonical gate for a **public v1 launch**. Competitive context: Coolify/Dokploy win breadth; deplow wins an opinionated Railway-shaped loop with gVisor. Do **not** gate launch on feature parity with them.
+Canonical gate for a **public v1 launch**. Competitive context: Coolify/Dokploy win breadth; Hostrig wins an opinionated Railway-shaped loop with gVisor. Do **not** gate launch on feature parity with them.
 
 Related: [sequencing.md](./sequencing.md) · [product.md](./product.md) · [access.md](./access.md)
 

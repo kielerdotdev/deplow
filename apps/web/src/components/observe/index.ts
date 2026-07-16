@@ -41,3 +41,13 @@ export { AnalysisTypeTabs } from "./trends/analysis-type-tabs"
 export { TrendsChart } from "./trends/trends-chart"
 export { ExportMenu } from "./trends/export-menu"
 export { ResultTable } from "./trends/result-table"
+export {
+  ExplorerViewTabs,
+  ExplorerFacetPanel,
+  ExplorerAggBar,
+  ExplorerActions,
+  ExplorerExpressionInput,
+  ExplorerFormulaBar,
+  ExplorerTraceMatchPanel,
+} from "./explorer"
+export { AlertHistoryPanel } from "./alert-history-panel"

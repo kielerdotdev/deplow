@@ -12,6 +12,10 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  alertPreviewQuery,
+  extractPreviewValue,
+} from "@/lib/observe/alert-preview"
 import { client } from "@/lib/orpc"
 
 const WINDOWS = ["1m", "5m", "15m", "1h"] as const
@@ -59,6 +63,10 @@ export function CreateAlertDialog({
   const [channelIds, setChannelIds] = useState<string[]>([])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<number | null>(null)
+  const [previewState, setPreviewState] = useState<
+    "idle" | "loading" | "error"
+  >("idle")
 
   useEffect(() => {
     if (!open) return
@@ -75,9 +83,37 @@ export function CreateAlertDialog({
     setChannelIds([])
     setError(null)
     setPending(false)
+    setPreview(null)
     // Reset form when the dialog opens; ignore defaults identity churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open-gated reset
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setPreviewState("loading")
+    const query = alertPreviewQuery({
+      metric,
+      window,
+      contextJson: defaults?.contextJson,
+    })
+    void client.observe.query
+      .run({ projectId, query })
+      .then((res) => {
+        if (cancelled) return
+        setPreview(extractPreviewValue(res.result))
+        setPreviewState("idle")
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPreview(null)
+          setPreviewState("error")
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, projectId, metric, window, defaults?.contextJson])
 
   async function create() {
     if (channelIds.length === 0) {
@@ -207,6 +243,38 @@ export function CreateAlertDialog({
             </div>
           </div>
           <ChannelPicker selected={channelIds} onChange={setChannelIds} />
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs">
+            <div className="font-medium text-muted-foreground">
+              Live preview (current window)
+            </div>
+            {previewState === "loading" ? (
+              <p className="mt-1 text-muted-foreground">Running query…</p>
+            ) : previewState === "error" ? (
+              <p className="mt-1 text-muted-foreground">
+                Preview unavailable — alert can still be created.
+              </p>
+            ) : (
+              <p className="mt-1 font-mono tabular-nums">
+                Latest{" "}
+                <span className="text-foreground">
+                  {preview == null ? "—" : preview.toPrecision(4)}
+                </span>
+                {" · "}
+                threshold{" "}
+                <span className="text-foreground">{threshold}</span>
+                {preview != null && Number(threshold) > 0 ? (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    (
+                    {preview > Number(threshold)
+                      ? "would fire"
+                      : "currently OK"}
+                    )
+                  </span>
+                ) : null}
+              </p>
+            )}
+          </div>
         </div>
 
         <DialogFooter>

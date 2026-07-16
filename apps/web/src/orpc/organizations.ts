@@ -42,6 +42,8 @@ function orgSummary(
     id: org.id,
     name: org.name,
     slug: org.slug,
+    iconUrl: org.iconUrl ?? null,
+    timezone: org.timezone || "UTC",
     role,
     createdAt: org.createdAt.toISOString(),
     updatedAt: org.updatedAt.toISOString(),
@@ -139,9 +141,23 @@ export const update = authedProcedure
       }
     }
 
+    const nextIconUrl =
+      input.iconUrl === undefined
+        ? org.iconUrl
+        : input.iconUrl === "" || input.iconUrl === null
+          ? null
+          : input.iconUrl
+    const nextTimezone = input.timezone?.trim() || org.timezone || "UTC"
+
     await db
       .update(organizations)
-      .set({ name: nextName, slug: nextSlug, updatedAt: new Date() })
+      .set({
+        name: nextName,
+        slug: nextSlug,
+        iconUrl: nextIconUrl,
+        timezone: nextTimezone,
+        updatedAt: new Date(),
+      })
       .where(eq(organizations.id, org.id))
 
     const [updated] = await db

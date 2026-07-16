@@ -8,6 +8,8 @@ export const organizationSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
+  iconUrl: z.string().nullable(),
+  timezone: z.string(),
   role: organizationRoleSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -29,6 +31,15 @@ export const updateOrganizationInputSchema = z.object({
     .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, {
       message: "Use lowercase letters, numbers, and hyphens",
     })
+    .optional(),
+  iconUrl: z
+    .union([z.string().url().max(2048), z.literal(""), z.null()])
+    .optional(),
+  timezone: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[A-Za-z0-9_+\-/]+$/, { message: "Invalid timezone" })
     .optional(),
 })
 

@@ -130,6 +130,12 @@ describe("Observe UI structure", () => {
     )
     expect(traces).toContain("Trace volume")
     expect(traces).toContain("ObserveProjectShell")
+    expect(traces).toContain("ExplorerViewTabs")
+    expect(traces).toContain("ExplorerFacetPanel")
+    expect(traces).toContain("ExplorerExpressionInput")
+    expect(traces).toContain("ExplorerFormulaBar")
+    expect(traces).toContain("ExplorerTraceMatchPanel")
+    expect(traces).toContain("serializeTelemetryQuery")
     expect(traces).not.toContain("Hello")
     expect(traces).not.toContain("RouteComponent")
     expect(shell).toContain("surfaceFromPath")
@@ -138,6 +144,15 @@ describe("Observe UI structure", () => {
     expect(bar).toContain("QueryInput")
     expect(bar).toContain("FilterBuilder")
     expect(bar).toContain('surface === "traces"')
+  })
+
+  it("observe query router exposes unified TelemetryQuery APIs", () => {
+    const router = readFileSync(path.join(root, "orpc/router.ts"), "utf8")
+    expect(router).toContain("queryRun")
+    expect(router).toContain("queryFacets")
+    expect(router).toContain("metricsCatalog")
+    expect(router).toContain("alertsHistory")
+    expect(router).toContain("alertsEvaluateNow")
   })
 
   it("trace detail embeds logs and span URL selection", () => {

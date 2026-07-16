@@ -467,13 +467,13 @@ function DashboardPage() {
                   }
                 />
                 <DashboardRow
-                  to="/settings/domains"
+                  to="/settings/networking"
                   leading={
                     <div className="icon-well size-7 shrink-0">
                       <GlobeIcon className="size-3.5" />
                     </div>
                   }
-                  title="Domains"
+                  title="Networking"
                   subtitle="Public URLs and subdomains"
                 />
               </DashboardCard>

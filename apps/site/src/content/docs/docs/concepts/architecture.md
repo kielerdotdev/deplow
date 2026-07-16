@@ -3,7 +3,7 @@ title: Architecture
 description: Control plane, dedicated data services, gVisor for user apps, and where business logic lives.
 ---
 
-deplow splits responsibilities between a **control plane** (the web app + SQLite) and a **data plane** (dedicated Postgres/Redis containers per service, shared MinIO). User apps are sandboxed separately from platform glue.
+Hostrig splits responsibilities between a **control plane** (the web app + SQLite) and a **data plane** (dedicated Postgres/Redis containers per service, shared MinIO). User apps are sandboxed separately from platform glue.
 
 ## High-level diagram
 

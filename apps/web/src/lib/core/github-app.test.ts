@@ -30,7 +30,7 @@ describe("createGitHubAppJwt", () => {
 describe("buildGitHubAppManifest", () => {
   it("uses repository_hooks permission and public hook URL", () => {
     const m = buildGitHubAppManifest({
-      name: "deplow",
+      name: "Hostrig",
       publicUrl: "https://apps.example.com",
     })
     expect(m.default_permissions).toMatchObject({
@@ -54,7 +54,7 @@ describe("buildGitHubAppManifest", () => {
 
   it("omits app webhook on localhost (GitHub rejects non-public hooks)", () => {
     const m = buildGitHubAppManifest({
-      name: "deplow",
+      name: "Hostrig",
       publicUrl: "http://localhost:3000",
     })
     expect(m.hook_attributes).toBeUndefined()
@@ -69,7 +69,7 @@ describe("buildGitHubAppManifest", () => {
 
   it("uses browser origin for redirect_url and merges extra callbacks", () => {
     const m = buildGitHubAppManifest({
-      name: "deplow",
+      name: "Hostrig",
       publicUrl: "http://192.168.0.223:3000",
       extraCallbackOrigins: ["http://localhost:3000"],
     })

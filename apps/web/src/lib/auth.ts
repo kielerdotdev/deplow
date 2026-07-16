@@ -10,7 +10,7 @@ import { env } from "@/lib/env"
 const isDev = env.isDev
 
 export const auth = betterAuth({
-  appName: "Deplow",
+  appName: "Hostrig",
   baseURL: env.betterAuthUrl,
   secret: env.betterAuthSecret,
   // Vite binds on all interfaces; allow LAN / Tailscale origins in dev.

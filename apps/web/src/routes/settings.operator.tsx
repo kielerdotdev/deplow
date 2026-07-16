@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 
-import { PageContent, PageHeader, SettingsPanel } from "@/components/page-layout"
+import { SettingsPage, SettingsPanel } from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -79,7 +79,7 @@ function OperatorForm({ webhook }: { webhook: WebhookSettings }) {
       footer={
         <>
           <Button size="sm" disabled={pending} onClick={() => void save()}>
-            {pending ? "Saving…" : "Save"}
+            {pending ? "Saving…" : "Save changes"}
           </Button>
           {saved ? (
             <span className="text-xs text-muted-foreground">Saved</span>
@@ -108,7 +108,7 @@ function OperatorForm({ webhook }: { webhook: WebhookSettings }) {
           <Input
             id="operator-webhook-url"
             className="font-mono text-sm"
-            placeholder="https://hooks.example.com/deplow"
+            placeholder="https://hooks.example.com/hostrig"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             autoComplete="off"
@@ -176,17 +176,14 @@ function OperatorPage() {
   const { webhook } = Route.useLoaderData()
 
   return (
-    <>
-      <PageHeader
-        title="Operator"
-        description="Instance-level deploy webhook for operators"
+    <SettingsPage
+      title="Operator"
+      description="Instance-level deploy webhook for operators"
+    >
+      <OperatorForm
+        key={`${webhook.enabled}:${webhook.url}:${webhook.hasSecret}`}
+        webhook={webhook}
       />
-      <PageContent width="narrow">
-        <OperatorForm
-          key={`${webhook.enabled}:${webhook.url}:${webhook.hasSecret}`}
-          webhook={webhook}
-        />
-      </PageContent>
-    </>
+    </SettingsPage>
   )
 }

@@ -14,7 +14,7 @@ Escape hatches (e.g. `DEPLOW_APP_RUNTIME=runc`) exist for broken images. They ar
 
 ## Threat model (v1, single host)
 
-deplow runs **untrusted user application containers** on the same Docker host as the control plane and shared data plane (Postgres, Redis, MinIO).
+Hostrig runs **untrusted user application containers** on the same Docker host as the control plane and shared data plane (Postgres, Redis, MinIO).
 
 We assume:
 
@@ -49,11 +49,11 @@ Full HostConfig and install steps: [secure-runtime.md](./secure-runtime.md).
 - Dedicated Postgres / Redis containers per project; shared MinIO with per-project buckets
 - Encrypted secrets and injected env — no secrets left as plain DB columns in the happy path
 - Security over convenience when those conflict
-- **Wildcard base domain + deplow proxy**; **v1 edge = cloudflared** (other edges later)
+- **Wildcard base domain + Hostrig proxy**; **v1 edge = cloudflared** (other edges later)
 
 **Disallowed framing:**
 
-- Implying deplow is “just Docker run” with no sandbox story
+- Implying Hostrig is “just Docker run” with no sandbox story
 - Advertising rootless Docker, Kata, or Firecracker as the default (out of scope)
 - Softening “gVisor required by default” into optional trivia buried in an appendix
 - Claiming multi-tenant cloud-grade isolation we do not provide
@@ -63,7 +63,7 @@ The landing page can stay human and short. It must not contradict this file. Pre
 
 ## Operator responsibilities
 
-deplow hardens the **app runtime** and owns **hostname → container** proxy routing. The operator still must:
+Hostrig hardens the **app runtime** and owns **hostname → container** proxy routing. The operator still must:
 
 - Keep Docker Engine and the host patched
 - Install gVisor (`runsc`) and prefer `userns-remap`

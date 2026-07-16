@@ -34,7 +34,7 @@ function InviteShell({ children }: { children: React.ReactNode }) {
           <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <BoxIcon className="size-4" />
           </div>
-          <span className="text-sm font-semibold tracking-tight">deplow</span>
+          <span className="text-sm font-semibold tracking-tight">Hostrig</span>
         </div>
         {children}
       </div>
@@ -76,7 +76,7 @@ function InvitePage() {
               Ask an organization owner to send a new invite link.
             </p>
           </div>
-          <Button render={<Link to="/" />}>Back to deplow</Button>
+          <Button render={<Link to="/" />}>Back to Hostrig</Button>
         </div>
       </InviteShell>
     )

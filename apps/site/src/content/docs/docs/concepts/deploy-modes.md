@@ -3,23 +3,23 @@ title: Deploy modes
 description: Prebuilt images, Dockerfile builds, and Railpack — the three supported paths.
 ---
 
-deplow supports exactly three deploy paths. The builder picks one based on your deployment input.
+Hostrig supports exactly three deploy paths. The builder picks one based on your deployment input.
 
 ## 1. Prebuilt image
 
-Provide a registry image reference (e.g. `nginx:alpine`, `ghcr.io/org/app:tag`). deplow pulls the image and runs it with **bound** env injected.
+Provide a registry image reference (e.g. `nginx:alpine`, `ghcr.io/org/app:tag`). Hostrig pulls the image and runs it with **bound** env injected.
 
 **Use when:** you already publish container images from CI.
 
 ## 2. Dockerfile
 
-If the source tree contains a `Dockerfile`, deplow runs `docker build` (via BuildKit) and tags the result as `deplow/<slug>:<deploymentId>`.
+If the source tree contains a `Dockerfile`, Hostrig runs `docker build` (via BuildKit) and tags the result as `deplow/<slug>:<deploymentId>`.
 
 **Use when:** you have an existing container build definition.
 
 ## 3. Railpack (default for source)
 
-If there is no `Dockerfile`, deplow invokes Railpack:
+If there is no `Dockerfile`, Hostrig invokes Railpack:
 
 ```bash
 railpack build --name deplow/<slug>:<deploymentId> <source>

@@ -76,11 +76,24 @@ describe("UI shell structure", () => {
     expect(layout).not.toContain("ProjectRail")
     expect(layout).not.toContain("validateSearch")
     expect(overview).toContain("ProjectTopology")
-    expect(overview).toContain("EmptyState")
-    expect(overview).toContain("Add Postgres")
+    expect(overview).toContain("onAddResource")
+    expect(overview).toContain("resource")
+    expect(overview).not.toContain("Add Postgres")
     expect(overview).toContain("/projects/$projectId/services/$serviceId")
     expect(overview).not.toContain("BackupsPanel")
     expect(overview).not.toContain("DatabasePanel")
+    const topology = readFileSync(
+      path.join(root, "components/project-topology.tsx"),
+      "utf8",
+    )
+    expect(topology).toContain("No resources yet")
+    expect(topology).toContain("Add resource")
+    expect(topology).toContain("Services")
+    expect(topology).toContain("Resources")
+    expect(topology).not.toContain("topology-board")
+    const styles = readFileSync(path.join(root, "styles.css"), "utf8")
+    expect(styles).toContain(".page-container")
+    expect(styles).not.toContain(".topology-board")
     const tree = readFileSync(path.join(root, "routeTree.gen.ts"), "utf8")
     expect(tree).toContain("id: '/projects/$projectId/deployments'")
     expect(tree).toContain("id: '/projects/$projectId/secrets'")
@@ -93,12 +106,37 @@ describe("UI shell structure", () => {
       "utf8",
     )
     expect(src).toContain('"/projects/$projectId_/services/$serviceId"')
-    expect(src).toContain("useLogStream")
-    expect(src).toContain("LogViewer")
+    expect(src).toContain("ServiceHeader")
+    expect(src).toContain("ServiceOverview")
+    expect(src).toContain("ServiceSettings")
+    expect(src).not.toContain('id: "logs"')
+    expect(src).not.toContain('id: "connections"')
     expect(src).not.toContain(">Refresh<")
+    const detail = readFileSync(
+      path.join(
+        root,
+        "routes/projects/$projectId_/services/$serviceId_.deployments.$deploymentId.tsx",
+      ),
+      "utf8",
+    )
+    expect(detail).toContain("DeploymentLogsPanel")
+    const logsPanel = readFileSync(
+      path.join(root, "components/service/deployment-detail-panels.tsx"),
+      "utf8",
+    )
+    expect(logsPanel).toContain("useLogStream")
+    const logViewer = readFileSync(
+      path.join(root, "components/log-viewer.tsx"),
+      "utf8",
+    )
+    expect(logViewer).toContain("Following logs")
+    expect(logViewer).not.toContain(">Live<")
     const tree = readFileSync(path.join(root, "routeTree.gen.ts"), "utf8")
     expect(tree).toContain(
       "id: '/projects/$projectId_/services/$serviceId'",
+    )
+    expect(tree).toContain(
+      "id: '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId'",
     )
     expect(tree).toMatch(
       /ProjectsProjectIdServicesServiceIdRoute[\s\S]*?getParentRoute: \(\) => rootRouteImport/,
@@ -206,57 +244,81 @@ describe("UI shell structure", () => {
     expect(src).not.toContain("Hello")
   })
 
-  it("domains page edits platform ingress settings", () => {
+  it("networking page edits platform ingress settings", () => {
     const src = readFileSync(
-      path.join(root, "routes/settings.domains.tsx"),
+      path.join(root, "routes/settings.networking.tsx"),
       "utf8",
     )
     expect(src).toContain("ingressUpdate")
     expect(src).toContain("base-domain")
-    expect(src).toContain("Auto-assign subdomains")
+    expect(src).toContain("Automatically assign subdomains")
+    expect(src).toContain("Networking & domains")
   })
 
-  it("settings hub hosts team and platform surfaces", () => {
+  it("settings hub hosts grouped organization and platform surfaces", () => {
     const nav = readFileSync(
       path.join(root, "components/settings/settings-nav.tsx"),
       "utf8",
     )
     expect(nav).toContain('to: "/settings"')
-    expect(nav).toContain('to: "/settings/team"')
-    expect(nav).toContain('to: "/settings/domains"')
+    expect(nav).toContain('to: "/settings/members"')
+    expect(nav).toContain('to: "/settings/api"')
+    expect(nav).toContain('to: "/settings/networking"')
     expect(nav).toContain('to: "/settings/notifications"')
     expect(nav).toContain('to: "/settings/operator"')
     expect(nav).toContain('to: "/settings/nodes"')
+    expect(nav).toContain("Platform administration")
     expect(nav).toContain("instanceAdmin")
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
     expect(shell).toContain('to="/settings"')
     expect(shell).toContain("Settings")
+    const layout = readFileSync(path.join(root, "routes/settings.tsx"), "utf8")
+    expect(layout).toContain("SettingsShell")
+    expect(layout).toContain("SettingsNav")
   })
 
   it("platform pages use shared page layout primitives", () => {
     for (const file of [
       "routes/settings.integrations.tsx",
-      "routes/settings.domains.tsx",
+      "routes/settings.networking.tsx",
       "routes/settings.notifications.tsx",
       "routes/settings.operator.tsx",
       "routes/settings.nodes.tsx",
       "routes/settings.index.tsx",
-      "routes/settings.team.tsx",
+      "routes/settings.members.tsx",
+      "routes/settings.api.tsx",
     ]) {
       const src = readFileSync(path.join(root, file), "utf8")
-      expect(src).toContain("PageHeader")
-      expect(src).toContain("PageContent")
+      expect(src).toContain("SettingsPage")
     }
-    const domains = readFileSync(
-      path.join(root, "routes/settings.domains.tsx"),
+    const layoutPrimitives = readFileSync(
+      path.join(root, "components/page-layout.tsx"),
       "utf8",
     )
-    expect(domains).toContain("SettingsPanel")
-    const org = readFileSync(path.join(root, "routes/settings.team.tsx"), "utf8")
-    expect(org).toContain("SettingsPanel")
-    expect(org).toContain('title="Team"')
-    expect(org).toContain("Members and organization settings")
-    expect(org).not.toContain("OrgAvatar")
+    expect(layoutPrimitives).toContain("export function SettingsPage")
+    expect(layoutPrimitives).toContain("px-5 py-4")
+    const networking = readFileSync(
+      path.join(root, "routes/settings.networking.tsx"),
+      "utf8",
+    )
+    expect(networking).toContain("SettingsPanel")
+    const members = readFileSync(
+      path.join(root, "routes/settings.members.tsx"),
+      "utf8",
+    )
+    expect(members).toContain("SettingsPanel")
+    expect(members).toContain('title="Members"')
+    expect(members).not.toContain("OrgAvatar")
+    const general = readFileSync(
+      path.join(root, "routes/settings.index.tsx"),
+      "utf8",
+    )
+    expect(general).toContain('title="General"')
+    expect(general).toContain("organizations.update")
+    expect(general).not.toContain("mcp.createToken")
+    const api = readFileSync(path.join(root, "routes/settings.api.tsx"), "utf8")
+    expect(api).toContain("API & MCP access")
+    expect(api).toContain("mcp.createToken")
     const settings = readFileSync(
       path.join(root, "components/settings-section.tsx"),
       "utf8",
@@ -266,7 +328,8 @@ describe("UI shell structure", () => {
 
   it("app shell content uses unified padding", () => {
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
-    expect(shell).toContain("p-3 md:px-5 md:py-4")
+    expect(shell).toContain("page-container")
+    expect(shell).toContain("py-3 md:py-4")
     expect(shell).toContain("accountHome && \"pt-2\"")
   })
 
@@ -313,13 +376,13 @@ describe("UI shell structure", () => {
     expect(emptyState).toContain("surface-inset")
   })
 
-  it("domains and nodes loaders require instance admin", () => {
-    const domains = readFileSync(
-      path.join(root, "routes/settings.domains.tsx"),
+  it("networking and nodes loaders require instance admin", () => {
+    const networking = readFileSync(
+      path.join(root, "routes/settings.networking.tsx"),
       "utf8",
     )
-    expect(domains).toContain("instanceAdmin")
-    expect(domains).toContain('redirect({ to: "/" })')
+    expect(networking).toContain("instanceAdmin")
+    expect(networking).toContain('redirect({ to: "/" })')
     const nodes = readFileSync(
       path.join(root, "routes/settings.nodes.tsx"),
       "utf8",
@@ -330,11 +393,13 @@ describe("UI shell structure", () => {
 
   it("legacy platform URLs redirect into settings", () => {
     for (const [file, dest] of [
-      ["routes/organization.tsx", "/settings/team"],
+      ["routes/organization.tsx", "/settings/members"],
       ["routes/integrations.tsx", "/settings/integrations"],
-      ["routes/domains.tsx", "/settings/domains"],
+      ["routes/domains.tsx", "/settings/networking"],
       ["routes/notifications.tsx", "/settings/notifications"],
       ["routes/nodes.tsx", "/settings/nodes"],
+      ["routes/settings.team.tsx", "/settings/members"],
+      ["routes/settings.domains.tsx", "/settings/networking"],
     ] as const) {
       const src = readFileSync(path.join(root, file), "utf8")
       expect(src).toContain("redirect")

@@ -1,6 +1,6 @@
 # Philosophy
 
-deplow exists for one boring truth:
+Hostrig exists for one boring truth:
 
 **Most projects need several processes sharing a database, cache, and object storage — and that is about it.**
 
@@ -12,7 +12,7 @@ You should not have to:
 - Manually schedule and store Postgres backups
 - Run a kitchen-sink PaaS panel that pretends every stack is equally first-class
 
-deplow is the opposite of that sprawl: **one project gets the opinionated stack (apps + Postgres + Redis + S3) on a machine you already control** — service-first, not a resource catalog.
+Hostrig is the opposite of that sprawl: **one project gets the opinionated stack (apps + Postgres + Redis + S3) on a machine you already control** — service-first, not a resource catalog.
 
 ## The model
 
@@ -67,7 +67,7 @@ Postgres dumps to the platform backup bucket are on-demand and scheduled. Users 
 
 ### 7. Proxy-owned URLs, cloudflared edge (v1)
 
-People need public app URLs without per-project DNS. **deplow owns the local reverse proxy** and assigns `{project}.{baseDomain}`. Domains are **app-managed** (env seeds once). v1 edge is **cloudflared** (wildcard once). Other edges (Tailscale Serve, Netbird) forward to the same Caddy origin — [access.md](./access.md), [sequencing.md](./sequencing.md).
+People need public app URLs without per-project DNS. **Hostrig owns the local reverse proxy** and assigns `{project}.{baseDomain}`. Domains are **app-managed** (env seeds once). v1 edge is **cloudflared** (wildcard once). Other edges (Tailscale Serve, Netbird) forward to the same Caddy origin — [access.md](./access.md), [sequencing.md](./sequencing.md).
 
 ### 8. Git push-to-deploy (v1); previews later
 
@@ -84,4 +84,4 @@ People need public app URLs without per-project DNS. **deplow owns the local rev
 
 ## Dictating rule
 
-If a feature, landing-page line, or docs page makes deplow look like “optional services + insecure default Docker,” it is wrong. Fix the surface to match this philosophy.
+If a feature, landing-page line, or docs page makes Hostrig look like “optional services + insecure default Docker,” it is wrong. Fix the surface to match this philosophy.

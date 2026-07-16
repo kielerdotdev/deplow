@@ -4,12 +4,12 @@ How people reach apps and data. **When:** [sequencing.md](./sequencing.md). Secu
 
 ## Dictating rule
 
-**deplow owns the local reverse proxy. Edges only forward.** Domains are **app-managed** (Domains tab). Env vars only **seed** settings on first boot.
+**Hostrig owns the local reverse proxy. Edges only forward.** Domains are **app-managed** (Domains tab). Env vars only **seed** settings on first boot.
 
 ```text
 Internet / VPN
     → edge adapter (cloudflared | Tailscale Serve | Netbird)
-        → deplow proxy  (Host → container)
+        → Hostrig proxy  (Host → container)
             → user app (gVisor)
 ```
 
@@ -63,7 +63,7 @@ Configure in **Domains** (or `platform.ingressUpdate`):
 | **Webhooks** (push → deploy main / production slot) | **v1 must**                                                           |
 | **Preview deployments**                             | **v2** — design slots + routes now ([data-plane.md](./data-plane.md)) |
 
-## What deplow owns (v1)
+## What Hostrig owns (v1)
 
 - Local reverse proxy in front of user app containers
 - App-managed base domain + auto subdomains
@@ -79,7 +79,7 @@ Configure in **Domains** (or `platform.ingressUpdate`):
 - First-class Tailscale Serve / Netbird compose profiles
 - Tunnel token in app settings (optional)
 
-## What deplow does not own
+## What Hostrig does not own
 
 - Being Cloudflare (we integrate the tunnel)
 - Per-project DNS as the happy path for auto domains
@@ -146,4 +146,4 @@ Map a Netbird resource / reverse-proxy target to `http://127.0.0.1:8088` (host) 
 
 **Not v1:** PR preview URLs and **custom domains** (schema ready; UI in v2). Do not market Let’s Encrypt on Caddy or “bring any domain” until custom domains ship.
 
-**Comparison answer:** Coolify/Dokploy attach arbitrary domains with ACME. deplow v1 deliberately ships one wildcard zone so the happy path stays one DNS change.
+**Comparison answer:** Coolify/Dokploy attach arbitrary domains with ACME. Hostrig v1 deliberately ships one wildcard zone so the happy path stays one DNS change.

@@ -37,10 +37,18 @@ export default defineConfig(({ mode }) => {
         "ioredis",
         "bullmq",
         "@sentry/node",
+        "@clickhouse/client",
       ],
     },
     optimizeDeps: {
-      exclude: ["better-sqlite3", "dockerode", "bullmq"],
+      // Keep Node-only observe deps out of the browser prebundle.
+      exclude: [
+        "better-sqlite3",
+        "dockerode",
+        "bullmq",
+        "@clickhouse/client",
+        "@deplow/observe",
+      ],
       include: ["@sentry/react"],
     },
     server: {

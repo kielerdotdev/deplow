@@ -3,9 +3,9 @@ title: Security
 description: gVisor defaults, hardened containers, encrypted secrets, and operator responsibilities.
 ---
 
-Security is a first-class product feature in deplow — not an optional appendix. Priority order: **security → easy install → decent performance**.
+Security is a first-class product feature in Hostrig — not an optional appendix. Priority order: **security → easy install → decent performance**.
 
-## What deplow hardens
+## What Hostrig hardens
 
 | Layer                 | Behavior                                                                              |
 | --------------------- | ------------------------------------------------------------------------------------- |

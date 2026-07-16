@@ -189,6 +189,12 @@ function buildObserveNav(projectId?: string): NavGroup[] {
           match: (path: string) => path.includes("/logs"),
         },
         {
+          title: "Metrics",
+          to: `${base}/metrics`,
+          icon: ChartLineIcon,
+          match: (path: string) => path.includes("/metrics"),
+        },
+        {
           title: "Explore",
           to: `${base}/explore`,
           icon: CompassIcon,
@@ -290,7 +296,7 @@ export function AppShell({
                     <DeplowLogo size={22} className="text-foreground" />
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold tracking-[-0.03em]">
-                        deplow
+                        Hostrig
                       </span>
                     </div>
                   </SidebarMenuButton>
@@ -469,20 +475,22 @@ export function AppShell({
           </Sidebar>
 
           <SidebarInset className="min-w-0 overflow-x-hidden bg-transparent">
-            <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b border-border/70 bg-background/75 px-3 backdrop-blur-xl md:px-5">
-              <SidebarTrigger className="-ml-0.5" />
-              <div className="flex-1" />
-              <CommandPaletteTrigger className="mr-0.5" />
-              <ThemeToggle />
-              {actions ? (
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {actions}
-                </div>
-              ) : null}
+            <header className="sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background/75 backdrop-blur-xl">
+              <div className="page-container flex h-12 items-center gap-2">
+                <SidebarTrigger className="-ml-0.5" />
+                <div className="flex-1" />
+                <CommandPaletteTrigger className="mr-0.5" />
+                <ThemeToggle />
+                {actions ? (
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {actions}
+                  </div>
+                ) : null}
+              </div>
             </header>
             <div
               className={cn(
-                "animate-content-in flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden p-3 md:px-5 md:py-4",
+                "animate-content-in page-container flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden py-3 md:py-4",
                 accountHome && "pt-2",
               )}
             >

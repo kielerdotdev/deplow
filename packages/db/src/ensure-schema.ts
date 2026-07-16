@@ -336,6 +336,8 @@ const MCP_TOKENS_CREATE_STATEMENTS = [
     name text NOT NULL,
     token_hash text NOT NULL UNIQUE,
     prefix text NOT NULL,
+    scopes_json text NOT NULL DEFAULT '["*"]',
+    expires_at integer,
     created_at integer NOT NULL,
     last_used_at integer,
     revoked_at integer,
@@ -343,6 +345,17 @@ const MCP_TOKENS_CREATE_STATEMENTS = [
   )`,
   `CREATE INDEX IF NOT EXISTS mcp_tokens_user_idx ON mcp_tokens (user_id)`,
   `CREATE INDEX IF NOT EXISTS mcp_tokens_hash_idx ON mcp_tokens (token_hash)`,
+]
+
+const MCP_TOKENS_EXTRA_COLUMNS: Array<{ name: string; sql: string }> = [
+  {
+    name: "scopes_json",
+    sql: `ALTER TABLE mcp_tokens ADD COLUMN scopes_json text NOT NULL DEFAULT '["*"]'`,
+  },
+  {
+    name: "expires_at",
+    sql: `ALTER TABLE mcp_tokens ADD COLUMN expires_at integer`,
+  },
 ]
 
 /** Ensure mcp_tokens table exists. Safe to call multiple times. */
@@ -354,6 +367,16 @@ export function ensureMcpTokensSchema(sqlite: Database.Database): void {
       // ignore if race
     }
   }
+  const cols = tableColumns(sqlite, "mcp_tokens")
+  for (const col of MCP_TOKENS_EXTRA_COLUMNS) {
+    if (cols.size > 0 && !cols.has(col.name)) {
+      try {
+        sqlite.exec(col.sql)
+      } catch {
+        // ignore
+      }
+    }
+  }
 }
 
 const ORGANIZATIONS_CREATE_STATEMENTS = [
@@ -361,6 +384,8 @@ const ORGANIZATIONS_CREATE_STATEMENTS = [
     id text PRIMARY KEY NOT NULL,
     name text NOT NULL,
     slug text NOT NULL,
+    icon_url text,
+    timezone text NOT NULL DEFAULT 'UTC',
     created_at integer NOT NULL,
     updated_at integer NOT NULL
   )`,
@@ -424,6 +449,24 @@ export function ensureOrganizationsSchema(sqlite: Database.Database): void {
       sqlite.exec(sql)
     } catch {
       // ignore if race
+    }
+  }
+
+  const orgCols = tableColumns(sqlite, "organizations")
+  if (orgCols.size > 0 && !orgCols.has("icon_url")) {
+    try {
+      sqlite.exec(`ALTER TABLE organizations ADD COLUMN icon_url text`)
+    } catch {
+      // ignore
+    }
+  }
+  if (orgCols.size > 0 && !orgCols.has("timezone")) {
+    try {
+      sqlite.exec(
+        `ALTER TABLE organizations ADD COLUMN timezone text NOT NULL DEFAULT 'UTC'`,
+      )
+    } catch {
+      // ignore
     }
   }
 
@@ -631,6 +674,85 @@ export function ensureServicesSchema(sqlite: Database.Database): void {
   ensureIngressSchema(sqlite)
   ensureMcpTokensSchema(sqlite)
   ensureOrganizationsSchema(sqlite)
+  ensureAgentNodesSchema(sqlite)
+}
+
+const AGENT_NODES_COLUMNS: Array<{ name: string; sql: string }> = [
+  {
+    name: "agent_token_hash",
+    sql: "ALTER TABLE nodes ADD COLUMN agent_token_hash text",
+  },
+  {
+    name: "advertise_host",
+    sql: "ALTER TABLE nodes ADD COLUMN advertise_host text",
+  },
+  {
+    name: "agent_version",
+    sql: "ALTER TABLE nodes ADD COLUMN agent_version text",
+  },
+  {
+    name: "capabilities_json",
+    sql: "ALTER TABLE nodes ADD COLUMN capabilities_json text",
+  },
+]
+
+const AGENT_NODES_CREATE_STATEMENTS = [
+  `CREATE INDEX IF NOT EXISTS nodes_agent_token_idx ON nodes (agent_token_hash)`,
+  `CREATE TABLE IF NOT EXISTS node_join_tokens (
+    id text PRIMARY KEY NOT NULL,
+    token_hash text NOT NULL UNIQUE,
+    token_prefix text NOT NULL,
+    label text,
+    expires_at integer NOT NULL,
+    redeemed_at integer,
+    created_by text,
+    node_id text,
+    created_at integer NOT NULL,
+    FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE set null,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE set null
+  )`,
+  `CREATE INDEX IF NOT EXISTS node_join_tokens_hash_idx ON node_join_tokens (token_hash)`,
+  `CREATE TABLE IF NOT EXISTS node_jobs (
+    id text PRIMARY KEY NOT NULL,
+    node_id text NOT NULL,
+    operation_id text,
+    type text NOT NULL,
+    payload_json text NOT NULL,
+    status text NOT NULL DEFAULT 'pending',
+    claimed_at integer,
+    lease_expires_at integer,
+    result_json text,
+    error_json text,
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE cascade,
+    FOREIGN KEY (operation_id) REFERENCES operations(id) ON DELETE set null
+  )`,
+  `CREATE INDEX IF NOT EXISTS node_jobs_node_status_idx ON node_jobs (node_id, status)`,
+  `CREATE INDEX IF NOT EXISTS node_jobs_operation_idx ON node_jobs (operation_id)`,
+]
+
+/** Ensure agent node columns + join tokens / jobs tables. Safe to call multiple times. */
+export function ensureAgentNodesSchema(sqlite: Database.Database): void {
+  const cols = tableColumns(sqlite, "nodes")
+  if (cols.size > 0) {
+    for (const col of AGENT_NODES_COLUMNS) {
+      if (!cols.has(col.name)) {
+        try {
+          sqlite.exec(col.sql)
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+  for (const sql of AGENT_NODES_CREATE_STATEMENTS) {
+    try {
+      sqlite.exec(sql)
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /**
@@ -874,11 +996,36 @@ const OBSERVE_STATEMENTS = [
     config_json text NOT NULL DEFAULT '{}',
     enabled integer NOT NULL DEFAULT 1,
     created_by text,
+    last_tested_at integer,
+    last_test_ok integer,
+    last_delivery_at integer,
+    last_delivery_ok integer,
+    last_error text,
     created_at integer NOT NULL,
     updated_at integer NOT NULL
   )`,
   // Additive column for alerts → channel ids (JSON array)
   `ALTER TABLE observe_alerts ADD COLUMN channel_ids_json text NOT NULL DEFAULT '[]'`,
+  `ALTER TABLE observe_alerts ADD COLUMN state text NOT NULL DEFAULT 'ok'`,
+  `ALTER TABLE observe_alerts ADD COLUMN pending_since integer`,
+  `ALTER TABLE observe_alerts ADD COLUMN severity text NOT NULL DEFAULT 'warning'`,
+  `ALTER TABLE observe_alerts ADD COLUMN evaluation_interval_sec integer NOT NULL DEFAULT 60`,
+  `ALTER TABLE message_channels ADD COLUMN last_tested_at integer`,
+  `ALTER TABLE message_channels ADD COLUMN last_test_ok integer`,
+  `ALTER TABLE message_channels ADD COLUMN last_delivery_at integer`,
+  `ALTER TABLE message_channels ADD COLUMN last_delivery_ok integer`,
+  `ALTER TABLE message_channels ADD COLUMN last_error text`,
+  `CREATE TABLE IF NOT EXISTS observe_alert_history (
+    id text PRIMARY KEY NOT NULL,
+    alert_id text NOT NULL REFERENCES observe_alerts(id) ON DELETE cascade,
+    from_state text NOT NULL,
+    to_state text NOT NULL,
+    value text,
+    threshold text,
+    message text,
+    created_at integer NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS observe_alert_history_alert_idx ON observe_alert_history (alert_id)`,
   `ALTER TABLE observe_issues ADD COLUMN assignee_user_id text`,
   `ALTER TABLE observe_issues ADD COLUMN priority text NOT NULL DEFAULT 'medium'`,
   `ALTER TABLE observe_issues ADD COLUMN external_issue_url text`,

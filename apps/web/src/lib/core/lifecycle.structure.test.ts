@@ -105,8 +105,13 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
   })
 
   it("DockerNodeExecutor uses buildUserAppHostConfig for user apps", () => {
-    const src = readFileSync(
+    const webReexport = readFileSync(
       path.join(root, "lib/core/docker-node-executor.ts"),
+      "utf8",
+    )
+    expect(webReexport).toContain("@deplow/runtime")
+    const src = readFileSync(
+      path.join(root, "../../packages/runtime/src/docker-node-executor.ts"),
       "utf8",
     )
     expect(src).toContain("buildUserAppHostConfig")
@@ -115,3 +120,4 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     expect(src).not.toMatch(/Privileged:\s*true/)
   })
 })
+

@@ -27,7 +27,7 @@ if (args.help || args.h) {
   console.log(`Usage: node scripts/observe-synth/index.mjs --project-id <uuid> [options]
 
 Options:
-  --project-id      Deplow project UUID (or OBSERVE_PROJECT_ID)
+  --project-id      Hostrig project UUID (or OBSERVE_PROJECT_ID)
   --dsn             Sentry DSN for Issues (or OBSERVE_DSN)
   --base-url        App origin (default http://localhost:3000)
   --hours           Backfill window hours (default 24)
@@ -74,7 +74,7 @@ if (args["dry-run"]) {
 }
 
 if (!cfg.projectId) {
-  console.error("Missing --project-id (Deplow project UUID).")
+  console.error("Missing --project-id (Hostrig project UUID).")
   process.exit(1)
 }
 

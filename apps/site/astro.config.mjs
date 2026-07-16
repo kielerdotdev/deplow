@@ -4,10 +4,10 @@ import starlight from "@astrojs/starlight"
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://deplow.dev",
+  site: "https://hostrig.com",
   integrations: [
     starlight({
-      title: "deplow",
+      title: "Hostrig",
       description:
         "Opinionated self-hosted project runtime — typed services, gVisor, Domains-managed URLs on your Docker host.",
       logo: {

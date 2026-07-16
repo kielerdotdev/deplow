@@ -9,12 +9,29 @@ export type LogFilter = {
   traceId?: string
   spanId?: string
   severity?: string
+  environment?: string
   q?: string
   limit?: number
   offset?: number
+  /** Attribute filters against LogAttributes / ResourceAttributes */
+  attributeFilters?: Array<{
+    key: string
+    op:
+      | "eq"
+      | "neq"
+      | "contains"
+      | "not_contains"
+      | "exists"
+      | "not_exists"
+      | "gt"
+      | "gte"
+      | "lt"
+      | "lte"
+    value?: string
+  }>
 }
 
-function logWhere(f: LogFilter): string {
+export function logWhere(f: LogFilter): string {
   const parts = [
     `project_id = '${esc(f.projectId)}'`,
     `Timestamp >= parseDateTime64BestEffort('${iso(f.from)}', 9)`,
@@ -24,7 +41,51 @@ function logWhere(f: LogFilter): string {
   if (f.traceId) parts.push(`TraceId = '${esc(f.traceId)}'`)
   if (f.spanId) parts.push(`SpanId = '${esc(f.spanId)}'`)
   if (f.severity) parts.push(`SeverityText = '${esc(f.severity)}'`)
+  if (f.environment) {
+    parts.push(
+      `(ResourceAttributes['deployment.environment'] = '${esc(f.environment)}' OR LogAttributes['deployment.environment'] = '${esc(f.environment)}')`,
+    )
+  }
   if (f.q) parts.push(`positionCaseInsensitive(Body, '${esc(f.q)}') > 0`)
+  for (const af of f.attributeFilters ?? []) {
+    const attr = `coalesce(LogAttributes['${esc(af.key)}'], ResourceAttributes['${esc(af.key)}'])`
+    switch (af.op) {
+      case "eq":
+        parts.push(`${attr} = '${esc(af.value ?? "")}'`)
+        break
+      case "neq":
+        parts.push(`${attr} != '${esc(af.value ?? "")}'`)
+        break
+      case "contains":
+        parts.push(
+          `positionCaseInsensitive(${attr}, '${esc(af.value ?? "")}') > 0`,
+        )
+        break
+      case "not_contains":
+        parts.push(
+          `positionCaseInsensitive(${attr}, '${esc(af.value ?? "")}') = 0`,
+        )
+        break
+      case "exists":
+        parts.push(`${attr} != ''`)
+        break
+      case "not_exists":
+        parts.push(`${attr} = ''`)
+        break
+      case "gt":
+        parts.push(`toFloat64OrZero(${attr}) > ${Number(af.value) || 0}`)
+        break
+      case "gte":
+        parts.push(`toFloat64OrZero(${attr}) >= ${Number(af.value) || 0}`)
+        break
+      case "lt":
+        parts.push(`toFloat64OrZero(${attr}) < ${Number(af.value) || 0}`)
+        break
+      case "lte":
+        parts.push(`toFloat64OrZero(${attr}) <= ${Number(af.value) || 0}`)
+        break
+    }
+  }
   return parts.join(" AND ")
 }
 
@@ -95,7 +156,9 @@ export async function logsHistogram(
     `,
   )
   return rows.map((r) => ({
-    t: Date.parse(r.bucket.includes("T") ? r.bucket : r.bucket.replace(" ", "T") + "Z"),
+    t: Date.parse(
+      r.bucket.includes("T") ? r.bucket : r.bucket.replace(" ", "T") + "Z",
+    ),
     count: Number(r.count),
   }))
 }

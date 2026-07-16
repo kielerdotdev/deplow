@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { createFileRoute, getRouteApi, useRouter } from "@tanstack/react-router"
-import { BoxIcon, RocketIcon } from "lucide-react"
+import { RocketIcon } from "lucide-react"
 
 import { ActionDialog } from "@/components/action-dialog"
-import { EmptyState } from "@/components/empty-state"
 import { PageContent } from "@/components/page-layout"
 import { ProjectTopology } from "@/components/project-topology"
 import { ServiceDeleteDialog } from "@/components/service-delete-dialog"
@@ -12,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useProjectUi } from "@/components/project-ui-context"
 import { client } from "@/lib/orpc"
+
 const projectRoute = getRouteApi("/projects/$projectId")
 
 export const Route = createFileRoute("/projects/$projectId/")({
@@ -33,6 +33,13 @@ function ProjectOverviewPage() {
   const serviceToDelete = project.services.find(
     (service) => service.id === deleteServiceId,
   )
+
+  const appCount = project.services.filter(
+    (s) => s.type === "web" || s.type === "worker",
+  ).length
+  const resourceCount = project.services.filter(
+    (s) => s.type === "postgres" || s.type === "redis",
+  ).length
 
   async function refresh() {
     await router.invalidate()
@@ -63,84 +70,120 @@ function ProjectOverviewPage() {
     }
   }
 
+  async function deployFromGit(serviceId: string) {
+    const service = project.services.find((s) => s.id === serviceId)
+    if (!service) return
+    if (!service.git.connected) {
+      setDeployServiceId(serviceId)
+      return
+    }
+    setPending(true)
+    setLocalError(null)
+    try {
+      const created = await client.deployments.create({
+        serviceId,
+        fromGit: true,
+      })
+      await refresh()
+      void router.navigate({
+        to: "/projects/$projectId/services/$serviceId/deployments/$deploymentId",
+        params: {
+          projectId: project.id,
+          serviceId,
+          deploymentId: created.id,
+        },
+        search: { view: "build-logs" },
+      })
+    } catch (cause) {
+      setLocalError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function retryDeployment(deploymentId: string) {
+    setPending(true)
+    setLocalError(null)
+    try {
+      const created = await client.deployments.retry({ id: deploymentId })
+      await refresh()
+      void router.navigate({
+        to: "/projects/$projectId/services/$serviceId/deployments/$deploymentId",
+        params: {
+          projectId: project.id,
+          serviceId: created.serviceId,
+          deploymentId: created.id,
+        },
+        search: { view: "build-logs" },
+      })
+    } catch (cause) {
+      setLocalError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function cancelDeployment(deploymentId: string) {
+    setPending(true)
+    setLocalError(null)
+    try {
+      await client.deployments.stop({ id: deploymentId })
+      await refresh()
+    } catch (cause) {
+      setLocalError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setPending(false)
+    }
+  }
+
   return (
     <PageContent width="wide">
       {localError ? (
         <p className="mb-4 text-sm text-destructive">{localError}</p>
       ) : null}
-      <div className="space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold tracking-[-0.03em]">
-              {project.name}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {project.services.length} service
-              {project.services.length === 1 ? "" : "s"} — apps, Data services,
-              explicit bindings
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => void addDataService("postgres")}
-            >
-              Add Postgres
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => void addDataService("redis")}
-            >
-              Add Redis
-            </Button>
-          </div>
+      <div className="space-y-8">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold tracking-[-0.03em]">
+            {project.name}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {appCount} service{appCount === 1 ? "" : "s"} · {resourceCount}{" "}
+            resource{resourceCount === 1 ? "" : "s"}
+          </p>
         </div>
 
-        {project.services.length ? (
-          <ProjectTopology
-            projectId={project.id}
-            services={project.services}
-            deployments={deployments}
-            pending={pending}
-            onAddService={openAddService}
-            onOpen={(serviceId) =>
-              void router.navigate({
-                to: "/projects/$projectId/services/$serviceId",
-                params: {
-                  projectId: project.id,
-                  serviceId,
-                },
-              })
-            }
-            onDeploy={(serviceId) => setDeployServiceId(serviceId)}
-            onLogs={(serviceId) =>
-              void router.navigate({
-                to: "/projects/$projectId/services/$serviceId",
-                params: {
-                  projectId: project.id,
-                  serviceId,
-                },
-                search: { tab: "logs" },
-              })
-            }
-            onDelete={(serviceId) => setDeleteServiceId(serviceId)}
-          />
-        ) : (
-          <div className="surface-panel overflow-hidden">
-            <EmptyState
-              icon={BoxIcon}
-              title="No services"
-              description="Add a web app, worker, Postgres, or Redis service."
-              action={
-                <Button onClick={openAddService}>Add service</Button>
-              }
-            />
-          </div>
-        )}
+        <ProjectTopology
+          projectId={project.id}
+          services={project.services}
+          deployments={deployments}
+          pending={pending}
+          onAddService={openAddService}
+          onAddResource={(type) => void addDataService(type)}
+          onOpen={(serviceId) =>
+            void router.navigate({
+              to: "/projects/$projectId/services/$serviceId",
+              params: {
+                projectId: project.id,
+                serviceId,
+              },
+            })
+          }
+          onDeploy={(serviceId) => void deployFromGit(serviceId)}
+          onRetry={(deploymentId) => void retryDeployment(deploymentId)}
+          onCancel={(deploymentId) => void cancelDeployment(deploymentId)}
+          onViewDeployment={(serviceId, deploymentId) =>
+            void router.navigate({
+              to: "/projects/$projectId/services/$serviceId/deployments/$deploymentId",
+              params: {
+                projectId: project.id,
+                serviceId,
+                deploymentId,
+              },
+              search: { view: "summary" },
+            })
+          }
+          onDelete={(serviceId) => setDeleteServiceId(serviceId)}
+        />
       </div>
 
       <DeployServiceDialog

@@ -1,9 +1,9 @@
 ---
 title: Scope
-description: What deplow ships, what it refuses, and how it differs from Coolify or Dokploy.
+description: What Hostrig ships, what it refuses, and how it differs from Coolify or Dokploy.
 ---
 
-deplow is an **opinionated** self-hosted project runtime — not a generic “deploy anything” panel. If you need Compose catalogs, 300 templates, or Swarm multi-node, use Coolify or Dokploy.
+Hostrig is an **opinionated** self-hosted project runtime — not a generic “deploy anything” panel. If you need Compose catalogs, 300 templates, or Swarm multi-node, use Coolify or Dokploy.
 
 ## In scope (v1)
 
@@ -30,7 +30,7 @@ deplow is an **opinionated** self-hosted project runtime — not a generic “de
 
 ## Honest wedge
 
-| Prefer deplow when…                         | Prefer Coolify/Dokploy when…        |
+| Prefer Hostrig when…                         | Prefer Coolify/Dokploy when…        |
 | ------------------------------------------- | ----------------------------------- |
 | You want Railway-shaped DX on one VPS       | You need Compose + many databases   |
 | gVisor-by-default matters                   | You run multi-server fleets         |

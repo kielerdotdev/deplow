@@ -3,7 +3,7 @@ title: Git connect & push-to-deploy
 description: Connect GitHub App or GitLab OAuth, pick a repo, auto webhooks, and private clones.
 ---
 
-deplow treats git as an **identity you connect once**, not a secret you re-paste per project.
+Hostrig treats git as an **identity you connect once**, not a secret you re-paste per project.
 
 ## Happy path
 
@@ -13,7 +13,7 @@ deplow treats git as an **identity you connect once**, not a secret you re-paste
 4. On a project → **Settings → Source** → pick a repository and branch → **Connect**.
 5. Push to that branch → production deploy.
 
-deplow registers the push webhook and clones with short-lived credentials. You should not need to paste a personal access token.
+Hostrig registers the push webhook and clones with short-lived credentials. You should not need to paste a personal access token.
 
 ## Requirements
 

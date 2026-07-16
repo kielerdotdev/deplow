@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: Install deplow on a VPS (pull-only) or bootstrap a local development control plane.
+description: Install Hostrig on a VPS (pull-only) or bootstrap a local development control plane.
 ---
 
 ## VPS / production (recommended)
@@ -32,8 +32,8 @@ docker compose -p deplow --project-directory /opt/deplow --profile edge up -d
 ## Development: host installer
 
 ```bash
-git clone <your-repo-url> deplow
-cd deplow
+git clone <your-repo-url> Hostrig
+cd Hostrig
 bash scripts/install.sh
 pnpm dev
 ```
@@ -47,8 +47,8 @@ If gVisor is not ready, the script exits non-zero and prints next steps — depl
 ### 1. Clone and install
 
 ```bash
-git clone <your-repo-url> deplow
-cd deplow
+git clone <your-repo-url> Hostrig
+cd Hostrig
 pnpm install
 ```
 

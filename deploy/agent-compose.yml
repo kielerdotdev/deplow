@@ -1,0 +1,25 @@
+# Reference compose for a remote deplow agent node.
+# Prefer install-agent.sh which writes this under /opt/deplow-agent.
+services:
+  agent:
+    image: ${DEPLOW_AGENT_IMAGE:-ghcr.io/kielerdotdev/deplow-agent:latest}
+    container_name: deplow-agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DEPLOW_URL: ${DEPLOW_URL:?set DEPLOW_URL}
+      DEPLOW_JOIN_TOKEN: ${DEPLOW_JOIN_TOKEN:-}
+      DEPLOW_NODE_TOKEN: ${DEPLOW_NODE_TOKEN:-}
+      DEPLOW_ADVERTISE_HOST: ${DEPLOW_ADVERTISE_HOST:-}
+      DEPLOW_NODE_NAME: ${DEPLOW_NODE_NAME:-}
+      DEPLOW_APP_RUNTIME: ${DEPLOW_APP_RUNTIME:-runsc}
+      DEPLOW_DOCKER_NETWORK: ${DEPLOW_DOCKER_NETWORK:-deplow_agent}
+      DEPLOW_GIT_CLONE_ROOT: /var/lib/deplow-agent/git
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent_state:/var/lib/deplow-agent
+      - agent_git:/var/lib/deplow-agent/git
+
+volumes:
+  agent_state:
+  agent_git:

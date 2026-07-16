@@ -14,6 +14,10 @@ import {
   type TrendsQuery,
   type TrendsResult,
 } from "@/lib/observe/trends"
+import {
+  serializeTelemetryQuery,
+  trendsToTelemetryQuery,
+} from "@/lib/observe/telemetry"
 import { client } from "@/lib/orpc"
 
 export function InsightWidget({
@@ -102,6 +106,19 @@ export function InsightWidget({
       actions={
         <div className="flex items-center gap-1">
           {actions}
+          <Button
+            variant="ghost"
+            size="sm"
+            render={
+              <Link
+                to="/observe/projects/$projectId/traces"
+                params={{ projectId }}
+                search={serializeTelemetryQuery(trendsToTelemetryQuery(query))}
+              />
+            }
+          >
+            Explorer
+          </Button>
           <Button
             variant="ghost"
             size="sm"

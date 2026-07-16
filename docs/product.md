@@ -95,7 +95,7 @@ S3_ACCESS_KEY
 S3_SECRET_KEY
 ```
 
-No deplow SDK required — apps read standard env vars. URLs must be valid **on the node** for the app container ([data-plane.md](./data-plane.md)).
+No Hostrig SDK required — apps read standard env vars. URLs must be valid **on the node** for the app container ([data-plane.md](./data-plane.md)).
 
 ## Messaging constraints
 

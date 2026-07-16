@@ -9,6 +9,7 @@ import * as Sentry from "@sentry/node"
 
 import { env } from "@/lib/env"
 import { initDogfoodSentryServer } from "@/instrument.server"
+import { startAlertEvaluator } from "@/lib/observe/alert-evaluator"
 import {
   ensureDogfoodBootstrap,
   isDogfoodMetaPath,
@@ -75,6 +76,10 @@ if (typeof process !== "undefined") {
   }
   process.once("SIGTERM", shutdown)
   process.once("SIGINT", shutdown)
+
+  if (env.observeEnabled) {
+    startAlertEvaluator(60_000)
+  }
 }
 
 export default createServerEntry({

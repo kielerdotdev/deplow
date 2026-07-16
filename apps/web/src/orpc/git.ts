@@ -147,7 +147,7 @@ export const githubAppManifestStart = authedProcedure
     const publicUrl = origin ?? configured
     const publicNet = isPublicInternetUrl(publicUrl)
     const manifest = buildGitHubAppManifest({
-      name: "deplow",
+      name: "Hostrig",
       publicUrl,
       extraCallbackOrigins:
         origin && origin !== configured ? [configured] : undefined,
@@ -188,7 +188,7 @@ export const saveGitLabOAuth = authedProcedure
   })
 
 /**
- * Remove GitHub App from deplow and best-effort clean up on GitHub.
+ * Remove GitHub App from Hostrig and best-effort clean up on GitHub.
  *
  * GitHub has no public API to delete the App *registration* — only installations.
  * We uninstall all installations, clear local credentials, and return a URL
@@ -260,7 +260,7 @@ export const removeGitHubApp = authedProcedure
       stillConfiguredFromEnv: stillFromEnv,
       message: stillFromEnv
         ? "Cleared stored App credentials, but DEPLOW_GITHUB_APP_* env vars are still set — unset them and restart to fully remove."
-        : "GitHub App removed from deplow. Finish by deleting the App registration on GitHub (link provided).",
+        : "GitHub App removed from Hostrig. Finish by deleting the App registration on GitHub (link provided).",
     }
   })
 

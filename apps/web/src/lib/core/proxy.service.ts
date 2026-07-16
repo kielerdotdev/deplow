@@ -215,7 +215,7 @@ export class ProxyService {
 		respond "ok" 200
 	}
 	import /etc/caddy/routes/*.caddy
-	respond "deplow proxy — no matching project route" 404
+	respond "Hostrig proxy — no matching project route" 404
 }
 `
   }

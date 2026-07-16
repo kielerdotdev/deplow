@@ -39,7 +39,7 @@ describe("caddy reload status tracking", () => {
   it("probes caddy reachability via docker exec", async () => {
     const runCommand = vi.fn(async () => ({
       code: 0,
-      stdout: "deplow proxy",
+      stdout: "Hostrig proxy",
       stderr: "",
     }))
     const probe = await probeCaddyProxy({ runCommand })

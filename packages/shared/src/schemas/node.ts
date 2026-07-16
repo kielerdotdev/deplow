@@ -46,10 +46,13 @@ export type RegisterNodeInput = z.infer<typeof registerNodeInputSchema>
 export const nodeSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
-  provider: z.enum(["docker", "ssh", "hetzner"]),
+  provider: z.enum(["docker", "ssh", "hetzner", "agent"]),
   host: z.string(),
   status: z.enum(["online", "offline", "unknown"]),
   createdAt: z.string(),
+  lastSeenAt: z.string().nullable().optional(),
+  advertiseHost: z.string().nullable().optional(),
+  agentVersion: z.string().nullable().optional(),
   /** OCI runtime for user apps (e.g. runsc) when known */
   appRuntime: z.string().optional(),
   appRuntimeAvailable: z.boolean().optional(),

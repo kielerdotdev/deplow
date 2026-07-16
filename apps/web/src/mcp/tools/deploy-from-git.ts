@@ -37,7 +37,7 @@ function suggestServiceName(suggested: string): string {
 export const deployFromGitTool = createTool({
   id: "deploy_from_git",
   description:
-    "End-to-end: create a Deplow project (unless projectId given), analyze a git repo, create a web service, deploy, and poll until the public URL is ready or the deploy fails. Prefer this over calling atomic tools unless you need finer control.",
+    "End-to-end: create a Hostrig project (unless projectId given), analyze a git repo, create a web service, deploy, and poll until the public URL is ready or the deploy fails. Prefer this over calling atomic tools unless you need finer control.",
   inputSchema: z.object({
     projectName: z
       .string()

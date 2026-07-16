@@ -3,7 +3,7 @@ title: Domains & URLs
 description: Platform wildcard URLs via Caddy and Cloudflare Tunnel. Custom domains are v2.
 ---
 
-deplow owns the local reverse proxy (**Caddy**). Edges only forward HTTP with the `Host` header intact. In v1 every web service gets a hostname under your **platform base domain** — not an arbitrary custom domain.
+Hostrig owns the local reverse proxy (**Caddy**). Edges only forward HTTP with the `Host` header intact. In v1 every web service gets a hostname under your **platform base domain** — not an arbitrary custom domain.
 
 ## Happy path
 

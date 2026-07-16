@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { BoxIcon, RocketIcon, ScrollTextIcon } from "lucide-react"
+import { BoxIcon, RocketIcon } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 
 import { StatusBadge } from "@/components/status-badge"
@@ -20,7 +20,7 @@ type ServiceCardProps = {
   pending?: boolean
   hasDeployment?: boolean
   onDeploy?: () => void
-  onLogs?: () => void
+  onViewDeployment?: () => void
   className?: string
 }
 
@@ -38,7 +38,7 @@ export function ServiceCard({
   pending,
   hasDeployment,
   onDeploy,
-  onLogs,
+  onViewDeployment,
   className,
 }: ServiceCardProps) {
   const isApp = type === "web" || type === "worker"
@@ -97,21 +97,22 @@ export function ServiceCard({
         <p className="text-xs text-destructive line-clamp-2">{errorMessage}</p>
       ) : null}
 
-      {isApp && onDeploy && onLogs ? (
+      {isApp && onDeploy ? (
         <div className="mt-auto flex gap-1.5">
           <Button size="sm" disabled={pending} onClick={onDeploy}>
             <RocketIcon data-icon="inline-start" />
             Deploy
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={pending || !hasDeployment}
-            onClick={onLogs}
-          >
-            <ScrollTextIcon data-icon="inline-start" />
-            Logs
-          </Button>
+          {onViewDeployment ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={pending || !hasDeployment}
+              onClick={onViewDeployment}
+            >
+              View
+            </Button>
+          ) : null}
         </div>
       ) : (
         <Link

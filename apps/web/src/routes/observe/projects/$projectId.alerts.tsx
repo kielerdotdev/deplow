@@ -3,6 +3,7 @@ import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-rout
 import { BellIcon, PlusIcon, Trash2Icon } from "lucide-react"
 
 import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
+import { AlertHistoryPanel } from "@/components/observe/alert-history-panel"
 import { CreateAlertDialog } from "@/components/observe/create-alert-dialog"
 import {
   ObserveEmptyState,
@@ -60,6 +61,7 @@ function AlertsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [historyId, setHistoryId] = useState<string | null>(null)
 
   useEffect(() => {
     setAlerts(initial)
@@ -180,15 +182,58 @@ function AlertsPage() {
                       : "Never"}
                   </td>
                   <td className="px-3 py-3 align-top">
-                    <Badge
-                      variant={alert.enabled ? "secondary" : "outline"}
-                      className="font-normal"
-                    >
-                      {alert.enabled ? "On" : "Off"}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      <Badge
+                        variant={alert.enabled ? "secondary" : "outline"}
+                        className="font-normal"
+                      >
+                        {alert.enabled ? "On" : "Off"}
+                      </Badge>
+                      {"state" in alert && alert.state ? (
+                        <Badge
+                          variant={
+                            alert.state === "firing"
+                              ? "destructive"
+                              : alert.state === "pending"
+                                ? "secondary"
+                                : "outline"
+                          }
+                          className="font-normal capitalize"
+                        >
+                          {String(alert.state)}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-3 py-3 align-top">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setHistoryId((id) =>
+                            id === alert.id ? null : alert.id,
+                          )
+                        }
+                      >
+                        History
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={busyId === alert.id}
+                        onClick={() => {
+                          setBusyId(alert.id)
+                          void client.observe.alerts
+                            .evaluateNow({ projectId, alertId: alert.id })
+                            .then(() => refresh())
+                            .finally(() => setBusyId(null))
+                        }}
+                      >
+                        Eval
+                      </Button>
                       <Button
                         type="button"
                         size="sm"
@@ -216,6 +261,15 @@ function AlertsPage() {
           </table>
         </div>
       )}
+
+      {historyId ? (
+        <AlertHistoryPanel
+          className="mt-4"
+          projectId={projectId}
+          alertId={historyId}
+          alertName={alerts.find((a) => a.id === historyId)?.name}
+        />
+      ) : null}
 
       <CreateAlertDialog
         projectId={projectId}

@@ -4,7 +4,7 @@ const prompts = [
   {
     name: "deploy_from_git",
     description:
-      "Deploy a git repository to Deplow end-to-end (create project, analyze, deploy, wait for URL).",
+      "Deploy a git repository to Hostrig end-to-end (create project, analyze, deploy, wait for URL).",
     version: "1.0.0",
     arguments: [
       {
@@ -45,7 +45,7 @@ const getPromptMessages: MCPServerPrompts["getPromptMessages"] = async ({
       content: {
         type: "text",
         text: [
-          `Deploy this repository to Deplow and return the live public URL.`,
+          `Deploy this repository to Hostrig and return the live public URL.`,
           ``,
           `Prefer the deploy_from_git tool with:`,
           `- projectName: ${projectName}`,

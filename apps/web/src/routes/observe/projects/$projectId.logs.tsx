@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { createFileRoute, Link, redirect } from "@tanstack/react-router"
 
 import {
@@ -7,8 +7,15 @@ import {
   CorrelationLinks,
   DataTable,
   DetailDrawer,
+  ExplorerActions,
+  ExplorerAggBar,
+  ExplorerExpressionInput,
+  ExplorerFacetPanel,
+  ExplorerViewTabs,
   ObserveOnboarding,
   ObserveProjectShell,
+  ResultTable,
+  TrendsChart,
   VisualizationCanvas,
 } from "@/components/observe"
 import { Button } from "@/components/ui/button"
@@ -22,7 +29,47 @@ import {
   serializeTraceSearch,
   type ObserveContext,
 } from "@/lib/observe/context"
+import {
+  contextToTelemetryQuery,
+  summarizeTelemetryQuery,
+  type TelemetryQuery,
+} from "@/lib/observe/telemetry"
+import {
+  defaultTrendsQuery,
+  emptyFilterGroup,
+  type TrendsQuery,
+} from "@/lib/observe/trends"
 import { client } from "@/lib/orpc"
+
+function logsToTrends(q: TelemetryQuery): TrendsQuery {
+  const base = defaultTrendsQuery()
+  return {
+    ...base,
+    time: q.timeRange,
+    interval: q.aggregation?.interval ?? "auto",
+    filters: q.filter ?? emptyFilterGroup(),
+    series: [
+      {
+        id: "A",
+        letter: "A",
+        label: q.aggregation?.function ?? "count",
+        signal: "logs",
+        measure: (q.aggregation?.function ?? "count") as TrendsQuery["series"][0]["measure"],
+        filters: [],
+      },
+    ],
+    breakdowns: (q.groupBy ?? []).map((field) => ({
+      field,
+      topN: 25,
+      rankBy: "count" as const,
+      otherBucket: true,
+    })),
+    viz: {
+      kind: q.presentation.view === "table" ? "table" : "line",
+      referenceLines: [],
+    },
+  }
+}
 
 export const Route = createFileRoute("/observe/projects/$projectId/logs")({
   validateSearch: (search) => {
@@ -61,8 +108,15 @@ function LogsPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const { context, log: selectedLogId } = parseLogsSearch(search)
+  const [query, setQueryState] = useState<TelemetryQuery>(() => ({
+    ...contextToTelemetryQuery(context, "logs"),
+    presentation: { view: "list", sort: "newest" },
+  }))
   const [rows, setRows] = useState<LogRow[]>([])
   const [hist, setHist] = useState<Array<{ t: number; v: number }>>([])
+  const [aggResult, setAggResult] = useState<Awaited<
+    ReturnType<typeof client.observe.query.run>
+  > | null>(null)
   const [state, setState] = useState<"loading" | "idle" | "error" | "empty">(
     "loading",
   )
@@ -72,7 +126,15 @@ function LogsPage() {
     ? (rows.find((r) => r.id === selectedLogId) ?? null)
     : null
 
+  const summary = useMemo(() => summarizeTelemetryQuery(query), [query])
+
   function setContext(next: ObserveContext, logId?: string | null) {
+    setQueryState((q) => ({
+      ...contextToTelemetryQuery(next, "logs"),
+      presentation: q.presentation,
+      aggregation: q.aggregation,
+      groupBy: q.groupBy,
+    }))
     void navigate({
       search: serializeLogsSearch(
         next,
@@ -81,6 +143,16 @@ function LogsPage() {
       replace: true,
     })
   }
+
+  // Keep query in sync when ContextBar edits URL context
+  useEffect(() => {
+    setQueryState((q) => ({
+      ...contextToTelemetryQuery(context, "logs"),
+      presentation: q.presentation,
+      aggregation: q.aggregation,
+      groupBy: q.groupBy,
+    }))
+  }, [search])
 
   function setSelected(row: LogRow | null) {
     void navigate({
@@ -94,6 +166,23 @@ function LogsPage() {
     void (async () => {
       setState("loading")
       try {
+        const view = query.presentation.view
+        if (view === "timeseries" || view === "table") {
+          const run = await client.observe.query.run({
+            projectId,
+            query: {
+              ...query,
+              signal: "logs",
+              presentation: { ...query.presentation, view },
+            },
+          })
+          if (cancelled) return
+          setAggResult(run)
+          setCold(false)
+          setState("idle")
+          return
+        }
+
         const input = contextToApiInput(projectId, context)
         const [list, histogram, services] = await Promise.all([
           client.observe.logs.search(input),
@@ -124,7 +213,7 @@ function LogsPage() {
     return () => {
       cancelled = true
     }
-  }, [projectId, search])
+  }, [projectId, search, query.presentation.view, query.aggregation, query.groupBy])
 
   if (cold && state === "empty") {
     return (
@@ -137,11 +226,14 @@ function LogsPage() {
     )
   }
 
+  const view = query.presentation.view === "traces" ? "list" : query.presentation.view
+  const showAgg = view === "timeseries" || view === "table"
+
   return (
     <ObserveProjectShell
       projectId={projectId}
       title={`Logs · ${project.name}`}
-      description={`${rows.length.toLocaleString()} results · newest first`}
+      description={summary}
       context={context}
       onContextChange={(next) => setContext(next)}
       onSaveView={(name) => {
@@ -149,92 +241,164 @@ function LogsPage() {
           projectId,
           name,
           surface: "logs",
-          contextJson: JSON.stringify(context),
+          contextJson: JSON.stringify({ ...query, signal: "logs" }),
         })
       }}
-      actions={
-        <Button
-          size="sm"
-          variant="outline"
-          render={
-            <Link
-              to="/observe/projects/$projectId/alerts"
-              params={{ projectId }}
-            />
-          }
-        >
-          Create alert
-        </Button>
-      }
     >
-      <ChartFrame
-        title="Volume"
-        description="Log count over time"
-        hint="Brush to zoom · click a bar to dig in"
-        className="mb-4"
-        state={
-          state === "error" ? "error" : state === "loading" ? "loading" : "idle"
-        }
-      >
-        <VisualizationCanvas
-          kind="bar"
-          series={hist}
-          height={180}
-          valueLabel="Logs"
-          onBrush={(_a, _b, from, to) => {
-            setContext(digDownTime(context, from.t, to.t))
-          }}
-          onPointClick={(point) => {
-            const half = 2 * 60_000
-            setContext(digDownTime(context, point.t - half, point.t + half))
-          }}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <ExplorerViewTabs
+          view={view}
+          onChange={(v) =>
+            setQueryState({
+              ...query,
+              signal: "logs",
+              presentation: {
+                ...query.presentation,
+                view: v === "traces" ? "list" : v,
+              },
+              aggregation:
+                v === "timeseries" || v === "table"
+                  ? query.aggregation ?? { function: "count", interval: "auto" }
+                  : query.aggregation,
+            })
+          }
         />
-      </ChartFrame>
-      <DataTable
-        state={
-          state === "error"
-            ? "error"
-            : state === "loading"
-              ? "loading"
-              : "idle"
-        }
-        rows={rows}
-        onRowClick={setSelected}
-        emptyTitle="No logs in this window"
-        emptyDescription="Widen the time range or clear filters."
-        emptyVariant="no_match"
-        columns={[
-          {
-            id: "ts",
-            header: "Time",
-            className: "w-40",
-            cell: (r) => (
-              <span className="font-mono text-xs text-muted-foreground">
-                {r.timestamp}
-              </span>
-            ),
-          },
-          {
-            id: "sev",
-            header: "Level",
-            className: "w-20",
-            cell: (r) => r.severity,
-          },
-          {
-            id: "svc",
-            header: "Service",
-            className: "w-32",
-            cell: (r) => r.service || "—",
-          },
-          {
-            id: "body",
-            header: "Message",
-            cell: (r) => (
-              <span className="line-clamp-2 text-xs">{r.body}</span>
-            ),
-          },
-        ]}
+      </div>
+      <p className="mb-3 text-sm text-muted-foreground">{summary}</p>
+      <ExplorerExpressionInput
+        projectId={projectId}
+        query={{ ...query, signal: "logs" }}
+        onChange={setQueryState}
+        className="mb-3"
+        signal="logs"
       />
+      {showAgg ? (
+        <ExplorerAggBar
+          query={query}
+          onChange={setQueryState}
+          className="mb-3"
+        />
+      ) : null}
+
+      <div className="flex flex-col gap-4 md:flex-row">
+        <ExplorerFacetPanel
+          projectId={projectId}
+          query={{ ...query, signal: "logs" }}
+          onChange={setQueryState}
+        />
+        <div className="min-w-0 flex-1 space-y-3">
+          {!showAgg ? (
+            <>
+              <ChartFrame
+                title="Volume"
+                description="Log count over time"
+                hint="Brush to zoom · click a bar to dig in"
+                state={
+                  state === "error"
+                    ? "error"
+                    : state === "loading"
+                      ? "loading"
+                      : "idle"
+                }
+              >
+                <VisualizationCanvas
+                  kind="bar"
+                  series={hist}
+                  height={160}
+                  valueLabel="Logs"
+                  onBrush={(_a, _b, from, to) => {
+                    setContext(digDownTime(context, from.t, to.t))
+                  }}
+                  onPointClick={(point) => {
+                    const half = 2 * 60_000
+                    setContext(
+                      digDownTime(context, point.t - half, point.t + half),
+                    )
+                  }}
+                />
+              </ChartFrame>
+              <DataTable
+                state={
+                  state === "error"
+                    ? "error"
+                    : state === "loading"
+                      ? "loading"
+                      : "idle"
+                }
+                rows={rows}
+                onRowClick={setSelected}
+                emptyTitle="No logs in this window"
+                emptyDescription="Widen the time range or clear filters."
+                emptyVariant="no_match"
+                columns={[
+                  {
+                    id: "ts",
+                    header: "Time",
+                    className: "w-40",
+                    cell: (r) => (
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {r.timestamp}
+                      </span>
+                    ),
+                  },
+                  {
+                    id: "sev",
+                    header: "Level",
+                    className: "w-20",
+                    cell: (r) => r.severity,
+                  },
+                  {
+                    id: "svc",
+                    header: "Service",
+                    className: "w-32",
+                    cell: (r) => r.service || "—",
+                  },
+                  {
+                    id: "body",
+                    header: "Message",
+                    cell: (r) => (
+                      <span className="line-clamp-2 text-xs">{r.body}</span>
+                    ),
+                  },
+                ]}
+              />
+            </>
+          ) : aggResult?.result.kind === "timeseries" ||
+            aggResult?.result.kind === "table" ? (
+            view === "timeseries" ? (
+              <ChartFrame
+                title="Time series"
+                description={summary}
+                state={
+                  state === "error"
+                    ? "error"
+                    : state === "loading"
+                      ? "loading"
+                      : "idle"
+                }
+              >
+                <TrendsChart
+                  query={logsToTrends(query)}
+                  result={aggResult.result.trends}
+                  hiddenKeys={new Set()}
+                  height={280}
+                />
+              </ChartFrame>
+            ) : (
+              <ResultTable
+                result={aggResult.result.trends}
+                hiddenKeys={new Set()}
+                onToggleKey={() => {}}
+              />
+            )
+          ) : null}
+
+          <ExplorerActions
+            projectId={projectId}
+            query={{ ...query, signal: "logs" }}
+          />
+        </div>
+      </div>
 
       <DetailDrawer
         open={!!selected}

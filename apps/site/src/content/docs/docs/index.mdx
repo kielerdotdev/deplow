@@ -1,17 +1,17 @@
 ---
 title: Introduction
-description: What deplow is, what makes it different from Coolify/Dokploy, and how to start.
+description: What Hostrig is, what makes it different from Coolify/Dokploy, and how to start.
 ---
 
 import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
-deplow is an **opinionated self-hosted project runtime** for one Docker host. Most apps need a **database**, **cache**, **object storage**, and a **runtime**. deplow runs that stack under your control — with **gVisor** for user apps — so you skip hosted Postgres/Redis/S3 tabs and hand-rolled backup cron.
+Hostrig is an **opinionated self-hosted project runtime** for one Docker host. Most apps need a **database**, **cache**, **object storage**, and a **runtime**. Hostrig runs that stack under your control — with **gVisor** for user apps — so you skip hosted Postgres/Redis/S3 tabs and hand-rolled backup cron.
 
 ## Why not Coolify / Dokploy?
 
-Those products win on **breadth**: Compose, templates, many databases, fleets. deplow wins on a **narrow Railway-shaped loop**:
+Those products win on **breadth**: Compose, templates, many databases, fleets. Hostrig wins on a **narrow Railway-shaped loop**:
 
-| deplow | Coolify / Dokploy |
+| Hostrig | Coolify / Dokploy |
 | ------ | ----------------- |
 | Typed services + explicit bindings | Resource catalogs and Compose |
 | gVisor by default for user apps | Usually plain Docker / runc |
@@ -32,7 +32,7 @@ create empty project
   → scheduled Postgres backups → platform MinIO
 ```
 
-![deplow project overview with web, worker, postgres, and redis](/screenshots/dashboard.jpeg)
+![Hostrig project overview with web, worker, postgres, and redis](/screenshots/dashboard.jpeg)
 
 ## Start here
 

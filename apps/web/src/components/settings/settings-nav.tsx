@@ -1,84 +1,134 @@
 import { Link, useRouterState } from "@tanstack/react-router"
-import {
-  BellIcon,
-  GlobeIcon,
-  KeyRoundIcon,
-  PlugIcon,
-  ShieldIcon,
-  ServerIcon,
-  UsersIcon,
-} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const ITEMS = [
-  { id: "general", title: "General", to: "/settings", icon: KeyRoundIcon },
-  { id: "team", title: "Team", to: "/settings/team", icon: UsersIcon },
+type NavItem = {
+  id: string
+  title: string
+  to: string
+  admin?: boolean
+}
+
+type NavGroup = {
+  id: string
+  title: string
+  admin?: boolean
+  items: NavItem[]
+}
+
+const GROUPS: NavGroup[] = [
   {
-    id: "notifications",
-    title: "Notifications",
-    to: "/settings/notifications",
-    icon: BellIcon,
+    id: "organization",
+    title: "Organization",
+    items: [
+      { id: "general", title: "General", to: "/settings" },
+      { id: "members", title: "Members", to: "/settings/members" },
+      {
+        id: "notifications",
+        title: "Notifications",
+        to: "/settings/notifications",
+      },
+      {
+        id: "integrations",
+        title: "Integrations",
+        to: "/settings/integrations",
+        admin: true,
+      },
+    ],
   },
   {
-    id: "integrations",
-    title: "Integrations",
-    to: "/settings/integrations",
-    icon: PlugIcon,
+    id: "developer",
+    title: "Developer",
+    items: [
+      {
+        id: "api",
+        title: "API & MCP access",
+        to: "/settings/api",
+      },
+    ],
+  },
+  {
+    id: "platform",
+    title: "Platform administration",
     admin: true,
+    items: [
+      {
+        id: "networking",
+        title: "Networking & domains",
+        to: "/settings/networking",
+        admin: true,
+      },
+      {
+        id: "operator",
+        title: "Operator",
+        to: "/settings/operator",
+        admin: true,
+      },
+      {
+        id: "nodes",
+        title: "Nodes",
+        to: "/settings/nodes",
+        admin: true,
+      },
+    ],
   },
-  {
-    id: "domains",
-    title: "Domains",
-    to: "/settings/domains",
-    icon: GlobeIcon,
-    admin: true,
-  },
-  {
-    id: "operator",
-    title: "Operator",
-    to: "/settings/operator",
-    icon: ShieldIcon,
-    admin: true,
-  },
-  {
-    id: "nodes",
-    title: "Nodes",
-    to: "/settings/nodes",
-    icon: ServerIcon,
-    admin: true,
-  },
-] as const
+]
+
+function itemIsActive(pathname: string, to: string) {
+  if (to === "/settings") {
+    return pathname === "/settings" || pathname === "/settings/"
+  }
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
 
 export function SettingsNav({ instanceAdmin }: { instanceAdmin: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.admin || instanceAdmin),
+  })).filter(
+    (group) => group.items.length > 0 && (!group.admin || instanceAdmin),
+  )
+
   return (
-    <nav className="mb-6 flex flex-wrap gap-1 border-b border-border/60 pb-2">
-      {ITEMS.filter((item) => !("admin" in item && item.admin) || instanceAdmin).map(
-        (item) => {
-          const active =
-            item.to === "/settings"
-              ? pathname === "/settings" || pathname === "/settings/"
-              : pathname.startsWith(item.to)
-          return (
-            <Link
-              key={item.id}
-              to={item.to}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                active
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
-              aria-current={active ? "page" : undefined}
-            >
-              <item.icon className="size-3.5 opacity-70" />
-              {item.title}
-            </Link>
-          )
-        },
-      )}
+    <nav
+      aria-label="Settings"
+      className="flex w-full shrink-0 flex-col gap-5 lg:sticky lg:top-16 lg:w-52"
+    >
+      <p className="text-xl font-semibold tracking-[-0.035em] text-foreground md:text-[1.375rem]">
+        Settings
+      </p>
+      <div className="flex flex-col gap-5">
+        {groups.map((group) => (
+          <div key={group.id} className="min-w-0">
+            <p className="mb-1.5 px-2.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+              {group.title}
+            </p>
+            <ul className="flex flex-row flex-wrap gap-0.5 lg:flex-col">
+              {group.items.map((item) => {
+                const active = itemIsActive(pathname, item.to)
+                return (
+                  <li key={item.id} className="min-w-0">
+                    <Link
+                      to={item.to}
+                      className={cn(
+                        "block rounded-md px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        active
+                          ? "bg-muted font-medium text-foreground"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                      )}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      {item.title}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </nav>
   )
 }

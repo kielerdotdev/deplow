@@ -30,7 +30,7 @@ export class ChannelDeliverError extends Error {
 function testPayload(channelName: string) {
   return {
     event: "channel.test" as const,
-    message: `Test notification from deplow for “${channelName}”.`,
+    message: `Test notification from Hostrig for “${channelName}”.`,
     sentAt: new Date().toISOString(),
   }
 }

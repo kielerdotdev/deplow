@@ -1,6 +1,7 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
+import { SettingsShell } from "@/components/page-layout"
 import { SettingsNav } from "@/components/settings/settings-nav"
 import { getSession } from "@/lib/auth.functions"
 import { loadShellContext } from "@/lib/shell-context"
@@ -30,8 +31,9 @@ function SettingsLayout() {
       activeOrganization={shell.activeOrganization}
       observeEnabled={shell.observeEnabled}
     >
-      <SettingsNav instanceAdmin={shell.instanceAdmin} />
-      <Outlet />
+      <SettingsShell nav={<SettingsNav instanceAdmin={shell.instanceAdmin} />}>
+        <Outlet />
+      </SettingsShell>
     </AppShell>
   )
 }

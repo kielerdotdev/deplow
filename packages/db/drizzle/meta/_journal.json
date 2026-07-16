@@ -85,6 +85,13 @@
       "when": 1784500000000,
       "tag": "0011_observe_insights",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1784600000000,
+      "tag": "0013_remote_agent",
+      "breakpoints": true
     }
   ]
 }

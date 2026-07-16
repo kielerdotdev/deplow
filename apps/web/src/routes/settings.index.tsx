@@ -1,265 +1,203 @@
 import { useState } from "react"
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
-import { CheckIcon, CopyIcon, KeyRoundIcon, Trash2Icon } from "lucide-react"
+import {
+  createFileRoute,
+  redirect,
+  useRouter,
+} from "@tanstack/react-router"
+import { Building2Icon } from "lucide-react"
 
-import { CommandAction } from "@/components/command-action"
-import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
-import { EmptyState } from "@/components/empty-state"
-import { PageContent, PageHeader } from "@/components/page-layout"
-import { SettingsField, SettingsSection } from "@/components/settings-section"
+import { SettingsPage, SettingsPanel } from "@/components/page-layout"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
+import { loadShellContext } from "@/lib/shell-context"
+
+const TIMEZONES = [
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Berlin",
+  "Europe/Paris",
+  "Asia/Tokyo",
+  "Asia/Singapore",
+  "Australia/Sydney",
+] as const
 
 export const Route = createFileRoute("/settings/")({
   loader: async () => {
     const session = await getSession()
-    if (!session) throw redirect({ to: "/login", search: { redirect: undefined } })
-    const tokens = await client.mcp.listTokens()
-    return { tokens }
+    if (!session)
+      throw redirect({ to: "/login", search: { redirect: undefined } })
+    const shell = await loadShellContext()
+    if (!shell.activeOrganization) {
+      throw redirect({ to: "/" })
+    }
+    return { session, shell }
   },
-  component: SettingsPage,
+  component: GeneralSettingsPage,
 })
 
-function SettingsPage() {
-  const { tokens: initialTokens } = Route.useLoaderData()
+function GeneralSettingsPage() {
+  const { shell } = Route.useLoaderData()
   const router = useRouter()
-  const [tokens, setTokens] = useState(initialTokens)
-  const [name, setName] = useState("Cursor")
-  const [pending, setPending] = useState(false)
+  const org = shell.activeOrganization!
+  const isOwner = org.role === "owner"
+
+  const orgIconUrl =
+    "iconUrl" in org && typeof org.iconUrl === "string" ? org.iconUrl : ""
+  const orgTimezone =
+    "timezone" in org && typeof org.timezone === "string" && org.timezone
+      ? org.timezone
+      : "UTC"
+
+  const [name, setName] = useState(org.name)
+  const [slug, setSlug] = useState(org.slug)
+  const [iconUrl, setIconUrl] = useState(orgIconUrl)
+  const [timezone, setTimezone] = useState(orgTimezone)
   const [error, setError] = useState<string | null>(null)
-  const [createdToken, setCreatedToken] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [revokeId, setRevokeId] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
 
-  const mcpUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/api/mcp`
-      : "/api/mcp"
+  const dirty =
+    name !== org.name ||
+    slug !== org.slug ||
+    iconUrl !== orgIconUrl ||
+    timezone !== orgTimezone
 
-  async function createToken() {
-    setPending(true)
-    setError(null)
-    setCreatedToken(null)
-    try {
-      const result = await client.mcp.createToken({ name })
-      setCreatedToken(result.token)
-      setTokens(await client.mcp.listTokens())
-      await router.invalidate()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function revokeToken(id: string) {
+  async function saveOrg(event: React.FormEvent) {
+    event.preventDefault()
+    if (!isOwner || !dirty) return
     setPending(true)
     setError(null)
     try {
-      await client.mcp.revokeToken({ id })
-      setTokens(await client.mcp.listTokens())
+      await client.organizations.update({
+        id: org.id,
+        name,
+        slug,
+        iconUrl: iconUrl.trim() || null,
+        timezone,
+      })
       await router.invalidate()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setPending(false)
     }
-  }
-
-  async function copyText(text: string) {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
   }
 
   return (
-    <>
-      <PageHeader
-        title="Settings"
-        description="MCP tokens for Cursor and API access."
-      />
-      <PageContent width="narrow">
-        <CommandAction
-          id="settings.focus-mcp"
-          label="Focus MCP token name"
-          group="Actions"
-          mode="action"
-          keywords={["mcp", "token", "cursor", "settings"]}
-          onSelect={() => {
-            document.getElementById("mcp-token-name")?.focus()
-          }}
-        />
-        {error ? (
-          <Alert variant="destructive">
-            <AlertTitle>Something went wrong</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
+    <SettingsPage
+      title="General"
+      description="Organization identity and defaults."
+    >
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
-        {createdToken ? (
-          <Alert>
-            <AlertTitle>Copy your token now</AlertTitle>
-            <AlertDescription className="space-y-3">
-              <p>
-                This value is shown once. Store it as{" "}
-                <code className="text-xs">DEPLOW_MCP_TOKEN</code> for Cursor.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="max-w-full break-all rounded-md bg-muted px-2 py-1 text-xs">
-                  {createdToken}
-                </code>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void copyText(createdToken)}
-                >
-                  {copied ? (
-                    <CheckIcon className="size-3.5" />
-                  ) : (
-                    <CopyIcon className="size-3.5" />
-                  )}
-                  Copy
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        <SettingsSection icon={KeyRoundIcon} title="MCP access">
-          <SettingsField
-            label="Endpoint"
-            description="Point Cursor (or any MCP client) at this Streamable HTTP URL with a Bearer token."
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <code className="rounded-md bg-muted px-2 py-1 text-xs">{mcpUrl}</code>
+      <SettingsPanel
+        icon={Building2Icon}
+        title="Organization"
+        description={
+          isOwner
+            ? "Displayed name, slug, icon, and default timezone."
+            : "Only owners can change organization settings."
+        }
+        footer={
+          isOwner ? (
+            <>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => void copyText(mcpUrl)}
+                disabled={pending || !dirty}
+                onClick={() => {
+                  setName(org.name)
+                  setSlug(org.slug)
+                  setIconUrl(orgIconUrl)
+                  setTimezone(orgTimezone)
+                }}
               >
-                {copied ? (
-                  <CheckIcon className="size-3.5" />
-                ) : (
-                  <CopyIcon className="size-3.5" />
-                )}
-                Copy
+                Cancel
               </Button>
-            </div>
-          </SettingsField>
-
-          <SettingsField
-            label="Create token"
-            description="Tokens have full account power — treat them like passwords."
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <Label htmlFor="mcp-token-name">Name</Label>
-                <Input
-                  id="mcp-token-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Cursor"
-                  maxLength={64}
-                />
-              </div>
               <Button
-                type="button"
+                type="submit"
+                form="org-general-form"
                 size="sm"
-                disabled={pending || !name.trim()}
-                onClick={() => void createToken()}
+                disabled={pending || !dirty}
               >
-                Create token
+                {pending ? "Saving…" : "Save changes"}
               </Button>
-            </div>
-          </SettingsField>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Active tokens</p>
-            {tokens.length === 0 ? (
-              <EmptyState
-                icon={KeyRoundIcon}
-                title="No MCP tokens yet"
-                description="Create a token to connect Cursor to this Deplow instance."
-                size="sm"
-              />
-            ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border">
-                {tokens.map((token) => (
-                  <li
-                    key={token.id}
-                    className="flex items-center justify-between gap-3 px-3 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{token.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {token.prefix}… · created{" "}
-                        {new Date(token.createdAt).toLocaleString()}
-                        {token.lastUsedAt
-                          ? ` · last used ${new Date(token.lastUsedAt).toLocaleString()}`
-                          : ""}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() => setRevokeId(token.id)}
-                    >
-                      <Trash2Icon className="size-3.5" />
-                      Revoke
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <SettingsField
-            label="Cursor mcp.json"
-            description="Add this to ~/.cursor/mcp.json (use your real URL and env var)."
-          >
-            <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-relaxed">
-              {`{
-  "mcpServers": {
-    "deplow": {
-      "url": "${mcpUrl}",
-      "headers": {
-        "Authorization": "Bearer \${env:DEPLOW_MCP_TOKEN}"
-      }
-    }
-  }
-}`}
-            </pre>
-          </SettingsField>
-        </SettingsSection>
-      </PageContent>
-
-      <ConfirmActionDialog
-        open={!!revokeId}
-        onOpenChange={(open) => {
-          if (!open) setRevokeId(null)
-        }}
-        title="Revoke MCP token"
-        description={
-          revokeId
-            ? `Revoke “${tokens.find((t) => t.id === revokeId)?.name ?? "this token"}”? Connected MCP clients will stop working until you create a new token.`
-            : "Revoke this token?"
+            </>
+          ) : undefined
         }
-        confirmLabel="Revoke token"
-        pending={pending}
-        onConfirm={async () => {
-          if (!revokeId) return
-          await revokeToken(revokeId)
-          setRevokeId(null)
-        }}
-      />
-    </>
+      >
+        <form id="org-general-form" className="grid gap-4" onSubmit={saveOrg}>
+          <div className="space-y-2">
+            <Label htmlFor="org-name">Name</Label>
+            <Input
+              id="org-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={!isOwner || pending}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="org-slug">Slug</Label>
+            <Input
+              id="org-slug"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              disabled={!isOwner || pending}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used in identifiers. Prefer lowercase letters, numbers, and
+              hyphens.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="org-icon">Icon URL</Label>
+            <Input
+              id="org-icon"
+              type="url"
+              value={iconUrl}
+              onChange={(e) => setIconUrl(e.target.value)}
+              disabled={!isOwner || pending}
+              placeholder="https://…"
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional HTTPS image URL for the organization avatar.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="org-timezone">Default timezone</Label>
+            <select
+              id="org-timezone"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              disabled={!isOwner || pending}
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
+                </option>
+              ))}
+              {!TIMEZONES.includes(timezone as (typeof TIMEZONES)[number]) ? (
+                <option value={timezone}>{timezone}</option>
+              ) : null}
+            </select>
+          </div>
+        </form>
+      </SettingsPanel>
+    </SettingsPage>
   )
 }

@@ -307,62 +307,8 @@
     @apply border-ring text-foreground;
   }
 
-  .topology-board {
-    @apply overflow-hidden rounded-lg border border-border/80 bg-card;
-    box-shadow: var(--surface-shadow);
-  }
-
-  .topology-columns {
-    @apply grid gap-0 md:grid-cols-[1fr_auto_1fr];
-  }
-
-  .topology-column {
-    @apply flex min-w-0 flex-col;
-  }
-
-  .topology-column-head {
-    @apply flex items-center justify-between border-b border-border px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground;
-  }
-
-  .topology-column-body {
-    @apply flex flex-col gap-2.5 p-3.5;
-  }
-
-  .topology-node {
-    @apply rounded-lg border border-border bg-background/60 transition-[border-color,background-color,box-shadow] duration-150 hover:border-ring/40 hover:bg-accent/40;
-  }
-
-  .topology-node-link {
-    @apply flex items-start gap-3 p-3;
-  }
-
-  .topology-node-icon {
-    @apply flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/50 text-muted-foreground;
-  }
-
-  .topology-node-actions {
-    @apply flex gap-1.5 border-t border-border/60 px-3 py-2;
-  }
-
-  .topology-bindings {
-    @apply hidden flex-col items-center justify-center gap-6 border-x border-border px-4 py-8 md:flex;
-  }
-
-  .topology-binding {
-    @apply flex flex-col items-center gap-1.5;
-  }
-
-  .topology-binding-line {
-    @apply block h-px w-12 bg-border;
-  }
-
-  .topology-binding-key {
-    @apply rounded-md bg-muted px-2.5 py-1 font-mono text-[11px] text-muted-foreground;
-  }
-
-  .topology-empty {
-    @apply flex flex-col items-start gap-3 rounded-lg border border-border bg-card p-8;
-    box-shadow: var(--surface-shadow);
+  .page-container {
+    @apply mx-auto w-full max-w-[1280px] px-4 md:px-6 lg:px-8;
   }
 
   .animate-content-in {

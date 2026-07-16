@@ -1,6 +1,6 @@
 ---
 title: Prerequisites
-description: Docker, gVisor, BuildKit, and (for development) Node.js requirements before running deplow.
+description: Docker, gVisor, BuildKit, and (for development) Node.js requirements before running Hostrig.
 ---
 
 ## VPS / production
@@ -77,7 +77,7 @@ Optionally set `RAILPACK_BIN` if the binary lives elsewhere. Production images a
 
 ## Public URLs (Caddy + cloudflared)
 
-deplow’s platform reverse proxy is **Caddy** (included in compose). **Domains are configured in the app** (Domains tab). Edges only forward to Caddy; the v1 edge is **cloudflared**.
+Hostrig’s platform reverse proxy is **Caddy** (included in compose). **Domains are configured in the app** (Domains tab). Edges only forward to Caddy; the v1 edge is **cloudflared**.
 
 **v1 is wildcard-only:** every web service gets a hostname under `*.{baseDomain}`. Custom domains are **v2**. **TLS terminates at Cloudflare** on the tunnel; Caddy on the host is HTTP-only (no Let’s Encrypt on Caddy in v1).
 

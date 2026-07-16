@@ -16,6 +16,7 @@
     "@base-ui/react": "^1.6.0",
     "@deplow/db": "workspace:*",
     "@deplow/observe": "workspace:*",
+    "@deplow/runtime": "workspace:*",
     "@deplow/shared": "workspace:*",
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@fontsource/ibm-plex-mono": "^5.2.7",

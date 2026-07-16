@@ -9,6 +9,13 @@ export const createProjectInputSchema = z.object({
       message: "Use lowercase letters, numbers, and hyphens",
     }),
   organizationId: z.string().min(1).optional(),
+  /** Pin project to a node (local docker or online agent). Defaults to local. */
+  nodeId: z.string().min(1).optional(),
+})
+
+export const setProjectNodeInputSchema = z.object({
+  id: z.string().min(1),
+  nodeId: z.string().min(1),
 })
 
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>
@@ -149,7 +156,7 @@ export const projectGitStatusSchema = z.object({
   branch: z.string().nullable().optional(),
   webhookUrl: z.string().nullable().optional(),
   authMethod: gitAuthMethodSchema.nullable().optional(),
-  /** True when remote webhook was registered by deplow */
+  /** True when remote webhook was registered by Hostrig */
   webhookManaged: z.boolean().optional(),
   lastDeliveryAt: z.string().nullable().optional(),
   lastDeliveryStatus: z.string().nullable().optional(),

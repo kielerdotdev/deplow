@@ -1,4 +1,4 @@
-# deplow docs
+# Hostrig docs
 
 Canonical project documentation. **These files dictate product, marketing, and implementation.** If the marketing site, Starlight user docs, README, or code disagree with this folder, this folder wins — update the other surfaces.
 
@@ -6,7 +6,7 @@ Canonical project documentation. **These files dictate product, marketing, and i
 
 | Doc                                      | Role                                                                 |
 | ---------------------------------------- | -------------------------------------------------------------------- |
-| [philosophy.md](./philosophy.md)         | **Why deplow exists** — problem and principles                       |
+| [philosophy.md](./philosophy.md)         | **Why Hostrig exists** — problem and principles                       |
 | [sequencing.md](./sequencing.md)         | **v1 / v2 / v3** — what to build now vs later                        |
 | [gtm.md](./gtm.md)                       | **Public launch bar** — happy path vs Coolify/Dokploy                |
 | [product.md](./product.md)               | **What we ship** — one project shape, in/out of scope                |

@@ -2,7 +2,12 @@ import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
 import { and, eq } from "@deplow/db"
-import { createProjectInputSchema, deriveProjectStatus, type ProjectStatus } from "@deplow/shared"
+import {
+  createProjectInputSchema,
+  deriveProjectStatus,
+  setProjectNodeInputSchema,
+  type ProjectStatus,
+} from "@deplow/shared"
 import {
   listProjectEnvSecretsInputSchema,
   saveProjectEnvSecretsInputSchema,
@@ -23,6 +28,7 @@ import {
   db,
   dockerNodeExecutor,
   ensureLocalNodeId,
+  nodes,
   getBackupTargets,
   getPostgresCredentials,
   getProjectCredentials,
@@ -262,7 +268,20 @@ export const create = authedProcedure
     }
 
     const id = crypto.randomUUID()
-    const nodeId = await ensureLocalNodeId()
+    let nodeId = input.nodeId
+    if (nodeId) {
+      const [node] = await db.select().from(nodes).where(eq(nodes.id, nodeId))
+      if (!node) {
+        throw new ORPCError("BAD_REQUEST", { message: "Node not found" })
+      }
+      if (node.provider !== "docker" && node.provider !== "agent") {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "Project must pin to a docker or agent node",
+        })
+      }
+    } else {
+      nodeId = await ensureLocalNodeId()
+    }
     const interval = BackupScheduler.defaultIntervalMs()
     await db.insert(projects).values({
       id,
@@ -277,6 +296,41 @@ export const create = authedProcedure
 
     scheduleProjectBackups(id, interval)
     return detail(await loadAccessibleProject(id, context.session!))
+  })
+
+export const setNode = authedProcedure
+  .input(setProjectNodeInputSchema)
+  .handler(async ({ context, input }) => {
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
+    const [node] = await db
+      .select()
+      .from(nodes)
+      .where(eq(nodes.id, input.nodeId))
+    if (!node) {
+      throw new ORPCError("BAD_REQUEST", { message: "Node not found" })
+    }
+    if (node.provider !== "docker" && node.provider !== "agent") {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "Project must pin to a docker or agent node",
+      })
+    }
+    if (node.provider === "agent") {
+      const { isAgentOnline } = await import("@/lib/agent/tokens")
+      if (!isAgentOnline(node)) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "Agent node is offline",
+        })
+      }
+    }
+    await db
+      .update(projects)
+      .set({ nodeId: node.id })
+      .where(eq(projects.id, project.id))
+    return detail(await loadAccessibleProject(project.id, context.session!))
   })
 
 export const destroy = authedProcedure

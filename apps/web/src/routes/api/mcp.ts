@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/mcp")({
               status: 401,
               headers: {
                 "content-type": "application/json",
-                "www-authenticate": 'Bearer realm="deplow-mcp"',
+                "www-authenticate": 'Bearer realm="hostrig-mcp"',
               },
             },
           )

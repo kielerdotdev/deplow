@@ -3,7 +3,7 @@ title: Backups
 description: Snapshots and PITR for project data services
 ---
 
-deplow backs up **data services** (Postgres and Redis). Open a Postgres/Redis service and use its **Database** / **Backups** tabs — there is no project-level Database or Backups section.
+Hostrig backs up **data services** (Postgres and Redis). Open a Postgres/Redis service and use its **Database** / **Backups** tabs — there is no project-level Database or Backups section.
 
 Drivers expose a shared `BackupCapable` interface so the same UI works for each kind.
 

@@ -1,9 +1,11 @@
 import { ORPCError } from "@orpc/server"
 import {
   and,
+  desc,
   eq,
   inArray,
   messageChannels,
+  observeAlertHistory,
   observeAlerts,
   observeDashboards,
   observeInsights,
@@ -14,7 +16,9 @@ import {
 import {
   attributeAnomalies,
   durationHeatmap,
+  facetCounts,
   getTrace,
+  listMetrics,
   listOperationsRed,
   listReleases,
   listServicesRed,
@@ -24,19 +28,24 @@ import {
   metricSeries,
   overviewRed,
   recentErrorTraces,
+  runTelemetryQuery,
   runTrends,
   suggestFields,
   suggestFieldValues,
+  summarizeTelemetryQuery,
+  telemetryToSpanFilter,
   trendsResultToCsv,
   searchLogs,
   selectionCounts,
   type SpanFilter,
+  type TelemetryQuery as ObserveTelemetryQuery,
 } from "@deplow/observe"
 import { randomUUID } from "node:crypto"
 import * as z from "zod"
 
 import { assertProjectAccess } from "@/lib/access"
 import { env } from "@/lib/env"
+import { maskEmail, maskSecret } from "@/lib/secret-display"
 import { db } from "@/lib/services"
 import {
   ensureObserveReady,
@@ -57,6 +66,7 @@ import {
   trendsQuerySchema,
   type TrendsQuery,
 } from "@/lib/observe/trends"
+import { telemetryQuerySchema } from "@/lib/observe/telemetry"
 
 import { authedProcedure } from "./middleware"
 
@@ -1044,6 +1054,8 @@ export const alertsList = authedProcedure
         channelEmail: r.channelEmail,
         channelWebhook: r.channelWebhook,
         channelIds,
+        state: r.state ?? "ok",
+        severity: r.severity ?? "warning",
         lastTriggeredAt: r.lastTriggeredAt?.toISOString() ?? null,
         contextJson: r.contextJson,
         createdAt: r.createdAt.toISOString(),
@@ -1163,6 +1175,20 @@ export const fieldsValues = authedProcedure
 
 const channelKindSchema = z.enum(["slack", "discord", "webhook", "email"])
 
+function maskChannelConfig(config: Record<string, unknown>): {
+  urlMasked?: string
+  emailMasked?: string
+} {
+  const out: { urlMasked?: string; emailMasked?: string } = {}
+  if (typeof config.url === "string" && config.url) {
+    out.urlMasked = maskSecret(config.url, 5)
+  }
+  if (typeof config.email === "string" && config.email) {
+    out.emailMasked = maskEmail(config.email)
+  }
+  return out
+}
+
 export const messageChannelsList = authedProcedure.handler(
   async ({ context }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED")
@@ -1178,8 +1204,14 @@ export const messageChannelsList = authedProcedure.handler(
         id: r.id,
         name: r.name,
         kind: r.kind as z.infer<typeof channelKindSchema>,
-        config,
+        /** Never return raw webhook URLs — secrets stay server-side. */
+        config: maskChannelConfig(config),
         enabled: r.enabled,
+        lastTestedAt: r.lastTestedAt?.toISOString() ?? null,
+        lastTestOk: r.lastTestOk ?? null,
+        lastDeliveryAt: r.lastDeliveryAt?.toISOString() ?? null,
+        lastDeliveryOk: r.lastDeliveryOk ?? null,
+        lastError: r.lastError ?? null,
       }
     })
   },
@@ -1245,18 +1277,77 @@ export const messageChannelsTest = authedProcedure
     const { deliverChannelTest, ChannelDeliverError } = await import(
       "@/lib/message-channel-deliver"
     )
+    const now = new Date()
     try {
-      return await deliverChannelTest({
+      const result = await deliverChannelTest({
         name: row.name,
         kind: row.kind as "slack" | "discord" | "webhook" | "email",
         config,
       })
+      await db
+        .update(messageChannels)
+        .set({
+          lastTestedAt: now,
+          lastTestOk: true,
+          lastDeliveryAt: now,
+          lastDeliveryOk: true,
+          lastError: null,
+          updatedAt: now,
+        })
+        .where(eq(messageChannels.id, input.id))
+      return result
     } catch (error) {
+      const message =
+        error instanceof ChannelDeliverError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Test failed"
+      await db
+        .update(messageChannels)
+        .set({
+          lastTestedAt: now,
+          lastTestOk: false,
+          lastDeliveryAt: now,
+          lastDeliveryOk: false,
+          lastError: message.slice(0, 500),
+          updatedAt: now,
+        })
+        .where(eq(messageChannels.id, input.id))
       if (error instanceof ChannelDeliverError) {
         throw new ORPCError("BAD_REQUEST", { message: error.message })
       }
       throw error
     }
+  })
+
+export const messageChannelsUpdate = authedProcedure
+  .input(
+    z.object({
+      id: z.string().uuid(),
+      enabled: z.boolean().optional(),
+      name: z.string().min(1).max(120).optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    if (!context.session) throw new ORPCError("UNAUTHORIZED")
+    const [row] = await db
+      .select()
+      .from(messageChannels)
+      .where(eq(messageChannels.id, input.id))
+      .limit(1)
+    if (!row) {
+      throw new ORPCError("NOT_FOUND", { message: "Channel not found" })
+    }
+    await db
+      .update(messageChannels)
+      .set({
+        ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(messageChannels.id, input.id))
+    return { ok: true as const }
   })
 
 export const alertsUpdate = authedProcedure
@@ -1305,6 +1396,71 @@ export const alertsUpdate = authedProcedure
       })
       .where(eq(observeAlerts.id, input.alertId))
     return { ok: true as const }
+  })
+
+export const alertsHistory = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      alertId: z.string().uuid(),
+      limit: z.number().int().min(1).max(200).optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    const op = await getObserveProject(input.projectId)
+    if (!op) return []
+    const [existing] = await db
+      .select()
+      .from(observeAlerts)
+      .where(eq(observeAlerts.id, input.alertId))
+      .limit(1)
+    if (!existing || existing.observeProjectId !== op.id) {
+      throw new ORPCError("NOT_FOUND", { message: "Alert not found" })
+    }
+    const rows = await db
+      .select()
+      .from(observeAlertHistory)
+      .where(eq(observeAlertHistory.alertId, input.alertId))
+      .orderBy(desc(observeAlertHistory.createdAt))
+      .limit(input.limit ?? 50)
+    return rows.map((r) => ({
+      id: r.id,
+      fromState: r.fromState,
+      toState: r.toState,
+      value: r.value,
+      threshold: r.threshold,
+      message: r.message,
+      createdAt: r.createdAt.toISOString(),
+    }))
+  })
+
+export const alertsEvaluateNow = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      alertId: z.string().uuid(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    await assertObserveRole(input.projectId, context.session.user.id, "editor")
+    const op = await getObserveProject(input.projectId)
+    if (!op) {
+      throw new ORPCError("NOT_FOUND", { message: "Project not found" })
+    }
+    const [existing] = await db
+      .select()
+      .from(observeAlerts)
+      .where(eq(observeAlerts.id, input.alertId))
+      .limit(1)
+    if (!existing || existing.observeProjectId !== op.id) {
+      throw new ORPCError("NOT_FOUND", { message: "Alert not found" })
+    }
+    const { evaluateAlertById } = await import("@/lib/observe/alert-evaluator")
+    return evaluateAlertById(input.alertId)
   })
 
 export const alertsDelete = authedProcedure
@@ -1424,6 +1580,77 @@ export const projectsUpdateRetention = authedProcedure
       })
       .where(eq(observeProjects.id, op.id))
     return { ok: true as const }
+  })
+
+/** Unified TelemetryQuery runner — list/traces/timeseries/table/metrics. */
+export const queryRun = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      query: telemetryQuerySchema,
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    await readyOrThrow()
+    try {
+      const result = await runTelemetryQuery(
+        observeClickHouseConfig(),
+        input.projectId,
+        input.query as ObserveTelemetryQuery,
+      )
+      return {
+        result,
+        summary: summarizeTelemetryQuery(input.query as ObserveTelemetryQuery),
+      }
+    } catch (err) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: err instanceof Error ? err.message : "Query failed",
+      })
+    }
+  })
+
+export const queryFacets = authedProcedure
+  .input(
+    z.object({
+      projectId: z.string().uuid(),
+      query: telemetryQuerySchema,
+      fields: z.array(z.string()).optional(),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    await readyOrThrow()
+    const spanFilter = telemetryToSpanFilter(
+      input.projectId,
+      input.query as ObserveTelemetryQuery,
+    )
+    const signal =
+      input.query.signal === "logs" || input.query.signal === "errors"
+        ? ("logs" as const)
+        : input.query.scope === "root" ||
+            input.query.presentation.view === "traces"
+          ? ("root_spans" as const)
+          : ("spans" as const)
+    return facetCounts(observeClickHouseConfig(), {
+      projectId: input.projectId,
+      from: spanFilter.from,
+      to: spanFilter.to,
+      signal,
+      fields: input.fields,
+      spanFilter: signal === "logs" ? undefined : spanFilter,
+    })
+  })
+
+export const metricsCatalog = authedProcedure
+  .input(z.object({ projectId: z.string().uuid() }))
+  .handler(async ({ context, input }) => {
+    requireObserve()
+    await assertProjectAccess(input.projectId, context.session)
+    await readyOrThrow()
+    return listMetrics(observeClickHouseConfig(), input.projectId)
   })
 
 export const exportCsv = authedProcedure

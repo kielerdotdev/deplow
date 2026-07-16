@@ -1,6 +1,6 @@
 # Secure runtime — gVisor + hardened Docker
 
-You are implementing deplow’s **default secure runtime**. Follow this document exactly.
+You are implementing Hostrig’s **default secure runtime**. Follow this document exactly.
 
 - Stance / priorities: [`security.md`](./security.md)
 - Product scope: [`product.md`](./product.md) and [`sequencing.md`](./sequencing.md)
@@ -11,7 +11,7 @@ You are implementing deplow’s **default secure runtime**. Follow this document
 | Workload                                              | Runtime                                   | Why                                              |
 | ----------------------------------------------------- | ----------------------------------------- | ------------------------------------------------ |
 | **User apps** (Railpack / Dockerfile / image deploys) | **gVisor (`runsc`)**                      | Userspace syscall sandbox; OCI/Docker standard   |
-| **Platform** (Postgres, Redis, MinIO, deplow web)     | **runc** (default)                        | I/O + compatibility; trusted                     |
+| **Platform** (Postgres, Redis, MinIO, Hostrig web)     | **runc** (default)                        | I/O + compatibility; trusted                     |
 | **Builds** (Railpack / `docker build` / BuildKit)     | **runc**                                  | Compilers + BuildKit break or crawl under gVisor |
 | Docker daemon                                         | **Rootful Docker**                        | Easy install; do not require rootless for v1     |
 | Host UID mapping                                      | **`userns-remap: default`** (recommended) | Container root ≠ host root                       |
@@ -30,12 +30,12 @@ Host (Docker Engine)
 │   ├── userns-remap: default          (daemon.json; document if skipped)
 │   ├── runtimes.runsc → /usr/local/bin/runsc
 │   │
-│   ├── runc:  postgres, redis, minio, deplow   (compose)
+│   ├── runc:  postgres, redis, minio, Hostrig   (compose)
 │   ├── runc:  Railpack / BuildKit builds
 │   └── runsc: every user app container         (DockerNodeExecutor)
 │
 └── Socket /var/run/docker.sock
-    └── Only deplow control plane may use it
+    └── Only Hostrig control plane may use it
         NEVER mount into user app containers
 ```
 
@@ -227,7 +227,7 @@ Set `DEPLOW_APP_RUNTIME=runsc-kvm` when available.
 ## Manual verify (on a machine with Docker + gVisor)
 
 ```bash
-# After deploy of a test image via deplow:
+# After deploy of a test image via Hostrig:
 docker inspect <container> --format '{{.HostConfig.Runtime}} {{.HostConfig.ReadonlyRootfs}} {{.HostConfig.CapDrop}}'
 # Expect: runsc true [ALL] (or equivalent)
 

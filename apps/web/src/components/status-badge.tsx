@@ -71,17 +71,60 @@ const statusLabel: Record<string, string> = {
   completed: "ready",
 }
 
+const serviceLabel: Record<string, string> = {
+  ...statusLabel,
+  running: "Healthy",
+  ready: "Healthy",
+  deploying: "Deploying",
+  error: "Unavailable",
+  stopped: "Stopped",
+  not_deployed: "Not deployed",
+}
+
+const statusVariantExtra: Record<string, BadgeVariant> = {
+  not_deployed: "secondary",
+}
+
+const deploymentLabel: Record<string, string> = {
+  pending: "Queued",
+  queued: "Queued",
+  analyzing: "Analyzing",
+  building: "Building",
+  deploying: "Releasing",
+  checking: "Verifying",
+  running: "Succeeded",
+  failed: "Failed",
+  stopped: "Stopped",
+}
+
 export function StatusBadge({
   status,
   className,
+  context,
 }: {
   status: string
   className?: string
+  /** Prefer service vs deployment wording when statuses overlap. */
+  context?: "service" | "deployment" | "default"
 }) {
-  const variant = statusVariant[status] ?? "outline"
-  const label = statusLabel[status] ?? status
+  const variant =
+    statusVariantExtra[status] ?? statusVariant[status] ?? "outline"
+  const label =
+    context === "service"
+      ? (serviceLabel[status] ?? statusLabel[status] ?? status)
+      : context === "deployment"
+        ? (deploymentLabel[status] ?? statusLabel[status] ?? status)
+        : (statusLabel[status] ?? status)
   return (
-    <Badge variant={variant} className={cn("capitalize", className)}>
+    <Badge
+      variant={variant}
+      className={cn(
+        context === "service" || context === "deployment"
+          ? undefined
+          : "capitalize",
+        className,
+      )}
+    >
       <span
         className={cn("size-1.5 shrink-0 rounded-full", statusDot[variant])}
         aria-hidden

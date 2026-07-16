@@ -17,8 +17,8 @@ The bundled `docker-compose.yml` maps platform services to non-default host port
 
 | Service                  | Port   |
 | ------------------------ | ------ |
-| deplow web app           | `3000` |
-| deplow docs site (Astro) | `4321` |
+| Hostrig web app           | `3000` |
+| Hostrig docs site (Astro) | `4321` |
 
 ## App data services
 

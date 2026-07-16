@@ -3,7 +3,7 @@ title: Secrets & env
 description: How credentials are encrypted, bound, and injected into deployments.
 ---
 
-Project credentials are sensitive. deplow encrypts them at rest and injects them at deploy time **only through explicit service bindings** (plus lazy project S3 when provisioned).
+Project credentials are sensitive. Hostrig encrypts them at rest and injects them at deploy time **only through explicit service bindings** (plus lazy project S3 when provisioned).
 
 ## Encryption
 
@@ -26,7 +26,7 @@ S3 credentials (`S3_*`) are injected when the project’s MinIO bucket has been 
 
 ## Downloadable secrets.yaml
 
-Export `secrets.yaml` from the project page for local development or CI. The format mirrors bound deploy env vars so you can run the same app outside deplow with identical config.
+Export `secrets.yaml` from the project page for local development or CI. The format mirrors bound deploy env vars so you can run the same app outside Hostrig with identical config.
 
 ## Common injected variables
 

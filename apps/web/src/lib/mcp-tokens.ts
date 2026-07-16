@@ -6,6 +6,9 @@ import type { Session } from "@/lib/auth"
 
 const TOKEN_PREFIX = "deplow_"
 
+export const MCP_SCOPES = ["*", "read"] as const
+export type McpScope = (typeof MCP_SCOPES)[number]
+
 export function hashMcpToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex")
 }
@@ -24,20 +27,53 @@ export function generateMcpTokenPlaintext(): {
   }
 }
 
+function parseScopes(raw: string | null | undefined): McpScope[] {
+  try {
+    const parsed = JSON.parse(raw || '["*"]') as unknown
+    if (!Array.isArray(parsed) || parsed.length === 0) return ["*"]
+    const scopes = parsed.filter(
+      (s): s is McpScope => s === "*" || s === "read",
+    )
+    return scopes.length > 0 ? scopes : ["*"]
+  } catch {
+    return ["*"]
+  }
+}
+
+function scopeLabel(scopes: McpScope[]): string {
+  if (scopes.includes("*")) return "Full access"
+  if (scopes.includes("read") && scopes.length === 1) return "Read only"
+  return scopes.join(", ")
+}
+
 export async function createMcpToken(input: {
   userId: string
   name: string
+  scopes?: McpScope[]
+  expiresInDays?: number | null
 }): Promise<{
   id: string
   name: string
   prefix: string
   token: string
+  scopes: McpScope[]
+  expiresAt: string | null
   createdAt: string
 }> {
   const name = input.name.trim()
   if (!name || name.length > 64) {
     throw new Error("Token name must be 1–64 characters")
   }
+  const scopes =
+    input.scopes && input.scopes.length > 0 ? input.scopes : (["*"] as McpScope[])
+  if (!scopes.every((s) => s === "*" || s === "read")) {
+    throw new Error("Invalid token scopes")
+  }
+  const expiresAt =
+    input.expiresInDays != null && input.expiresInDays > 0
+      ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000)
+      : null
+
   const { token, prefix, tokenHash } = generateMcpTokenPlaintext()
   const id = crypto.randomUUID()
   await db.insert(mcpTokens).values({
@@ -46,12 +82,16 @@ export async function createMcpToken(input: {
     name,
     tokenHash,
     prefix,
+    scopesJson: JSON.stringify(scopes),
+    expiresAt,
   })
   return {
     id,
     name,
     prefix,
     token,
+    scopes,
+    expiresAt: expiresAt?.toISOString() ?? null,
     createdAt: new Date().toISOString(),
   }
 }
@@ -61,13 +101,19 @@ export async function listMcpTokens(userId: string) {
     .select()
     .from(mcpTokens)
     .where(and(eq(mcpTokens.userId, userId), isNull(mcpTokens.revokedAt)))
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    prefix: row.prefix,
-    createdAt: row.createdAt.toISOString(),
-    lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
-  }))
+  return rows.map((row) => {
+    const scopes = parseScopes(row.scopesJson)
+    return {
+      id: row.id,
+      name: row.name,
+      prefix: row.prefix,
+      scopes,
+      scopeLabel: scopeLabel(scopes),
+      expiresAt: row.expiresAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
+      lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
+    }
+  })
 }
 
 export async function revokeMcpToken(userId: string, tokenId: string) {
@@ -94,7 +140,7 @@ export function parseBearerToken(authorization: string | null): string | null {
 
 /**
  * Resolve a Better Auth–compatible Session from an MCP Bearer token.
- * Updates lastUsedAt on success.
+ * Updates lastUsedAt on success. Rejects expired tokens.
  */
 export async function resolveSessionFromMcpToken(
   rawToken: string,
@@ -105,6 +151,10 @@ export async function resolveSessionFromMcpToken(
     .from(mcpTokens)
     .where(and(eq(mcpTokens.tokenHash, tokenHash), isNull(mcpTokens.revokedAt)))
   if (!row) return null
+
+  if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) {
+    return null
+  }
 
   const [owner] = await db.select().from(user).where(eq(user.id, row.userId))
   if (!owner) return null
@@ -131,7 +181,7 @@ export async function resolveSessionFromMcpToken(
       id: `mcp:${row.id}`,
       token: `mcp:${row.id}`,
       userId: owner.id,
-      expiresAt: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+      expiresAt: row.expiresAt ?? new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
       createdAt: row.createdAt,
       updatedAt: now,
       ipAddress: null,

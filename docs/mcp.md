@@ -1,6 +1,6 @@
 # MCP (Cursor / agent deploy)
 
-Deplow exposes a **Streamable HTTP** Model Context Protocol server so Cursor (and similar clients) can create projects and deploy from git end-to-end.
+Hostrig exposes a **Streamable HTTP** Model Context Protocol server so Cursor (and similar clients) can create projects and deploy from git end-to-end.
 
 ## Endpoint
 
@@ -19,8 +19,8 @@ Tokens are **operator PATs** scoped to your account (full power). Create and rev
 ```json
 {
   "mcpServers": {
-    "deplow": {
-      "url": "https://your-deplow-host/api/mcp",
+    "hostrig": {
+      "url": "https://your-hostrig-host/api/mcp",
       "headers": {
         "Authorization": "Bearer ${env:DEPLOW_MCP_TOKEN}"
       }
