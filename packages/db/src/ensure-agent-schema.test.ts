@@ -36,6 +36,9 @@ describe("ensureAgentNodesSchema", () => {
         "advertise_host",
         "agent_version",
         "capabilities_json",
+        "mesh_provider",
+        "mesh_status",
+        "local_proxy_ready",
       ]),
     )
 

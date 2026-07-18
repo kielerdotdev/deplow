@@ -283,8 +283,18 @@ async function apiError(provider: string, res: Response): Promise<Error> {
     // ignore
   }
   if (res.status === 401 || res.status === 403) {
+    if (provider === "GitHub") {
+      return new Error(
+        `GitHub rejected the credentials (${res.status}). Reconnect GitHub in the repo selector (or Switch account). If you pasted a personal access token under Advanced, remove it or create a new fine-grained/classic PAT with Contents: Read and try again.`,
+      )
+    }
+    if (provider === "GitLab") {
+      return new Error(
+        `GitLab rejected the credentials (${res.status}). Reconnect GitLab, or paste a new PAT with read_repository under Advanced.`,
+      )
+    }
     return new Error(
-      `${provider} rejected the token (${res.status}). Create a PAT with repo read access and try again.`,
+      `${provider} rejected the credentials (${res.status}). Reconnect the provider or paste a valid access token under Advanced.`,
     )
   }
   return new Error(`${provider} API error (${res.status}): ${detail}`)

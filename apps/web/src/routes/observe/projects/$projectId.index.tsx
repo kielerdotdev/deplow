@@ -4,9 +4,11 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router"
 import {
   ChartFrame,
   DataTable,
+  FirstSignalCelebration,
   ObserveEmptyState,
   ObserveOnboarding,
   ObserveProjectShell,
+  SetupChecklist,
   StatStrip,
   VisualizationCanvas,
 } from "@/components/observe"
@@ -132,9 +134,14 @@ function OverviewPage() {
       onContextChange={state === "empty" ? undefined : setContext}
     >
       {state === "empty" ? (
-        <ObserveOnboarding projectId={projectId} />
+        <ObserveOnboarding projectId={projectId} surface="overview" />
       ) : (
         <>
+          <FirstSignalCelebration
+            projectId={projectId}
+            ready={state === "idle" && services.length > 0}
+          />
+          <SetupChecklist projectId={projectId} />
           <div
             className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-border px-3 py-2 text-xs"
             data-testid="overview-health"
@@ -223,7 +230,7 @@ function OverviewPage() {
               },
             ]}
           />
-          <div className="grid gap-3.5 lg:grid-cols-2">
+          <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1.55fr)_minmax(16rem,1fr)]">
             <ChartFrame
               title="Traffic"
               description="Request rate over time"

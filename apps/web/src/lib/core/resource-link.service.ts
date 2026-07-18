@@ -14,8 +14,11 @@ import type { PlatformConfig } from "./platform-config"
 export class ResourceLinkService {
   private readonly registry: DataServiceRegistry
 
-  constructor(private readonly config: PlatformConfig) {
-    this.registry = new DataServiceRegistry(config)
+  constructor(
+    private readonly config: PlatformConfig,
+    registry?: DataServiceRegistry,
+  ) {
+    this.registry = registry ?? new DataServiceRegistry(config)
   }
 
   driver(kind: ResourceKind): DataServiceDriver {
@@ -29,13 +32,18 @@ export class ResourceLinkService {
   async provision(
     kind: ResourceKind,
     projectSlug: string,
-    opts: { projectId: string; resourceLinkId: string },
+    opts: {
+      projectId: string
+      resourceLinkId: string
+      serviceName?: string
+    },
   ): Promise<string> {
     const driver = this.registry.get(kind)
     const credentials = await driver.provision({
       projectId: opts.projectId,
       projectSlug,
       resourceLinkId: opts.resourceLinkId,
+      serviceName: opts.serviceName,
     })
     return this.encrypt(credentials)
   }
@@ -44,7 +52,11 @@ export class ResourceLinkService {
     kind: ResourceKind,
     projectSlug: string,
     encrypted: string | null,
-    opts?: { projectId?: string; resourceLinkId?: string },
+    opts?: {
+      projectId?: string
+      resourceLinkId?: string
+      serviceName?: string
+    },
   ): Promise<void> {
     const driver = this.registry.get(kind)
     const credentials = encrypted
@@ -54,6 +66,7 @@ export class ResourceLinkService {
       projectId: opts?.projectId ?? "",
       projectSlug,
       resourceLinkId: opts?.resourceLinkId ?? "",
+      serviceName: opts?.serviceName,
       credentials,
     })
   }

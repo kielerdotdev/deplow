@@ -1,7 +1,5 @@
 import { and, eq, inArray, lt, operations, deployments, db } from "@deplow/db"
 
-import { notifyOperatorWebhook } from "@/lib/core/operator-webhook"
-
 const STALE_RUNNING_MS = 2 * 60 * 60 * 1000
 
 export type OperationType =
@@ -147,8 +145,12 @@ export async function markOperationSucceeded(
       symptom: null,
       resultJson: result ? JSON.stringify(result) : null,
     })
-    .where(eq(operations.id, id))
-  void notifyOperatorWebhook(id)
+    .where(
+      and(
+        eq(operations.id, id),
+        inArray(operations.status, ["created", "queued", "running"]),
+      ),
+    )
 }
 
 export async function markOperationFailed(
@@ -174,8 +176,12 @@ export async function markOperationFailed(
       stage: error.stage ?? undefined,
       logsText: error.logs ?? undefined,
     })
-    .where(eq(operations.id, id))
-  void notifyOperatorWebhook(id)
+    .where(
+      and(
+        eq(operations.id, id),
+        inArray(operations.status, ["created", "queued", "running"]),
+      ),
+    )
 }
 
 /** Mark stale running ops as failed after process crash. */
@@ -185,12 +191,11 @@ export async function reclaimStaleOperations(): Promise<number> {
     .select({
       id: operations.id,
       serviceId: operations.serviceId,
-      inputJson: operations.inputJson,
     })
     .from(operations)
     .where(
       and(
-        inArray(operations.status, ["running", "queued"]),
+        inArray(operations.status, ["created", "running", "queued"]),
         lt(operations.updatedAt, cutoff),
       ),
     )
@@ -199,36 +204,31 @@ export async function reclaimStaleOperations(): Promise<number> {
       message: "Operation timed out or worker restarted",
       code: "stale_operation",
     })
-    const input = row.inputJson ? safeJson(row.inputJson) : null
-    const deploymentId =
-      input &&
-      typeof input === "object" &&
-      input !== null &&
-      "deploymentId" in input
-        ? String((input as { deploymentId?: unknown }).deploymentId ?? "")
-        : ""
-    if (deploymentId) {
-      await db
-        .update(deployments)
-        .set({
-          status: "failed",
-          errorMessage: "Operation timed out or worker restarted",
-          failedStage: "stale",
-        })
-        .where(
-          and(
-            eq(deployments.id, deploymentId),
-            inArray(deployments.status, [
-              "pending",
-              "queued",
-              "analyzing",
-              "building",
-              "deploying",
-              "checking",
-            ]),
-          ),
-        )
-    }
+    // Live k3s path links deployments via operationId (not input.deploymentId).
+    await db
+      .update(deployments)
+      .set({
+        status: "failed",
+        errorMessage: "Operation timed out or worker restarted",
+        failedStage: "stale",
+      })
+      .where(
+        and(
+          eq(deployments.operationId, row.id),
+          inArray(deployments.status, [
+            "pending",
+            "queued",
+            "analyzing",
+            "building",
+            "deploying",
+            "checking",
+          ]),
+        ),
+      )
   }
+  const { reconcileStuckServices } = await import(
+    "@/lib/service-lifecycle/reconcile"
+  )
+  await reconcileStuckServices()
   return stale.length
 }

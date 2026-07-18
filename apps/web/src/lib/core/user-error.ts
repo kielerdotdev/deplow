@@ -5,14 +5,19 @@
 
 const PATTERNS: Array<{ re: RegExp; message: string }> = [
   {
-    re: /gVisor runtime|runsc.*not installed|runtime "runsc"/i,
+    re: /gVisor RuntimeClass|RuntimeClass "gvisor"|handler runsc/i,
     message:
-      "gVisor (runsc) is not installed. Install runsc, then restart Docker. See README / docs/secure-runtime.md. Escape hatch: DEPLOW_APP_RUNTIME=runc.",
+      "gVisor is not available on the cluster. Install runsc on every k3s node (scripts/install-gvisor-k3s.sh) — see docs/secure-runtime.md. Escape hatch: DEPLOW_APP_RUNTIME=runc.",
   },
   {
-    re: /is not available on this host|runtime ".*?" is not available/i,
+    re: /gVisor runtime|runsc.*not installed|runtime "runsc"/i,
     message:
-      "Configured container runtime is missing. Install it or set DEPLOW_APP_RUNTIME=runc temporarily.",
+      "gVisor (runsc) is not installed. On k3s: scripts/install-gvisor-k3s.sh. Legacy Docker: install runsc and restart the daemon. See docs/secure-runtime.md. Escape hatch: DEPLOW_APP_RUNTIME=runc.",
+  },
+  {
+    re: /is not available on this host|runtime ".*?" is not available|RuntimeClass ".*?" is not available/i,
+    message:
+      "Configured container runtime is missing. Install it on cluster nodes or set DEPLOW_APP_RUNTIME=runc temporarily.",
   },
   {
     re: /docker build failed|railpack.*failed|build failed/i,
@@ -40,9 +45,9 @@ const PATTERNS: Array<{ re: RegExp; message: string }> = [
       "Connect a GitHub or GitLab repository under Settings · Source, then Deploy.",
   },
   {
-    re: /Only docker nodes are supported/i,
+    re: /No online agent nodes|Agent node is offline|Multiple agent nodes|No connected k3s cluster|Docker-agent deploy is retired|Legacy agent nodes/i,
     message:
-      "This release only deploys to the local Docker node. Multi-host is out of scope for v1.",
+      "Connect a k3s cluster under Settings → Cluster (paste kubeconfig or create on Hetzner), then retry. Apps do not run on Docker agents.",
   },
   {
     re: /deploy already in progress|another deploy is running/i,

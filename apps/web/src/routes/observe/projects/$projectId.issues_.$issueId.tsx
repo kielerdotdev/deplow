@@ -6,9 +6,11 @@ import {
   CorrelationLinks,
   EventInspector,
   InvestigationSummary,
+  IssueHero,
   ObserveProjectShell,
   VisualizationCanvas,
 } from "@/components/observe"
+import { parseExceptionFrames } from "@/components/observe/stack-frames"
 import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
 import {
@@ -18,6 +20,7 @@ import {
   serializeContext,
   serializeIssueSearch,
 } from "@/lib/observe/context"
+import { buildDebugPrompt } from "@/lib/observe/debug-prompt"
 import { client } from "@/lib/orpc"
 import { formatRelativeTime } from "@/lib/ui-format"
 
@@ -224,6 +227,31 @@ function IssueDetailPage() {
           <Button
             size="sm"
             variant="ghost"
+            onClick={() => {
+              const frames = activeEvent?.exception_json
+                ? parseExceptionFrames(activeEvent.exception_json)
+                : []
+              const top = frames[0]
+              const topFrame = top
+                ? `${top.filename ?? "?"}:${top.lineno ?? "?"} in ${top.function ?? "?"}`
+                : issue.culprit
+              void navigator.clipboard.writeText(
+                buildDebugPrompt({
+                  kind: "issue",
+                  title: issue.title,
+                  projectId,
+                  traceId,
+                  message: activeEvent?.message ?? issue.culprit ?? undefined,
+                  topFrame: topFrame ?? undefined,
+                }),
+              )
+            }}
+          >
+            Copy as prompt
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
             render={
               <Link
                 to="/observe/projects/$projectId/issues"
@@ -231,6 +259,7 @@ function IssueDetailPage() {
                 search={{
                   ...serializeContext(context),
                   status: "unresolved",
+                  inspect: undefined,
                 }}
               />
             }
@@ -240,6 +269,22 @@ function IssueDetailPage() {
         </div>
       }
     >
+      <IssueHero
+        className="mb-4"
+        title={issue.title}
+        message={issue.culprit}
+        level={issue.level}
+        topFrame={(() => {
+          const frames = activeEvent?.exception_json
+            ? parseExceptionFrames(activeEvent.exception_json)
+            : []
+          const top = frames[0]
+          return top
+            ? `${top.filename ?? "?"}:${top.lineno ?? "?"} in ${top.function ?? "?"}`
+            : null
+        })()}
+      />
+
       <InvestigationSummary
         evidence={{
           title: issue.title,

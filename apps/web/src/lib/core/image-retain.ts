@@ -1,10 +1,8 @@
 /**
- * Retain the N most recent successful deploy images per service; prune the rest.
+ * Deployment history helpers for rollback + keeping one "current" running row.
  */
 
-import { and, desc, eq, ne, db, deployments } from "@deplow/db"
-
-import type { DockerNodeExecutor } from "./docker-node-executor"
+import { and, eq, ne, db, deployments } from "@deplow/db"
 
 export function imageRetainCount(): number {
   const raw = process.env.DEPLOW_IMAGE_RETAIN
@@ -13,15 +11,10 @@ export function imageRetainCount(): number {
   return Number.isFinite(n) && n >= 1 ? Math.min(n, 50) : 5
 }
 
-/**
- * After a successful deploy: mark prior running rows as stopped, then prune
- * Docker images beyond the retain window.
- */
-export async function retainAndPruneDeployImages(input: {
+/** After a successful deploy: mark prior running rows as stopped. */
+export async function markPriorDeploymentsStopped(input: {
   serviceId: string
   currentDeploymentId: string
-  currentImage: string | null | undefined
-  docker: DockerNodeExecutor
 }): Promise<void> {
   await db
     .update(deployments)
@@ -33,40 +26,6 @@ export async function retainAndPruneDeployImages(input: {
         ne(deployments.id, input.currentDeploymentId),
       ),
     )
-
-  const keep = imageRetainCount()
-  const rows = await db
-    .select({
-      id: deployments.id,
-      image: deployments.image,
-      status: deployments.status,
-      createdAt: deployments.createdAt,
-    })
-    .from(deployments)
-    .where(eq(deployments.serviceId, input.serviceId))
-    .orderBy(desc(deployments.createdAt))
-
-  const retainImages = new Set<string>()
-  if (input.currentImage) retainImages.add(input.currentImage)
-
-  for (const row of rows) {
-    if (!row.image) continue
-    if (row.status !== "running" && row.status !== "stopped") continue
-    if (retainImages.size >= keep) break
-    retainImages.add(row.image)
-  }
-
-  const candidates = new Set<string>()
-  for (const row of rows) {
-    if (!row.image) continue
-    if (!row.image.startsWith("deplow/")) continue
-    if (retainImages.has(row.image)) continue
-    candidates.add(row.image)
-  }
-
-  for (const image of candidates) {
-    await input.docker.removeImage(image).catch(() => undefined)
-  }
 }
 
 /** Pick prior successful image for rollback (current secrets re-injected on redeploy). */
@@ -75,7 +34,7 @@ export function selectRollbackTarget(
     id: string
     image: string | null
     status: string
-    nodeId: string
+    nodeId: string | null
   }>,
   opts: {
     deploymentId?: string
@@ -83,8 +42,9 @@ export function selectRollbackTarget(
   },
 ): { id: string; image: string; nodeId: string } | null {
   const withImage = rows.filter(
-    (r): r is typeof r & { image: string } =>
+    (r): r is typeof r & { image: string; nodeId: string } =>
       Boolean(r.image) &&
+      Boolean(r.nodeId) &&
       (r.status === "running" || r.status === "stopped"),
   )
   if (opts.deploymentId) {
@@ -98,7 +58,6 @@ export function selectRollbackTarget(
   if (prior) {
     return { id: prior.id, image: prior.image, nodeId: prior.nodeId }
   }
-  // Fallback: second entry with an image (previous known-good)
   if (withImage.length >= 2) {
     const second = withImage[1]!
     return { id: second.id, image: second.image, nodeId: second.nodeId }

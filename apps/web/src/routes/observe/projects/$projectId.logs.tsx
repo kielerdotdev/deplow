@@ -13,8 +13,10 @@ import {
   ExplorerFacetPanel,
   ExplorerViewTabs,
   ObserveOnboarding,
+  ObservePageLayout,
   ObserveProjectShell,
   ResultTable,
+  ServiceDot,
   TrendsChart,
   VisualizationCanvas,
 } from "@/components/observe"
@@ -221,7 +223,7 @@ function LogsPage() {
         projectId={projectId}
         title={`Logs · ${project.name}`}
       >
-        <ObserveOnboarding projectId={projectId} />
+        <ObserveOnboarding projectId={projectId} surface="logs" />
       </ObserveProjectShell>
     )
   }
@@ -245,6 +247,7 @@ function LogsPage() {
         })
       }}
     >
+      <ObservePageLayout.Root>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <ExplorerViewTabs
           view={view}
@@ -263,6 +266,7 @@ function LogsPage() {
             })
           }
         />
+        <ObservePageLayout.FilterSidebarTrigger />
       </div>
       <p className="mb-3 text-sm text-muted-foreground">{summary}</p>
       <ExplorerExpressionInput
@@ -280,13 +284,15 @@ function LogsPage() {
         />
       ) : null}
 
-      <div className="flex flex-col gap-4 md:flex-row">
-        <ExplorerFacetPanel
-          projectId={projectId}
-          query={{ ...query, signal: "logs" }}
-          onChange={setQueryState}
-        />
-        <div className="min-w-0 flex-1 space-y-3">
+      <ObservePageLayout.Body>
+        <ObservePageLayout.FilterSidebar>
+          <ExplorerFacetPanel
+            projectId={projectId}
+            query={{ ...query, signal: "logs" }}
+            onChange={setQueryState}
+          />
+        </ObservePageLayout.FilterSidebar>
+        <ObservePageLayout.Content>
           {!showAgg ? (
             <>
               <ChartFrame
@@ -351,7 +357,15 @@ function LogsPage() {
                     id: "svc",
                     header: "Service",
                     className: "w-32",
-                    cell: (r) => r.service || "—",
+                    cell: (r) =>
+                      r.service ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <ServiceDot serviceName={r.service} />
+                          {r.service}
+                        </span>
+                      ) : (
+                        "—"
+                      ),
                   },
                   {
                     id: "body",
@@ -397,8 +411,9 @@ function LogsPage() {
             projectId={projectId}
             query={{ ...query, signal: "logs" }}
           />
-        </div>
-      </div>
+        </ObservePageLayout.Content>
+      </ObservePageLayout.Body>
+      </ObservePageLayout.Root>
 
       <DetailDrawer
         open={!!selected}

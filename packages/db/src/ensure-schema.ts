@@ -264,8 +264,26 @@ const INGRESS_CREATE_STATEMENTS = [
     base_domain text DEFAULT '' NOT NULL,
     public_protocol text DEFAULT 'https' NOT NULL,
     auto_domains_enabled integer DEFAULT 1 NOT NULL,
+    edge_mode text DEFAULT 'local' NOT NULL,
+    netbird_management_url text DEFAULT 'https://api.netbird.io',
+    netbird_pat_encrypted text,
+    netbird_setup_key_id text,
+    netbird_peer_id text,
+    netbird_peer_name text,
+    netbird_domain_mode text DEFAULT 'managed',
+    netbird_status text DEFAULT 'disconnected' NOT NULL,
+    netbird_status_message text,
     updated_at integer NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS netbird_services (
+    id text PRIMARY KEY NOT NULL,
+    hostname text NOT NULL,
+    service_id text,
+    netbird_service_id text NOT NULL,
+    created_at integer NOT NULL,
+    updated_at integer NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS netbird_services_hostname_idx ON netbird_services (hostname)`,
   `CREATE TABLE IF NOT EXISTS service_hostnames (
     id text PRIMARY KEY NOT NULL,
     service_id text NOT NULL,
@@ -280,15 +298,6 @@ const INGRESS_CREATE_STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS service_hostnames_hostname_idx ON service_hostnames (hostname)`,
   `CREATE INDEX IF NOT EXISTS service_hostnames_service_idx ON service_hostnames (service_id)`,
-  `CREATE TABLE IF NOT EXISTS platform_operator_webhook (
-    id text PRIMARY KEY NOT NULL DEFAULT 'default',
-    enabled integer DEFAULT 0 NOT NULL,
-    url text DEFAULT '' NOT NULL,
-    secret_encrypted text,
-    on_failure integer DEFAULT 1 NOT NULL,
-    on_success integer DEFAULT 0 NOT NULL,
-    updated_at integer NOT NULL
-  )`,
 ]
 
 function tableColumns(sqlite: Database.Database, table: string): Set<string> {
@@ -320,11 +329,70 @@ export function ensureGitOAuthSchema(sqlite: Database.Database): void {
  * Safe to call multiple times. Call after services table exists.
  */
 export function ensureIngressSchema(sqlite: Database.Database): void {
+  try {
+    sqlite.exec(`DROP TABLE IF EXISTS platform_operator_webhook`)
+  } catch {
+    // ignore
+  }
   for (const sql of INGRESS_CREATE_STATEMENTS) {
     try {
       sqlite.exec(sql)
     } catch {
       // ignore if race
+    }
+  }
+  const cols = tableColumns(sqlite, "platform_ingress")
+  if (cols.size > 0 && !cols.has("edge_mode")) {
+    try {
+      sqlite.exec(
+        `ALTER TABLE platform_ingress ADD COLUMN edge_mode text NOT NULL DEFAULT 'local'`,
+      )
+    } catch {
+      // ignore
+    }
+  }
+  const netbirdCols: Array<{ name: string; sql: string }> = [
+    {
+      name: "netbird_management_url",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_management_url text DEFAULT 'https://api.netbird.io'",
+    },
+    {
+      name: "netbird_pat_encrypted",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_pat_encrypted text",
+    },
+    {
+      name: "netbird_setup_key_id",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_setup_key_id text",
+    },
+    {
+      name: "netbird_peer_id",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_peer_id text",
+    },
+    {
+      name: "netbird_peer_name",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_peer_name text",
+    },
+    {
+      name: "netbird_domain_mode",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_domain_mode text DEFAULT 'managed'",
+    },
+    {
+      name: "netbird_status",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_status text NOT NULL DEFAULT 'disconnected'",
+    },
+    {
+      name: "netbird_status_message",
+      sql: "ALTER TABLE platform_ingress ADD COLUMN netbird_status_message text",
+    },
+  ]
+  const ingressCols = tableColumns(sqlite, "platform_ingress")
+  for (const col of netbirdCols) {
+    if (ingressCols.size > 0 && !ingressCols.has(col.name)) {
+      try {
+        sqlite.exec(col.sql)
+      } catch {
+        // ignore
+      }
     }
   }
 }
@@ -675,6 +743,62 @@ export function ensureServicesSchema(sqlite: Database.Database): void {
   ensureMcpTokensSchema(sqlite)
   ensureOrganizationsSchema(sqlite)
   ensureAgentNodesSchema(sqlite)
+  ensureClustersSchema(sqlite)
+  ensureContainerRegistriesSchema(sqlite)
+}
+
+const CLUSTERS_CREATE = `CREATE TABLE IF NOT EXISTS clusters (
+  id text PRIMARY KEY NOT NULL DEFAULT 'default',
+  name text DEFAULT 'default' NOT NULL,
+  status text DEFAULT 'disconnected' NOT NULL,
+  source text,
+  server_url text,
+  external_ip text,
+  kubeconfig_encrypted text,
+  node_token_encrypted text,
+  error_message text,
+  bootstrap_token_hash text,
+  bootstrap_token_expires_at integer,
+  spawned_server_id text,
+  created_at integer NOT NULL,
+  updated_at integer NOT NULL
+)`
+
+/** Ensure clusters table for k3s connection. Safe to call multiple times. */
+export function ensureClustersSchema(sqlite: Database.Database): void {
+  try {
+    sqlite.exec(CLUSTERS_CREATE)
+  } catch {
+    // ignore
+  }
+}
+
+const CONTAINER_REGISTRIES_CREATE = `CREATE TABLE IF NOT EXISTS container_registries (
+  id text PRIMARY KEY NOT NULL,
+  name text NOT NULL,
+  kind text NOT NULL,
+  server text NOT NULL,
+  image_prefix text NOT NULL,
+  username text,
+  password_encrypted text,
+  is_default_build integer DEFAULT 0 NOT NULL,
+  enabled integer DEFAULT 1 NOT NULL,
+  created_at integer NOT NULL,
+  updated_at integer NOT NULL
+)`
+
+/** Ensure container_registries for build push + imagePullSecrets. */
+export function ensureContainerRegistriesSchema(
+  sqlite: Database.Database,
+): void {
+  try {
+    sqlite.exec(CONTAINER_REGISTRIES_CREATE)
+    sqlite.exec(
+      `CREATE INDEX IF NOT EXISTS container_registries_default_idx ON container_registries (is_default_build)`,
+    )
+  } catch {
+    // ignore
+  }
 }
 
 const AGENT_NODES_COLUMNS: Array<{ name: string; sql: string }> = [
@@ -693,6 +817,30 @@ const AGENT_NODES_COLUMNS: Array<{ name: string; sql: string }> = [
   {
     name: "capabilities_json",
     sql: "ALTER TABLE nodes ADD COLUMN capabilities_json text",
+  },
+  {
+    name: "mesh_provider",
+    sql: "ALTER TABLE nodes ADD COLUMN mesh_provider text",
+  },
+  {
+    name: "mesh_status",
+    sql: "ALTER TABLE nodes ADD COLUMN mesh_status text",
+  },
+  {
+    name: "mesh_ip",
+    sql: "ALTER TABLE nodes ADD COLUMN mesh_ip text",
+  },
+  {
+    name: "mesh_hostname",
+    sql: "ALTER TABLE nodes ADD COLUMN mesh_hostname text",
+  },
+  {
+    name: "edge_mode",
+    sql: "ALTER TABLE nodes ADD COLUMN edge_mode text",
+  },
+  {
+    name: "local_proxy_ready",
+    sql: "ALTER TABLE nodes ADD COLUMN local_proxy_ready integer NOT NULL DEFAULT 0",
   },
 ]
 
@@ -744,6 +892,11 @@ export function ensureAgentNodesSchema(sqlite: Database.Database): void {
           // ignore
         }
       }
+    }
+    try {
+      sqlite.exec(`UPDATE nodes SET provider = 'agent' WHERE provider != 'agent'`)
+    } catch {
+      // ignore
     }
   }
   for (const sql of AGENT_NODES_CREATE_STATEMENTS) {

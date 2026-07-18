@@ -24,10 +24,18 @@ import {
 import { PROJECT_ENV_SECRET_MASK } from "@/lib/core/project-secrets.service"
 import { client } from "@/lib/orpc"
 
-type EnvEntry = { key: string; value: string }
+type EnvEntry = { id: string; key: string; value: string }
+
+function rowId() {
+  return crypto.randomUUID()
+}
 
 function emptyRow(): EnvEntry {
-  return { key: "", value: "" }
+  return { id: rowId(), key: "", value: "" }
+}
+
+function toRows(entries: Array<{ key: string; value: string }>): EnvEntry[] {
+  return entries.map((e) => ({ id: rowId(), key: e.key, value: e.value }))
 }
 
 export function ProjectSecretsPanel({ projectId }: { projectId: string }) {
@@ -65,7 +73,9 @@ export function ProjectSecretsPanel({ projectId }: { projectId: string }) {
         id: projectId,
         reveal,
       })
-      setEntries(result.entries.length > 0 ? result.entries : [emptyRow()])
+      setEntries(
+        result.entries.length > 0 ? toRows(result.entries) : [emptyRow()],
+      )
       setEnvMasked(result.masked)
       setRevealedKeys(new Set())
       setDirty(false)
@@ -137,7 +147,9 @@ export function ProjectSecretsPanel({ projectId }: { projectId: string }) {
         id: projectId,
         entries: payload,
       })
-      setEntries(result.entries.length > 0 ? result.entries : [emptyRow()])
+      setEntries(
+        result.entries.length > 0 ? toRows(result.entries) : [emptyRow()],
+      )
       setEnvMasked(false)
       setRevealedKeys(new Set(result.entries.map((e) => e.key)))
       setDirty(false)
@@ -228,7 +240,7 @@ export function ProjectSecretsPanel({ projectId }: { projectId: string }) {
                     (envMasked || entry.value === PROJECT_ENV_SECRET_MASK)
 
                   return (
-                    <TableRow key={`${index}-${entry.key || "new"}`}>
+                    <TableRow key={entry.id}>
                       <TableCell className="align-top">
                         <Input
                           value={entry.key}

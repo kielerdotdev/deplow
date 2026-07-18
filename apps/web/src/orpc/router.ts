@@ -1,16 +1,18 @@
 import { os } from "@orpc/server"
 
 import * as bindings from "./bindings"
+import * as cluster from "./cluster"
 import * as deployments from "./deployments"
 import * as git from "./git"
 import * as mcp from "./mcp"
-import * as nodes from "./nodes"
 import * as observe from "./observe"
 import * as observeQuery from "./observe-query"
 import * as operations from "./operations"
 import * as organizations from "./organizations"
+import * as edge from "./edge"
 import * as platform from "./platform"
 import * as projects from "./projects"
+import * as registries from "./registries"
 import * as services from "./services"
 import * as resourceLinks from "./resource-links"
 
@@ -39,16 +41,39 @@ export const router = {
   },
   platform: {
     proxyStatus: platform.proxyStatus,
+    meshOnboarding: platform.meshOnboarding,
     ingressGet: platform.ingressGet,
     ingressUpdate: platform.ingressUpdate,
-    operatorWebhookGet: platform.operatorWebhookGet,
-    operatorWebhookUpdate: platform.operatorWebhookUpdate,
+  },
+  edge: {
+    netbirdStatus: edge.netbirdStatus,
+    netbirdListManagedDomains: edge.netbirdListManagedDomains,
+    netbirdConnect: edge.netbirdConnect,
+    netbirdDisconnect: edge.netbirdDisconnect,
+  },
+  cluster: {
+    get: cluster.get,
+    connect: cluster.connect,
+    disconnect: cluster.disconnect,
+    createHetzner: cluster.createHetzner,
+    addNode: cluster.addNode,
+    removeNode: cluster.removeNode,
+    getKubeconfig: cluster.getKubeconfig,
+    getWorkerJoinScript: cluster.getWorkerJoinScript,
+    storeJoinToken: cluster.storeJoinToken,
+  },
+  registries: {
+    list: registries.list,
+    create: registries.create,
+    update: registries.update,
+    delete: registries.remove,
+    setDefaultBuild: registries.setDefaultBuild,
+    syncToCluster: registries.syncToCluster,
   },
   projects: {
     list: projects.list,
     get: projects.get,
     create: projects.create,
-    setNode: projects.setNode,
     destroy: projects.destroy,
     secrets: projects.secrets,
     envSecrets: projects.envSecrets,
@@ -110,16 +135,6 @@ export const router = {
     removeGitHubApp: git.removeGitHubApp,
     saveGitLabOAuth: git.saveGitLabOAuth,
     removeGitLabOAuth: git.removeGitLabOAuth,
-  },
-  nodes: {
-    list: nodes.list,
-    register: nodes.register,
-    remove: nodes.remove,
-    status: nodes.status,
-    ensureLocal: nodes.ensureLocal,
-    createJoinToken: nodes.createJoinToken,
-    listJoinTokens: nodes.listJoinTokens,
-    revokeJoinToken: nodes.revokeJoinToken,
   },
   deployments: {
     list: deployments.list,

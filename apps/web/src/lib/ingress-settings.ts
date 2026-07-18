@@ -4,18 +4,36 @@
  */
 
 import { eq, db, platformIngress } from "@deplow/db"
-import type { IngressSettings } from "@deplow/shared"
+import type { IngressSettings, PlatformEdgeMode } from "@deplow/shared"
 
 import { env } from "@/lib/env"
 
 export const PLATFORM_INGRESS_ID = "default"
 
+function normalizeEdgeMode(raw: unknown): PlatformEdgeMode {
+  if (raw === "mesh") return "netbird"
+  if (
+    raw === "cloudflare" ||
+    raw === "netbird" ||
+    raw === "tailscale" ||
+    raw === "local"
+  ) {
+    return raw
+  }
+  return "local"
+}
+
 function settingsFromEnv(): IngressSettings {
   const baseDomain = env.baseDomain
+  const isLocalhost =
+    baseDomain === "localhost" ||
+    baseDomain.endsWith(".localhost") ||
+    baseDomain.length === 0
   return {
     baseDomain,
     publicProtocol: env.publicUrlProtocol,
     autoDomainsEnabled: baseDomain.length > 0,
+    edgeMode: isLocalhost ? "local" : "cloudflare",
   }
 }
 
@@ -23,6 +41,7 @@ function rowToSettings(row: {
   baseDomain: string
   publicProtocol: string
   autoDomainsEnabled: boolean
+  edgeMode?: string | null
 }): IngressSettings {
   const protocol =
     row.publicProtocol === "http" || row.publicProtocol === "https"
@@ -32,6 +51,7 @@ function rowToSettings(row: {
     baseDomain: (row.baseDomain ?? "").trim(),
     publicProtocol: protocol,
     autoDomainsEnabled: Boolean(row.autoDomainsEnabled),
+    edgeMode: normalizeEdgeMode(row.edgeMode),
   }
 }
 
@@ -54,8 +74,18 @@ export async function loadIngressSettings(): Promise<IngressSettings> {
     baseDomain: seeded.baseDomain,
     publicProtocol: seeded.publicProtocol,
     autoDomainsEnabled: seeded.autoDomainsEnabled,
+    edgeMode: seeded.edgeMode,
   })
   return seeded
+}
+
+export function isLocalhostBaseDomain(baseDomain: string): boolean {
+  const d = baseDomain.trim().toLowerCase()
+  return (
+    d === "localhost" ||
+    d.endsWith(".localhost") ||
+    d === "apps.localhost"
+  )
 }
 
 export async function saveIngressSettings(
@@ -65,6 +95,7 @@ export async function saveIngressSettings(
     baseDomain: (input.baseDomain ?? "").trim(),
     publicProtocol: input.publicProtocol,
     autoDomainsEnabled: input.autoDomainsEnabled,
+    edgeMode: normalizeEdgeMode(input.edgeMode),
   }
 
   const [existing] = await db
@@ -79,6 +110,7 @@ export async function saveIngressSettings(
         baseDomain: settings.baseDomain,
         publicProtocol: settings.publicProtocol,
         autoDomainsEnabled: settings.autoDomainsEnabled,
+        edgeMode: settings.edgeMode,
       })
       .where(eq(platformIngress.id, PLATFORM_INGRESS_ID))
   } else {
@@ -87,6 +119,7 @@ export async function saveIngressSettings(
       baseDomain: settings.baseDomain,
       publicProtocol: settings.publicProtocol,
       autoDomainsEnabled: settings.autoDomainsEnabled,
+      edgeMode: settings.edgeMode,
     })
   }
 

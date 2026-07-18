@@ -380,24 +380,36 @@ export const nodes = sqliteTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull().unique(),
+    /** Always "agent". Future cloud providers spawn agents; they are not node kinds. */
     provider: text("provider", {
-      enum: ["docker", "ssh", "hetzner", "agent"],
+      enum: ["agent"],
     })
       .notNull()
-      .default("docker"),
-    /** Host for SSH, or "local" for docker socket, or agent advertise hint */
+      .default("agent"),
+    /** Advertise hint / display host */
     host: text("host").notNull(),
-    port: integer("port").notNull().default(22),
+    port: integer("port").notNull().default(0),
     username: text("username"),
-    /** AES-GCM encrypted private key or empty for local docker */
+    /** @deprecated legacy SSH column — unused (agents only) */
     sshKeyEncrypted: text("ssh_key_encrypted"),
-    /** sha256 of long-lived agent node token (provider=agent) */
+    /** sha256 of long-lived agent node token */
     agentTokenHash: text("agent_token_hash"),
     /** Host the control plane should proxy to (public IP / DNS) */
     advertiseHost: text("advertise_host"),
     agentVersion: text("agent_version"),
     capabilitiesJson: text("capabilities_json"),
     labelsJson: text("labels_json"),
+    /** netbird | tailscale — required for remote agent app ingress */
+    meshProvider: text("mesh_provider"),
+    /** missing | logged_out | ready */
+    meshStatus: text("mesh_status"),
+    meshIp: text("mesh_ip"),
+    meshHostname: text("mesh_hostname"),
+    /** netbird_rp | tailscale_serve */
+    edgeMode: text("edge_mode"),
+    localProxyReady: integer("local_proxy_ready", { mode: "boolean" })
+      .notNull()
+      .default(false),
     status: text("status", {
       enum: ["online", "offline", "unknown"],
     })
@@ -489,9 +501,10 @@ export const deployments = sqliteTable(
     projectId: text("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    nodeId: text("node_id")
-      .notNull()
-      .references(() => nodes.id, { onDelete: "cascade" }),
+    /** Legacy agent pin; null for k3s-cluster deploys */
+    nodeId: text("node_id").references(() => nodes.id, {
+      onDelete: "set null",
+    }),
     /** Linked operation row for queue tracking */
     operationId: text("operation_id").references(() => operations.id, {
       onDelete: "set null",
@@ -683,9 +696,87 @@ export const platformIntegrations = sqliteTable("platform_integrations", {
 })
 
 /**
+ * Container registries for build push + k8s imagePullSecrets.
+ * Managed in Settings → Registries (instance admin).
+ */
+export const containerRegistries = sqliteTable(
+  "container_registries",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    kind: text("kind", {
+      enum: ["ghcr", "dockerhub", "gitlab", "generic"],
+    }).notNull(),
+    /** Registry host for docker login / dockerconfigjson (e.g. ghcr.io). */
+    server: text("server").notNull(),
+    /** Image prefix for pushes, e.g. ghcr.io/org/hostrig */
+    imagePrefix: text("image_prefix").notNull(),
+    username: text("username"),
+    /** AES-GCM encrypted password/token; null if anonymous/public. */
+    passwordEncrypted: text("password_encrypted"),
+    /** Default target for git → build → push. At most one should be true. */
+    isDefaultBuild: integer("is_default_build", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("container_registries_default_idx").on(t.isDefaultBuild)],
+)
+
+/**
  * Singleton platform ingress settings (app-managed; env seeds once).
  * id is always "default".
  */
+/**
+ * Singleton k3s/Kubernetes cluster connection for this Hostrig instance.
+ * id is always "default".
+ */
+export const clusters = sqliteTable("clusters", {
+  id: text("id").primaryKey().default("default"),
+  name: text("name").notNull().default("default"),
+  status: text("status", {
+    enum: [
+      "disconnected",
+      "connecting",
+      "connected",
+      "provisioning",
+      "error",
+    ],
+  })
+    .notNull()
+    .default("disconnected"),
+  source: text("source", {
+    enum: ["byo", "hetzner", "hetzner_k3s"],
+  }),
+  serverUrl: text("server_url"),
+  externalIp: text("external_ip"),
+  /** AES-GCM encrypted kubeconfig YAML */
+  kubeconfigEncrypted: text("kubeconfig_encrypted"),
+  /** AES-GCM encrypted k3s node join token */
+  nodeTokenEncrypted: text("node_token_encrypted"),
+  errorMessage: text("error_message"),
+  /** One-time bootstrap token hash for cloud-init callback */
+  bootstrapTokenHash: text("bootstrap_token_hash"),
+  bootstrapTokenExpiresAt: integer("bootstrap_token_expires_at", {
+    mode: "timestamp_ms",
+  }),
+  spawnedServerId: text("spawned_server_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
 export const platformIngress = sqliteTable("platform_ingress", {
   id: text("id").primaryKey().default("default"),
   /** e.g. apps.example.com — empty disables auto public URLs */
@@ -699,30 +790,54 @@ export const platformIngress = sqliteTable("platform_ingress", {
   autoDomainsEnabled: integer("auto_domains_enabled", { mode: "boolean" })
     .notNull()
     .default(true),
+  /** cloudflare | netbird | tailscale | local — edge in front of Traefik */
+  edgeMode: text("edge_mode", {
+    enum: ["cloudflare", "netbird", "tailscale", "local", "mesh"],
+  })
+    .notNull()
+    .default("local"),
+  /** NetBird Management API base (cloud or self-hosted) */
+  netbirdManagementUrl: text("netbird_management_url").default(
+    "https://api.netbird.io",
+  ),
+  /** AES-GCM encrypted Personal Access Token */
+  netbirdPatEncrypted: text("netbird_pat_encrypted"),
+  netbirdSetupKeyId: text("netbird_setup_key_id"),
+  netbirdPeerId: text("netbird_peer_id"),
+  netbirdPeerName: text("netbird_peer_name"),
+  netbirdDomainMode: text("netbird_domain_mode", {
+    enum: ["managed", "custom"],
+  }).default("managed"),
+  netbirdStatus: text("netbird_status", {
+    enum: ["disconnected", "connecting", "connected", "error"],
+  })
+    .notNull()
+    .default("disconnected"),
+  netbirdStatusMessage: text("netbird_status_message"),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())
     .notNull(),
 })
 
-/**
- * Singleton operator HTTPS notify webhook (GTM thin carve-out).
- * id is always "default".
- */
-export const platformOperatorWebhook = sqliteTable("platform_operator_webhook", {
-  id: text("id").primaryKey().default("default"),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
-  url: text("url").notNull().default(""),
-  secretEncrypted: text("secret_encrypted"),
-  onFailure: integer("on_failure", { mode: "boolean" }).notNull().default(true),
-  onSuccess: integer("on_success", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date())
-    .notNull(),
-})
+/** Maps Hostrig hostnames → NetBird reverse-proxy service IDs */
+export const netbirdServices = sqliteTable(
+  "netbird_services",
+  {
+    id: text("id").primaryKey(),
+    hostname: text("hostname").notNull(),
+    serviceId: text("service_id"),
+    netbirdServiceId: text("netbird_service_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [uniqueIndex("netbird_services_hostname_idx").on(t.hostname)],
+)
 
 /**
  * Hostnames attached to a service for Caddy Host routing.

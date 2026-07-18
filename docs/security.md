@@ -12,72 +12,72 @@ security  >  easy install  >  decent performance
 
 Escape hatches (e.g. `DEPLOW_APP_RUNTIME=runc`) exist for broken images. They are temporary and must log warnings. Defaults stay secure.
 
-## Threat model (v1, single host)
+## Threat model (v1, k3s)
 
-Hostrig runs **untrusted user application containers** on the same Docker host as the control plane and shared data plane (Postgres, Redis, MinIO).
+Hostrig runs **untrusted user application pods** on the same k3s cluster as project data services (Postgres, Redis) and cluster ingress (Traefik). The control plane typically runs outside the cluster.
 
 We assume:
 
-- The host operator trusts the control plane and platform compose services
+- The host/cluster operator trusts the control plane and platform/system workloads
 - User app images and source are **not** fully trusted
-- A compromised user app must not easily become host root, steal `docker.sock`, or freely attack sibling containers beyond what network policy allows
+- A compromised user app must not easily become node root, reach the kubelet credentials, or freely attack sibling **projects** beyond what NetworkPolicy allows
 
-We do **not** yet claim: multi-tenant hostile SaaS isolation, formal certification, or microVM-level guarantees. Soft organizations share the host trust boundary (control-plane membership + per-project containers). gVisor is the chosen userspace sandbox for v1.
+We do **not** claim: multi-tenant hostile SaaS isolation, formal certification, MicroVM-level (Kata/Firecracker) guarantees, or Dirty Pipe / host-kernel immortality. Soft organizations share the cluster trust boundary. **gVisor RuntimeClass** is the chosen userspace sandbox for v1 user apps — say that out loud; never sell “completely secure.”
 
 ## Non-negotiable defaults
 
-| Rule                                       | Detail                                                                                                     |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| **User apps → gVisor (`runsc`)**           | Default OCI runtime for deployed user containers                                                           |
-| **Platform → runc**                        | Postgres, Redis, MinIO, control plane stay on default runc                                                 |
-| **Builds → runc**                          | Railpack / BuildKit / `docker build` are not forced under gVisor                                           |
-| **No Docker socket in user apps**          | Never mount `/var/run/docker.sock` into project containers                                                 |
-| **No host network for user apps**          | Join the platform network for DNS; no `NetworkMode: host`                                                  |
-| **Hardened HostConfig**                    | CapDrop ALL, no-new-privileges, readonly rootfs (+ `/tmp` tmpfs), memory/CPU limits                        |
-| **Secrets encrypted at rest**              | Project credentials via AES-GCM (`DEPLOW_SECRETS_KEY` / auth secret)                                       |
-| **userns-remap recommended**               | Container root ≠ host root when configured on the daemon                                                   |
-| **Data plane not public by default**       | Postgres / Redis are for the app + private operator access — not internet listeners as a product feature   |
-| **Proxy is platform; apps stay sandboxed** | Local reverse proxy is trusted platform infra; user apps remain gVisor-isolated — [access.md](./access.md) |
+| Rule | Detail |
+| --- | --- |
+| **User apps → gVisor (`runtimeClassName: gvisor`)** | Default when `DEPLOW_APP_RUNTIME=runsc` |
+| **Platform / data → default runtime** | Postgres, Redis, Traefik stay on runc/containerd |
+| **Builds → runc** | Railpack / BuildKit / `docker build` are not forced under gVisor |
+| **No Docker socket in user apps** | Never mount docker.sock (or host paths) into project pods |
+| **No host network for user apps** | Cluster networking only |
+| **Hardened pod/container securityContext** | Non-root, drop ALL caps, no privilege escalation, RuntimeDefault seccomp, RO rootfs (+ `/tmp` emptyDir), memory/CPU limits |
+| **NetworkPolicy per project namespace** | Default-deny east-west across projects; Traefik + same-ns + DNS allowed |
+| **Secrets encrypted at rest** | Project credentials via AES-GCM (`DEPLOW_SECRETS_KEY` / auth secret) |
+| **Data plane not public by default** | Postgres / Redis are for the app + private operator access — not internet listeners as a product feature |
+| **Proxy is platform; apps stay sandboxed** | Traefik / edge is trusted platform infra; user apps remain gVisor-isolated — [access.md](./access.md) |
 
-Full HostConfig and install steps: [secure-runtime.md](./secure-runtime.md).
+Full RuntimeClass and install steps: [secure-runtime.md](./secure-runtime.md).
 
 ## What marketing and user docs must say
 
 **Allowed / required framing:**
 
-- Self-hosted on your Docker host, with **sandboxed user apps** (gVisor by default)
-- Dedicated Postgres / Redis containers per project; shared MinIO with per-project buckets
+- Self-hosted on **k3s**, with **sandboxed user apps** (gVisor by default)
+- Dedicated Postgres / Redis per project namespace; shared MinIO with per-project buckets
 - Encrypted secrets and injected env — no secrets left as plain DB columns in the happy path
 - Security over convenience when those conflict
-- **Wildcard base domain + Hostrig proxy**; **v1 edge = cloudflared** (other edges later)
+- **Wildcard base domain + Traefik**; edge TLS via Cloudflare / Netbird / Tailscale
 
 **Disallowed framing:**
 
-- Implying Hostrig is “just Docker run” with no sandbox story
-- Advertising rootless Docker, Kata, or Firecracker as the default (out of scope)
+- “Secure by default” without naming gVisor and the operator trust boundary
+- Implying Hostrig is “just plain pods” or still a Docker-host + Caddy product
+- Advertising Kata or Firecracker as ours (unsupported)
 - Softening “gVisor required by default” into optional trivia buried in an appendix
-- Claiming multi-tenant cloud-grade isolation we do not provide
+- Claiming multi-tenant cloud-grade, MicroVM, or unbreakable isolation
 - Implying Postgres/Redis are published through the app proxy
 
-The landing page can stay human and short. It must not contradict this file. Prefer one honest line (e.g. user apps run under gVisor) over silence.
+The landing page can stay human and short. It must not contradict this file. Prefer one honest line (e.g. user apps run under gVisor on k3s) over silence.
 
 ## Operator responsibilities
 
-Hostrig hardens the **app runtime** and owns **hostname → container** proxy routing. The operator still must:
+Hostrig hardens the **app runtime** and owns **hostname → Service** ingress routing. The operator still must:
 
-- Keep Docker Engine and the host patched
-- Install gVisor (`runsc`) and prefer `userns-remap`
-- Protect `docker.sock` (only the control plane may use it)
+- Keep k3s nodes and the host patched
+- Install gVisor (`runsc`) on every node (`scripts/install-gvisor-k3s.sh` or managed cloud-init)
+- Protect kubeconfig and the control plane
 - Choose strong `BETTER_AUTH_SECRET` / `DEPLOW_SECRETS_KEY`
-- Treat the host as the trust boundary
-- Configure DNS wildcard + **cloudflared** (v1) once; keep Postgres/Redis off the public internet
+- Treat the **cluster nodes** as the trust boundary
+- Configure DNS wildcard + edge TLS; keep Postgres/Redis off the public internet
 
 ## Out of scope (security work we are not doing in v1)
 
-- Rootless Docker / Podman as default
-- Kata, Firecracker, Sysbox
+- Kata, Firecracker, Sysbox as default
 - Sandboxing Postgres/Redis/MinIO under gVisor
 - Running builds under gVisor
-- Host network / gVisor netstack passthrough as default
+- Hostile multi-tenant SaaS guarantees
 
 When blocked on an image that cannot run under gVisor, document the runc escape hatch — do not weaken global defaults.

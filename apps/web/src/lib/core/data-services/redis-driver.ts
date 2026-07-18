@@ -19,6 +19,7 @@ import type {
 export class RedisContainerDriver implements DataServiceDriver {
   readonly kind = "redis" as const
   readonly source = "dedicated-container" as const
+  readonly defaultEnvKey = "REDIS_URL"
   readonly capabilities = {
     backup: true,
     pitr: false,

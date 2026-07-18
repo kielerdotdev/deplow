@@ -1,0 +1,92 @@
+{
+  "name": "Hostrig",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "HETZNER_K3S_VERSION": "v2.6.0"
+    }
+  },
+  // Same path as host so docker-outside-of-docker compose bind mounts resolve.
+  "workspaceFolder": "${localWorkspaceFolder}",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind,consistency=cached",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "kubectl": "1.32",
+      "helm": "latest",
+      "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "configureZshAsDefaultShell": false,
+      "installOhMyZsh": false,
+      "upgradePackages": false
+    }
+  },
+
+  // Host network: web on :9565 stays reachable by waitforit/Netbird on the VM.
+  // Host daemon has no-new-privileges=true, so docker-outside-of-docker's sudo
+  // socat proxy cannot run — join the host docker socket GID instead.
+  // Export DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) before `devcontainer up`.
+  "runArgs": [
+    "--network=host",
+    "--group-add=${localEnv:DOCKER_GID}"
+  ],
+  "initializeCommand": "bash .devcontainer/initialize.sh",
+  "privileged": true,
+
+  "forwardPorts": [9565, 8088, 56380, 8123, 3010],
+  "portsAttributes": {
+    "9565": {
+      "label": "Hostrig web",
+      "onAutoForward": "openBrowser"
+    },
+    "8088": { "label": "Caddy host origin" },
+    "56380": { "label": "Platform Redis" },
+    "8123": { "label": "ClickHouse (observe)" },
+    "3010": { "label": "OTel ingest" }
+  },
+
+  "containerEnv": {
+    "PNPM_HOME": "/home/node/.local/share/pnpm",
+    "BUILDKIT_HOST": "docker-container://buildkit",
+    "RAILPACK_BIN": "/usr/local/bin/railpack"
+  },
+
+  "remoteEnv": {
+    "PATH": "${containerEnv:PNPM_HOME}:/home/node/.local/bin:/usr/local/bin:${containerEnv:PATH}"
+  },
+
+  "onCreateCommand": "bash .devcontainer/on-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "waitFor": "postStartCommand",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "ms-kubernetes-tools.vscode-kubernetes-tools"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "typescript.tsdk": "node_modules/typescript/lib"
+      }
+    }
+  },
+
+  "remoteUser": "node",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  }
+}

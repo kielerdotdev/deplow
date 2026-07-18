@@ -4,34 +4,32 @@ Canonical product shape. **What to build when:** [sequencing.md](./sequencing.md
 
 ## One-line
 
-**Opinionated self-hosted project runtime:** one project = multiple typed services (web, worker, postgres, redis), explicit bindings, Railpack/Dockerfile builds on local Docker under gVisor, Domains-managed HTTPS URLs, durable BullMQ operations, scheduled backups, and per-service git push-to-deploy. Launch bar is that loop — not Coolify feature sprawl.
+**Opinionated self-hosted PaaS on k3s:** one project = typed services (web, worker, postgres, redis) as Kubernetes workloads, Domains-managed Ingress URLs, stupidly easy cluster connect / Hetzner node add, and per-service git push-to-deploy. Launch bar is that loop — not Coolify-on-Docker.
 
 ## Happy path (v1)
 
 ```text
-create empty project (pinned to local node)
+connect or create k3s cluster (Settings → Cluster)
+  → create empty project
   → add web/worker services (persist first, deploy async)
-  → add postgres/redis services on demand (async provision)
+  → add postgres/redis on demand (StatefulSet / Deployment in project namespace)
   → bind apps to data services (DATABASE_URL / REDIS_URL)
-  → deploy each app service (manual, image/Dockerfile/Railpack, or git webhook)
-  → route primary web to {slug}.{baseDomain}; additional web services by name
-  → edge: cloudflared serves *.baseDomain
-  → scheduled Postgres backups → platform S3 (lazy bucket)
+  → deploy image (Whoami) → Traefik Ingress {slug}.{baseDomain}
+  → add Hetzner or self-hosted k3s workers to grow capacity (no autoscaling)
 ```
 
 ## v1 in scope (build now)
 
 | Capability                | Spec                                                                                                                            |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Postgres / Redis / S3** | Dedicated Postgres + Redis **containers per project**; shared MinIO with per-project buckets — [data-plane.md](./data-plane.md) |
-| **Secrets**               | Encrypted at rest; `secrets.yaml`; inject `DATABASE_URL` / `REDIS_URL` / `S3_*` on deploy                                       |
-| **Build**                 | Railpack (default for source) or Dockerfile / prebuilt image                                                                    |
-| **Runtime**               | Single Docker host; user apps under gVisor — [secure-runtime.md](./secure-runtime.md)                                           |
-| **Backups**               | On-demand + scheduled Postgres dumps to platform backup bucket                                                                  |
-| **Proxy**                 | `{slug}.{baseDomain}` → app — [access.md](./access.md)                                                                          |
-| **Edge**                  | **cloudflared** as the v1 edge (wildcard once)                                                                                  |
+| **Cluster**               | BYO kubeconfig or Hetzner cloud-init k3s; workers via Hetzner cloud-init **or** self-hosted join script |
+| **Postgres / Redis / S3** | Postgres/Redis as k8s workloads per project; shared MinIO with per-project buckets — [data-plane.md](./data-plane.md)           |
+| **Secrets**               | Encrypted at rest; inject `DATABASE_URL` / `REDIS_URL` / `S3_*` on deploy                                                       |
+| **Build**                 | Prebuilt image **or** git → Railpack/Dockerfile → push default registry (Settings → Registries) → k3s pull secrets auto        |
+| **Runtime**               | **k3s only** — Deployments / StatefulSets / Ingress; user apps under **gVisor** RuntimeClass ([secure-runtime.md](./secure-runtime.md)) |
+| **Proxy**                 | Traefik Ingress `{slug}.{baseDomain}` — [access.md](./access.md)                                                                |
 | **Git webhooks**          | Push-to-deploy main track                                                                                                       |
-| **Ops UX**                | Create / list / destroy, deploy, stop, logs, backups                                                                            |
+| **Ops UX**                | Create / list / destroy, deploy, stop, logs                                                                                     |
 | **Organizations**         | Soft multi-user: invite members (`owner` / `member`); system settings gated to instance admins                                  |
 
 ## Optional addon (not GTM)
@@ -45,9 +43,9 @@ create empty project (pinned to local node)
 | Later                        | Design now                                                                              |
 | ---------------------------- | --------------------------------------------------------------------------------------- |
 | **Preview deployments (v2)** | Slot-based provisioning + reserved preview hostnames — [data-plane.md](./data-plane.md) |
-| **Custom domains (v2)**      | `service_hostnames.kind=custom` + multi-host Caddy — [access.md](./access.md) / [gtm.md](./gtm.md) |
-| **Other edges (v2)**         | Proxy adapters beyond cloudflared                                                       |
-| **Multi-node (v3)**          | Project pinned to one node; that node’s shared data plane only                          |
+| **Custom domains (v2)**      | `service_hostnames.kind=custom` + multi-host Ingress — [access.md](./access.md) / [gtm.md](./gtm.md) |
+| **In-cluster Kaniko (v2)**   | Move build Jobs into k3s; registry push path already required                           |
+| **HA replicas (v2)**         | Replica counts + PDB on web services                                                    |
 
 ## Out of scope (do not build)
 
@@ -57,7 +55,9 @@ create empty project (pinned to local node)
 - Nixpacks, Paketo, Heroku buildpacks (Railpack only)
 - Full ingress-controller kitchen sink
 - Public Postgres/Redis as a product feature
-- Multi-server **implementation** in v1 (schema/placement hooks ok — [data-plane.md](./data-plane.md))
+- Docker-agent / mesh remotes (removed; k3s only)
+- hetzner-k3s CLI as a create/scale path (removed)
+- Autoscaling / MicroVMs (Kata / Firecracker)
 - One-click templates / app marketplace
 - SSO / fine-grained RBAC (soft orgs with `owner`/`member` invites are in scope)
 - CLI, general-purpose public API keys
@@ -78,10 +78,10 @@ Operator **MCP personal access tokens** + Streamable HTTP at `/api/mcp` for Curs
 | Layer         | Tech                                                |
 | ------------- | --------------------------------------------------- |
 | Control plane | TanStack Start, oRPC, Better Auth, Drizzle + SQLite |
-| Data plane    | Postgres 16, Redis 7, MinIO (compose) on the node   |
-| Build         | Railpack or Dockerfile + BuildKit                   |
-| App runtime   | Docker + **gVisor (`runsc`)** for user apps         |
-| Proxy / edge  | Platform reverse proxy + **cloudflared**            |
+| App runtime   | **k3s** (Deployments, StatefulSets, Traefik)        |
+| Cluster ops   | BYO kubeconfig + Hetzner cloud-init + self-hosted join |
+| Data plane    | Postgres/Redis in-cluster; MinIO for platform S3    |
+| Build         | Images now; in-cluster Kaniko/BuildKit next         |
 | Tooling       | pnpm monorepo, Vite+, Oxlint, Oxfmt, Vitest         |
 
 ## Injected env (every deploy)
@@ -101,7 +101,8 @@ No Hostrig SDK required — apps read standard env vars. URLs must be valid **on
 
 Follow [sequencing.md](./sequencing.md) and [gtm.md](./gtm.md):
 
-- Market v1 as **service-first** stack + gVisor sandbox + **platform wildcard** URL via cloudflared + git push
-- Do **not** imply PR previews, custom domains, multi-node, Let’s Encrypt on Caddy, or a CLI
+- Market v1 as **service-first** stack on **k3s** + **gVisor** user apps + **platform wildcard** via edge → Traefik
+- Do **not** imply PR previews, custom domains kitchen sink, public-IP/sslip dogfood, Docker-agent, or a CLI
+- Do **not** claim “Secure by default” / unbreakable / MicroVM-grade isolation — name gVisor and operator patch duty
 - Do **not** imply Postgres/Redis are publicly proxied
-- TLS: terminate at Cloudflare (or local HTTP); Caddy stays HTTP-only on the host
+- TLS: terminate at Cloudflare / Netbird / Tailscale; Traefik stays HTTP-only in the cluster

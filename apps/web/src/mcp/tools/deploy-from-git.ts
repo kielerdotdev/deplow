@@ -165,7 +165,8 @@ export const deployFromGitTool = createTool({
         ok: false as const,
         projectId,
         serviceId: created.service.id,
-        error: "Service created but no deployment was enqueued.",
+        error:
+          "Service and git webhook were created, but no deployment was enqueued. Add a registry under Settings → Registries for git builds, or attach a prebuilt image.",
         service: created.service,
       }
     }

@@ -34,7 +34,6 @@ import {
   type BindingEnvInput,
   decryptString,
   encryptString,
-  DockerNodeExecutor,
   GitService,
   PitrService,
   PostgresProvisioner,
@@ -54,9 +53,15 @@ import {
   entriesToRecord,
   mergeProjectEnvSave,
 } from "@/lib/core/project-secrets.service"
+import { DataServiceRegistry, S3SharedDriver } from "@/lib/core/data-services"
 import { env } from "@/lib/env"
+import { k8sDataDrivers } from "@/lib/k8s/data-drivers"
 
 const config = loadPlatformConfig()
+const dataServiceRegistry = new DataServiceRegistry(config, [
+  ...k8sDataDrivers(config),
+  new S3SharedDriver(config),
+])
 
 const backupStore: BackupStore = {
   async createRunning(
@@ -225,7 +230,10 @@ export const platformConfig = config
 
 export const provisioningService = new ProvisioningService(config, undefined)
 
-export const resourceLinkService = new ResourceLinkService(config)
+export const resourceLinkService = new ResourceLinkService(
+  config,
+  dataServiceRegistry,
+)
 
 export const backupService = new BackupService(config, backupStore)
 
@@ -246,18 +254,8 @@ export const backupScheduler = (globalForBackups.__deplowBackupScheduler =
   new BackupScheduler(backupService))
 
 export const buildService = new BuildService({
-  railpackBin: process.env.RAILPACK_BIN ?? "railpack",
   buildkitHost: process.env.BUILDKIT_HOST ?? "docker-container://buildkit",
 })
-
-export const dockerNodeExecutor = new DockerNodeExecutor(
-  config,
-  async (nodeId) => {
-    const [row] = await db.select().from(nodes).where(eq(nodes.id, nodeId))
-    if (!row || row.provider !== "docker") return null
-    return { id: row.id, name: row.name, host: row.host }
-  },
-)
 
 export const proxyService = new ProxyService({
   routesDir: config.proxyRoutesDir,
@@ -514,14 +512,22 @@ export async function enqueueServiceProvision(serviceId: string): Promise<{
     type: "provision",
     stage: "queued",
   })
-  await db
-    .update(services)
-    .set({
-      status: "queued",
+  const { transitionService } = await import("@/lib/service-lifecycle")
+  // From error/stopped enter provisioning; otherwise patch last op on current status.
+  if (service.status === "error" || service.status === "stopped") {
+    await transitionService(service.id, "provisioning", {
+      lastOperationId: operation.id,
+      errorMessage: null,
+      errorCode: null,
+    })
+  } else {
+    const status =
+      service.status === "ready" ? "stopped" : (service.status as "queued")
+    await transitionService(service.id, status, {
       lastOperationId: operation.id,
       errorMessage: null,
     })
-    .where(eq(services.id, service.id))
+  }
   await markOperationQueued(operation.id)
 
   const job = { operationId: operation.id, serviceId: service.id }
@@ -568,7 +574,10 @@ export async function ensureBindingsMigrated(projectId: string): Promise<void> {
 
   for (const consumer of consumers) {
     for (const provider of providers) {
-      const envKey = provider.type === "postgres" ? "DATABASE_URL" : "REDIS_URL"
+      const envKey =
+        resourceLinkService.driver(provider.type as "postgres" | "redis")
+          .defaultEnvKey ??
+        (provider.type === "postgres" ? "DATABASE_URL" : "REDIS_URL")
       const existing = await db
         .select()
         .from(serviceBindings)
@@ -865,27 +874,6 @@ export function scheduleProjectBackups(
   })
 }
 
-export async function ensureLocalNodeId(): Promise<string> {
-  const [existing] = await db
-    .select()
-    .from(nodes)
-    .where(eq(nodes.name, "local"))
-  if (existing) return existing.id
-
-  const id = crypto.randomUUID()
-  const probe = await dockerNodeExecutor.getStatus(id)
-  await db.insert(nodes).values({
-    id,
-    name: "local",
-    provider: "docker",
-    host: "local",
-    port: 22,
-    status: probe.online ? "online" : "offline",
-    lastSeenAt: probe.online ? new Date() : null,
-  })
-  return id
-}
-
 export async function resumeBackupSchedules(): Promise<number> {
   const rows = await db
     .select()
@@ -927,12 +915,6 @@ if (typeof process !== "undefined" && process.env.VITEST !== "true") {
   if (!globalForQueue.__deplowQueueStarted && env.useQueue) {
     globalForQueue.__deplowQueueStarted = true
     startQueueWorkers({
-      deploy: async (job) => {
-        const { processDeployJob } = await import(
-          "@/lib/core/queue/deploy-processor"
-        )
-        return processDeployJob(job.data)
-      },
       provision: async (job) => {
         const { processProvisionJob } = await import(
           "@/lib/core/queue/provision-processor"

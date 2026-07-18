@@ -79,7 +79,7 @@ describe("listRemoteRepos", () => {
     expect(firstUrl).toContain("api.github.com/user/repos")
   })
 
-  it("throws an actionable error on 401", async () => {
+  it("throws an actionable reconnect error on 401", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => {
       return new Response(JSON.stringify({ message: "Bad credentials" }), {
         status: 401,
@@ -91,7 +91,7 @@ describe("listRemoteRepos", () => {
         token: "bad",
         fetchImpl,
       }),
-    ).rejects.toThrow(/PAT|token/i)
+    ).rejects.toThrow(/Reconnect GitHub|credentials|PAT/i)
   })
 })
 

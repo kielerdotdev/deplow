@@ -1,13 +1,8 @@
-export type { DeployOptions, NodeExecutor, NodeStatus } from "./node-executor"
-export type { DeployResult } from "./node-executor"
-export { DockerNodeExecutor } from "./docker-node-executor"
-export type { DockerNodeRecord } from "./docker-node-executor"
 export {
   imageRetainCount,
-  retainAndPruneDeployImages,
+  markPriorDeploymentsStopped,
   selectRollbackTarget,
 } from "./image-retain"
-export { SshNodeExecutor } from "./ssh-node-executor"
 export type {
   ServerSpawner,
   SpawnedServer,
@@ -17,9 +12,19 @@ export type {
 export {
   createServerSpawners,
   getServerSpawner,
+  isHetznerConfigured,
   listServerSpawnerProviders,
 } from "./spawners/factory"
 export { HetznerSpawner } from "./spawners/hetzner"
+export {
+  createHetznerCloudClient,
+  createUnconfiguredHetznerCloudClient,
+} from "./spawners/hetzner-client"
+export type {
+  HetznerCloudClient,
+  HetznerCreateServerInput,
+  HetznerServer,
+} from "./spawners/hetzner-client"
 export { DockerSpawner } from "./spawners/docker"
 export { SecretsService } from "./secrets.service"
 export type { SecretsInput } from "./secrets.service"
@@ -106,7 +111,6 @@ export {
 } from "./inject-env"
 export type { BindingEnvInput } from "./inject-env"
 export {
-  enqueueDeploy,
   enqueueProvision,
   enqueueBackup,
   enqueueRestore,
@@ -117,7 +121,6 @@ export {
   QUEUE_NAMES,
 } from "./queue"
 export type {
-  DeployJobData,
   ProvisionJobData,
   BackupJobData,
   RestoreJobData,
@@ -136,6 +139,7 @@ export {
 } from "./queue/operations"
 // Processors import @/lib/services — keep them out of this barrel (SSR init cycle).
 export { normalizeProductionStartCommand, isRailpackCaddyCommand } from "./normalize-start-command"
+export { resolveRailpackBin } from "./railpack-bin"
 export { encryptString, decryptString, randomPassword } from "./crypto"
 export { PostgresProvisioner } from "./infra/postgres"
 export { RedisProvisioner } from "./infra/redis"
@@ -239,6 +243,7 @@ export {
   listInstallationRepos,
   listUserInstallations,
   exchangeGitHubOAuthCode,
+  refreshGitHubUserToken,
   fetchGitHubUser,
   createRepoWebhook,
   deleteRepoWebhook,
@@ -254,6 +259,7 @@ export {
   randomOAuthState,
   githubOAuthCallbackUrls,
   redirectBaseFromRequest,
+  originFromForwardedHeaders,
   sanitizeBrowserOrigin,
   GITHUB_OAUTH_CALLBACK_PATH,
 } from "./github-app"

@@ -17,8 +17,6 @@ import { assertProjectAccess } from "@/lib/access"
 import {
   analyzeRemote,
   assertAnalysisFresh,
-  decryptString,
-  encryptString,
   fingerprintAnalysis,
   fingerprintsMatch,
   listInstallationRepos,
@@ -31,25 +29,28 @@ import {
 } from "@/lib/core"
 import { resolveListTokenForUser } from "@/lib/git-auth"
 import {
-  deleteServiceWebhook,
-  registerServiceWebhook,
-} from "@/lib/register-service-webhook"
+  ServiceLifecycleError,
+  serviceLifecycle,
+} from "@/lib/service-lifecycle"
 import {
   db,
-  dockerNodeExecutor,
   enqueueServiceProvision,
   ensureBindingsMigrated,
   gitService,
   platformConfig,
-  proxyService,
   serviceBindings,
   services,
 } from "@/lib/services"
-import { removeAllHostnames } from "@/lib/service-hostnames"
 
-import { runServiceDeploy } from "./deployments"
 import { authedProcedure } from "./middleware"
 import type { Session } from "@/lib/auth"
+
+function lifecycleError(e: unknown): never {
+  if (e instanceof ServiceLifecycleError) {
+    throw new ORPCError(e.code, { message: e.message })
+  }
+  throw e
+}
 
 async function accessibleService(id: string, session: Session) {
   const [service] = await db.select().from(services).where(eq(services.id, id))
@@ -171,38 +172,33 @@ export const get = authedProcedure
 export const create = authedProcedure
   .input(createServiceInputSchema)
   .handler(async ({ context, input }) => {
-    const project = await assertProjectAccess(input.projectId, context.session!)
-    const existing = await db
-      .select()
-      .from(services)
-      .where(eq(services.projectId, project.id))
-    if (existing.some((service) => service.name === input.name)) {
-      throw new ORPCError("CONFLICT", {
-        message: "Service name is already used",
+    await assertProjectAccess(input.projectId, context.session!)
+    let created: Awaited<ReturnType<typeof serviceLifecycle.create>>
+    try {
+      created = await serviceLifecycle.create({
+        projectId: input.projectId,
+        name: input.name,
+        type: input.type,
+        containerPort: input.containerPort,
       })
+    } catch (e) {
+      if (
+        e instanceof ServiceLifecycleError &&
+        e.message.includes("already used")
+      ) {
+        throw new ORPCError("CONFLICT", { message: e.message })
+      }
+      lifecycleError(e)
     }
-    const id = crypto.randomUUID()
-    const isData = input.type === "postgres" || input.type === "redis"
-    await db.insert(services).values({
-      id,
-      projectId: project.id,
-      name: input.name,
-      slug: `${project.slug}-${input.name}`,
-      type: input.type,
-      containerPort: isData ? 0 : input.containerPort,
-      isPrimary:
-        input.type === "web" && !existing.some((service) => service.isPrimary),
-      status: isData ? "queued" : "stopped",
-    })
 
     let operationId: string | null = null
-    if (isData) {
-      const result = await enqueueServiceProvision(id)
+    if (created.shouldProvision) {
+      const result = await enqueueServiceProvision(created.serviceId)
       operationId = result.operationId
     }
 
     const service = summary(
-      (await accessibleService(id, context.session!)).service,
+      (await accessibleService(created.serviceId, context.session!)).service,
     )
     return { ...service, operationId }
   })
@@ -238,7 +234,7 @@ export const analyzeSource = authedProcedure
         strategyOverride: input.strategyOverride,
         auth: auth ? { ...auth, provider: input.provider } : undefined,
         gitService,
-        railpackBin: process.env.RAILPACK_BIN ?? "railpack",
+        // Resolved inside analyzeDirectory via resolveRailpackBin
         cloneRoot: platformConfig.gitCloneRoot,
       })
       return toPublicAnalysis(result)
@@ -332,93 +328,64 @@ export const createAndDeploy = authedProcedure
       })
     }
 
-    const existing = await db
-      .select()
-      .from(services)
-      .where(eq(services.projectId, project.id))
-    if (existing.some((service) => service.name === input.name)) {
-      throw new ORPCError("CONFLICT", {
-        message: "Service name is already used",
-      })
-    }
-
-    const id = crypto.randomUUID()
     const type = input.type
     const containerPort =
       type === "web" ? (input.containerPort ?? 80) : (input.containerPort ?? 80)
     const secret = gitService.generateWebhookSecret()
 
-    await db.insert(services).values({
-      id,
-      projectId: project.id,
-      name: input.name,
-      slug: `${project.slug}-${input.name}`,
-      type,
-      containerPort,
-      isPrimary:
-        type === "web" && !existing.some((service) => service.isPrimary),
-      status: "stopped",
-      gitProvider: input.provider,
-      gitRepoUrl: input.repoUrl,
-      gitBranch: input.branch,
-      gitRepoFullName: input.repoFullName ?? null,
-      gitAuthMethod: input.authMethod ?? (input.accessToken ? "pat" : null),
-      gitInstallationId: input.installationId ?? null,
-      gitAccessTokenEncrypted: input.accessToken
-        ? encryptString(input.accessToken, platformConfig.secretsEncryptionKey)
-        : null,
-      gitWebhookSecretEncrypted: encryptString(
-        secret,
-        platformConfig.secretsEncryptionKey,
-      ),
-      gitConnectedAt: new Date(),
-      buildStrategyOverride:
-        strategyOverride === "auto" ? null : strategyOverride,
-      dockerfilePath: dockerfilePath || null,
-      rootDirectory: rootDirectory === "." ? null : rootDirectory,
-      buildCommand: buildCommand || null,
-      startCommand: startCommand || null,
-      healthCheckPath: input.healthCheckPath || null,
-    })
-
-    const webhook = await registerServiceWebhook({
-      userId: context.session!.user.id,
-      serviceId: id,
-      provider: input.provider,
-      repoUrl: input.repoUrl,
-      repoFullName: input.repoFullName,
-      installationId: input.installationId,
-      accessToken: input.accessToken,
-      secret,
-      autoWebhook: input.autoWebhook,
-    })
-    if (webhook.remoteWebhookId) {
-      await db
-        .update(services)
-        .set({ gitRemoteWebhookId: webhook.remoteWebhookId })
-        .where(eq(services.id, id))
+    let result: Awaited<ReturnType<typeof serviceLifecycle.createAndDeploy>>
+    try {
+      result = await serviceLifecycle.createAndDeploy({
+        create: {
+          projectId: project.id,
+          name: input.name,
+          type,
+          containerPort,
+        },
+        git: {
+          userId: context.session!.user.id,
+          provider: input.provider,
+          repoUrl: input.repoUrl,
+          branch: input.branch,
+          repoFullName: input.repoFullName,
+          authMethod: input.authMethod ?? (input.accessToken ? "pat" : null),
+          installationId: input.installationId,
+          accessToken: input.accessToken,
+          secret,
+          autoWebhook: input.autoWebhook,
+          buildFields: {
+            buildStrategyOverride:
+              strategyOverride === "auto" ? null : strategyOverride,
+            dockerfilePath: dockerfilePath || null,
+            rootDirectory: rootDirectory === "." ? null : rootDirectory,
+            buildCommand: buildCommand || null,
+            startCommand: startCommand || null,
+            healthCheckPath: input.healthCheckPath || null,
+          },
+        },
+        // Git-only create: no image → register webhook, skip deploy (templates use create + deploy with image).
+      })
+    } catch (e) {
+      if (
+        e instanceof ServiceLifecycleError &&
+        e.message.includes("already used")
+      ) {
+        throw new ORPCError("CONFLICT", { message: e.message })
+      }
+      lifecycleError(e)
     }
 
     const service = summary(
-      (await accessibleService(id, context.session!)).service,
+      (await accessibleService(result.serviceId, context.session!)).service,
     )
-
-    const deployment = await runServiceDeploy({
-      serviceId: id,
-      fromGit: true,
-      triggeredBy: "manual",
-      options: {
-        containerPort: type === "web" ? containerPort : undefined,
-      },
-    })
 
     return {
       service,
-      deployment,
-      webhookUrl: webhook.webhookUrl,
-      webhookSecret: webhook.webhookManaged ? null : secret,
-      webhookWarning: webhook.warning,
-      webhookManaged: webhook.webhookManaged,
+      deployment: result.deployment,
+      webhookUrl: result.webhook?.webhookUrl ?? null,
+      webhookSecret: result.webhook?.webhookManaged ? null : secret,
+      webhookWarning: result.webhook?.warning ?? null,
+      webhookManaged: result.webhook?.webhookManaged ?? false,
     }
   })
 
@@ -483,49 +450,15 @@ export const update = authedProcedure
 export const destroy = authedProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
-    const { service, project } = await accessibleService(
-      input.id,
-      context.session!,
-    )
-    if (service.isPrimary) {
-      const siblings = await db
-        .select()
-        .from(services)
-        .where(eq(services.projectId, project.id))
-      if (siblings.length > 1) {
-        throw new ORPCError("BAD_REQUEST", {
-          message: "Choose another primary service before deleting this one",
-        })
-      }
-    }
-
-    const bound = await db
-      .select()
-      .from(serviceBindings)
-      .where(eq(serviceBindings.providerServiceId, service.id))
-    if (bound.length > 0) {
-      throw new ORPCError("BAD_REQUEST", {
-        message: `Unbind ${bound.length} consumer(s) before destroying this resource`,
+    await accessibleService(input.id, context.session!)
+    try {
+      return await serviceLifecycle.destroy({
+        serviceId: input.id,
+        userId: context.session!.user.id,
       })
+    } catch (e) {
+      lifecycleError(e)
     }
-
-    await proxyService.removeServiceRoute(service.id).catch(() => undefined)
-    await removeAllHostnames(service.id).catch(() => undefined)
-    if (service.type === "postgres" || service.type === "redis") {
-      const { resourceLinkService } = await import("@/lib/services")
-      await resourceLinkService
-        .destroy(service.type, project.slug, service.credentialsEncrypted, {
-          projectId: project.id,
-          resourceLinkId: service.legacyResourceLinkId ?? service.id,
-        })
-        .catch(() => undefined)
-    } else if (project.nodeId) {
-      await dockerNodeExecutor
-        .removeApp(project.nodeId, service.slug)
-        .catch(() => undefined)
-    }
-    await db.delete(services).where(eq(services.id, service.id))
-    return { ok: true as const }
   })
 
 export const retryProvision = authedProcedure
@@ -549,101 +482,39 @@ export const retryProvision = authedProcedure
 export const connectGit = authedProcedure
   .input(connectServiceGitInputSchema)
   .handler(async ({ context, input }) => {
-    const userId = context.session!.user.id
-    const { service } = await accessibleService(input.serviceId, context.session!)
-    const secret =
-      input.webhookSecret?.trim() || gitService.generateWebhookSecret()
-    await db
-      .update(services)
-      .set({
-        gitProvider: input.provider,
-        gitRepoUrl: input.repoUrl,
-        gitBranch: input.branch,
-        gitRepoFullName: input.repoFullName ?? null,
-        gitAuthMethod: input.authMethod ?? (input.accessToken ? "pat" : null),
-        gitInstallationId: input.installationId ?? null,
-        gitAccessTokenEncrypted: input.accessToken
-          ? encryptString(
-              input.accessToken,
-              platformConfig.secretsEncryptionKey,
-            )
-          : null,
-        gitWebhookSecretEncrypted: encryptString(
-          secret,
-          platformConfig.secretsEncryptionKey,
-        ),
-        gitWatchPaths:
-          input.gitWatchPaths === undefined
-            ? undefined
-            : encodeWatchPaths(input.gitWatchPaths),
-        gitConnectedAt: new Date(),
-        gitRemoteWebhookId: null,
+    await accessibleService(input.serviceId, context.session!)
+    try {
+      return await serviceLifecycle.connectGit({
+        userId: context.session!.user.id,
+        serviceId: input.serviceId,
+        provider: input.provider,
+        repoUrl: input.repoUrl,
+        branch: input.branch,
+        repoFullName: input.repoFullName,
+        authMethod: input.authMethod ?? (input.accessToken ? "pat" : null),
+        installationId: input.installationId,
+        accessToken: input.accessToken,
+        webhookSecret: input.webhookSecret,
+        gitWatchPaths: input.gitWatchPaths,
+        autoWebhook: input.autoWebhook,
       })
-      .where(eq(services.id, service.id))
-
-    const webhook = await registerServiceWebhook({
-      userId,
-      serviceId: service.id,
-      provider: input.provider,
-      repoUrl: input.repoUrl,
-      repoFullName: input.repoFullName,
-      installationId: input.installationId,
-      accessToken: input.accessToken,
-      secret,
-      autoWebhook: input.autoWebhook,
-    })
-    if (webhook.remoteWebhookId) {
-      await db
-        .update(services)
-        .set({ gitRemoteWebhookId: webhook.remoteWebhookId })
-        .where(eq(services.id, service.id))
-    }
-
-    return {
-      connected: true as const,
-      webhookUrl: webhook.webhookUrl,
-      webhookSecret: webhook.webhookManaged ? null : secret,
-      webhookManaged: webhook.webhookManaged,
-      webhookWarning: webhook.warning,
+    } catch (e) {
+      lifecycleError(e)
     }
   })
 
 export const disconnectGit = authedProcedure
   .input(z.object({ serviceId: z.string().min(1) }))
   .handler(async ({ context, input }) => {
-    const userId = context.session!.user.id
-    const { service } = await accessibleService(input.serviceId, context.session!)
-    await deleteServiceWebhook({
-      userId,
-      provider: (service.gitProvider as "github" | "gitlab" | null) ?? null,
-      repoUrl: service.gitRepoUrl,
-      repoFullName: service.gitRepoFullName,
-      installationId: service.gitInstallationId,
-      accessTokenEncrypted: service.gitAccessTokenEncrypted,
-      remoteWebhookId: service.gitRemoteWebhookId,
-      decryptAccessToken: (encrypted) =>
-        decryptString(encrypted, platformConfig.secretsEncryptionKey),
-    })
-    await db
-      .update(services)
-      .set({
-        gitProvider: null,
-        gitRepoUrl: null,
-        gitBranch: "main",
-        gitWebhookSecretEncrypted: null,
-        gitConnectedAt: null,
-        gitLastDeliveryAt: null,
-        gitLastDeliveryStatus: null,
-        gitLastDeliveryError: null,
-        gitAuthMethod: null,
-        gitInstallationId: null,
-        gitAccessTokenEncrypted: null,
-        gitRemoteWebhookId: null,
-        gitRepoFullName: null,
-        gitWatchPaths: null,
+    await accessibleService(input.serviceId, context.session!)
+    try {
+      return await serviceLifecycle.disconnectGit({
+        userId: context.session!.user.id,
+        serviceId: input.serviceId,
       })
-      .where(eq(services.id, service.id))
-    return { ok: true as const }
+    } catch (e) {
+      lifecycleError(e)
+    }
   })
 
 function throwGitListError(
@@ -669,6 +540,15 @@ function mapGitCredentialErrorMessage(
     return provider === "gitlab"
       ? STALE_GITLAB_CREDS_MESSAGE
       : STALE_GITHUB_CREDS_MESSAGE
+  }
+  // Installation token mint failures
+  if (
+    message.includes("GitHub installation token failed") ||
+    message.includes("installation token")
+  ) {
+    return provider === "github"
+      ? "Could not mint a GitHub App installation token. Reconnect GitHub or reinstall the App on the organization."
+      : message
   }
   return message
 }

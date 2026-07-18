@@ -61,6 +61,7 @@ const VIEWS: Array<{ id: DeploymentDetailView; label: string }> = [
   { id: "events", label: "Events" },
 ]
 
+/** View switcher — segmented control, not a second page-tab row. */
 export function DeploymentDetailNav({
   view,
   onChange,
@@ -69,16 +70,19 @@ export function DeploymentDetailNav({
   onChange: (view: DeploymentDetailView) => void
 }) {
   return (
-    <nav className="flex flex-wrap gap-1 border-b border-border pb-px">
+    <nav
+      aria-label="Deployment views"
+      className="inline-flex max-w-full flex-wrap gap-0.5 rounded-md bg-muted p-0.5"
+    >
       {VIEWS.map((v) => (
         <button
           key={v.id}
           type="button"
           onClick={() => onChange(v.id)}
           className={cn(
-            "px-3 py-2 text-sm",
+            "rounded-[5px] px-2.5 py-1.5 text-[13px] font-medium transition-colors",
             view === v.id
-              ? "border-b-2 border-foreground font-medium"
+              ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -104,12 +108,12 @@ export function DeploymentSummaryPanel({
   const inProgress = isDeploymentInProgress(deployment.status)
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+    <div className="grid w-full max-w-3xl gap-4 lg:grid-cols-[13.75rem_minmax(0,1fr)]">
       <div className="surface-panel p-4">
         <p className="mb-3 text-xs text-muted-foreground">Progress</p>
         <DeploymentTimeline status={deployment.status} />
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-4">
         <div className="surface-panel flex flex-col gap-3 p-4 text-sm">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={deployment.status} context="deployment" />

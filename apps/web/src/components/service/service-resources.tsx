@@ -86,7 +86,8 @@ export function ServiceResources({
                   setBindProviderId(e.target.value)
                   const p = providers.find((x) => x.id === e.target.value)
                   if (p?.type === "postgres") setBindEnvKey("DATABASE_URL")
-                  if (p?.type === "redis") setBindEnvKey("REDIS_URL")
+                  else if (p?.type === "redis") setBindEnvKey("REDIS_URL")
+                  // defaults mirror DataServiceDriver.defaultEnvKey
                 }}
               >
                 <option value="">Select…</option>

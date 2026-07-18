@@ -44,7 +44,7 @@ describe("buildGitHubAppManifest", () => {
       "https://apps.example.com/api/git/oauth/github/callback",
     )
     expect(callbacks).toContain(
-      "http://localhost:3000/api/git/oauth/github/callback",
+      "http://localhost:9565/api/git/oauth/github/callback",
     )
     expect(m.hook_attributes).toEqual({
       url: "https://apps.example.com/api/webhooks/github-app",
@@ -55,7 +55,7 @@ describe("buildGitHubAppManifest", () => {
   it("omits app webhook on localhost (GitHub rejects non-public hooks)", () => {
     const m = buildGitHubAppManifest({
       name: "Hostrig",
-      publicUrl: "http://localhost:3000",
+      publicUrl: "http://localhost:9565",
     })
     expect(m.hook_attributes).toBeUndefined()
     expect(m.default_events).toBeUndefined()
@@ -63,7 +63,7 @@ describe("buildGitHubAppManifest", () => {
       repository_hooks: "write",
     })
     expect(m.callback_urls as string[]).toContain(
-      "http://localhost:3000/api/git/oauth/github/callback",
+      "http://localhost:9565/api/git/oauth/github/callback",
     )
   })
 
@@ -71,7 +71,7 @@ describe("buildGitHubAppManifest", () => {
     const m = buildGitHubAppManifest({
       name: "Hostrig",
       publicUrl: "http://192.168.0.223:3000",
-      extraCallbackOrigins: ["http://localhost:3000"],
+      extraCallbackOrigins: ["http://localhost:9565"],
     })
     expect(m.redirect_url).toBe(
       "http://192.168.0.223:3000/api/git/github/app-manifest/callback",
@@ -80,7 +80,7 @@ describe("buildGitHubAppManifest", () => {
     expect(m.callback_urls as string[]).toEqual(
       expect.arrayContaining([
         "http://192.168.0.223:3000/api/git/oauth/github/callback",
-        "http://localhost:3000/api/git/oauth/github/callback",
+        "http://localhost:9565/api/git/oauth/github/callback",
       ]),
     )
     expect(m.hook_attributes).toBeUndefined()
@@ -88,20 +88,46 @@ describe("buildGitHubAppManifest", () => {
 })
 
 describe("redirectBaseFromRequest / sanitizeBrowserOrigin", () => {
-  it("prefers request origin over configured public URL", async () => {
+  it("prefers public DEPLOW_PUBLIC_URL over private request Host (reverse proxy)", async () => {
     const { redirectBaseFromRequest, sanitizeBrowserOrigin } = await import(
       "./github-app"
     )
     const req = new Request(
-      "http://192.168.0.223:3000/api/git/github/app-manifest/callback?code=x",
+      "http://192.168.0.223:3001/api/git/oauth/github/callback?code=x",
     )
-    expect(redirectBaseFromRequest(req, "http://localhost:3000")).toBe(
-      "http://192.168.0.223:3000",
-    )
+    expect(
+      redirectBaseFromRequest(req, "https://deplow.waitforit.cc"),
+    ).toBe("https://deplow.waitforit.cc")
     expect(sanitizeBrowserOrigin("http://192.168.0.223:3000/")).toBe(
       "http://192.168.0.223:3000",
     )
     expect(sanitizeBrowserOrigin("javascript:alert(1)")).toBeNull()
+  })
+
+  it("uses LAN request origin only when configured URL is also local", async () => {
+    const { redirectBaseFromRequest } = await import("./github-app")
+    const req = new Request(
+      "http://192.168.0.223:3000/api/git/github/app-manifest/callback?code=x",
+    )
+    expect(redirectBaseFromRequest(req, "http://localhost:9565")).toBe(
+      "http://192.168.0.223:3000",
+    )
+  })
+
+  it("honors public X-Forwarded-Host when configured URL is local", async () => {
+    const { redirectBaseFromRequest } = await import("./github-app")
+    const req = new Request(
+      "http://127.0.0.1:9565/api/git/oauth/github/callback?code=x",
+      {
+        headers: {
+          "x-forwarded-host": "deplow.waitforit.cc",
+          "x-forwarded-proto": "https",
+        },
+      },
+    )
+    expect(redirectBaseFromRequest(req, "http://localhost:9565")).toBe(
+      "https://deplow.waitforit.cc",
+    )
   })
 })
 

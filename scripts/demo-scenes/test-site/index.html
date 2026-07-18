@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme Shop — live on Hostrig</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,600;9..40,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #09090b;
+        --fg: #fafafa;
+        --muted: #a1a1aa;
+        --blue: #60a5fa;
+        --green: #34d399;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        min-height: 100vh;
+        font-family: "DM Sans", system-ui, sans-serif;
+        background:
+          radial-gradient(800px 420px at 20% 0%, rgba(96, 165, 250, 0.14), transparent 55%),
+          radial-gradient(700px 380px at 90% 80%, rgba(52, 211, 153, 0.1), transparent 50%),
+          var(--bg);
+        color: var(--fg);
+        display: grid;
+        place-items: center;
+        padding: 40px 24px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card {
+        width: min(720px, 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(17, 19, 24, 0.92);
+        border-radius: 24px;
+        padding: 40px 36px;
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.45);
+      }
+      .eyebrow {
+        color: var(--green);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        margin-bottom: 14px;
+      }
+      h1 {
+        font-size: clamp(36px, 6vw, 52px);
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+        margin-bottom: 14px;
+      }
+      p {
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.5;
+        margin-bottom: 28px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .pill {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #0c0e13;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .pill strong {
+        color: var(--fg);
+        font-weight: 600;
+      }
+      .pill.ok strong {
+        color: var(--green);
+      }
+      .cta {
+        margin-top: 28px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        color: #09090b;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 12px 18px;
+        border-radius: 12px;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="eyebrow">Live on Hostrig</div>
+      <h1>Acme Shop is deployed.</h1>
+      <p>
+        Bare project → Postgres + web → public URL. One agent prompt. No Compose,
+        no catalog, no second SaaS.
+      </p>
+      <div class="row">
+        <div class="pill ok"><strong>web</strong>&nbsp;healthy</div>
+        <div class="pill ok"><strong>postgres</strong>&nbsp;healthy</div>
+        <div class="pill ok"><strong>gVisor</strong>&nbsp;on</div>
+        <div class="pill"><strong>deploy</strong>&nbsp;&lt; 1 min</div>
+      </div>
+      <a class="cta" href="https://hostrig.com">Built with Hostrig →</a>
+    </main>
+  </body>
+</html>

@@ -1,3 +1,5 @@
+import { applyWhereClauseToContext } from "@/lib/observe/where-clause"
+
 import {
   baselineSpecSchema,
   contextSchema,
@@ -34,6 +36,8 @@ const KEYS = {
   minDurationMs: "dmin",
   selection: "sel",
   tab: "tab",
+  /** Optional where-clause string (advanced filter); applied on parse when present. */
+  where: "w",
 } as const
 
 function encodeFilters(filters: FilterClause[]): string | undefined {
@@ -195,11 +199,10 @@ export function parseContext(search: ContextSearchParams): ObserveContext {
         : undefined,
     spanScope:
       search[KEYS.spanScope] === "root" ||
-      search[KEYS.spanScope] === "entrypoint"
-        ? search[KEYS.spanScope]
-        : search[KEYS.spanScope] === "all"
-          ? "all"
-          : undefined,
+      search[KEYS.spanScope] === "entrypoint" ||
+      search[KEYS.spanScope] === "all"
+        ? (search[KEYS.spanScope] as "root" | "entrypoint" | "all")
+        : undefined,
     errorsOnly:
       search[KEYS.errorsOnly] === "1" || search[KEYS.errorsOnly] === "true"
         ? true
@@ -231,11 +234,25 @@ export function parseContext(search: ContextSearchParams): ObserveContext {
       ? (tabRaw as ObserveContext["tab"])
       : undefined
 
+  let filters = decodeFilters(search[KEYS.filters])
+  let queryOut = query
+
+  // Optional where-clause channel (advanced filter deep links).
+  const whereRaw = search[KEYS.where]
+  if (typeof whereRaw === "string" && whereRaw.trim()) {
+    const applied = applyWhereClauseToContext(whereRaw, {
+      filters,
+      query,
+    })
+    filters = applied.filters
+    queryOut = applied.query
+  }
+
   const draft = {
     time,
     baseline,
-    filters: decodeFilters(search[KEYS.filters]),
-    query,
+    filters,
+    query: queryOut,
     selection: decodeSelection(search[KEYS.selection]),
     tab,
   }
@@ -248,7 +265,7 @@ export function parseContext(search: ContextSearchParams): ObserveContext {
     time: { kind: "preset", preset: "1h" },
     baseline: baselineSpecSchema.catch({ mode: "none" }).parse(baseline),
     filters: draft.filters,
-    query: querySpecSchema.parse(query),
+    query: querySpecSchema.parse(queryOut),
     selection: draft.selection,
     tab,
   })

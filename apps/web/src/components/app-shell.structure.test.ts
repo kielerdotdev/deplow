@@ -126,6 +126,8 @@ describe("UI shell structure", () => {
       "utf8",
     )
     expect(detail).toContain("DeploymentLogsPanel")
+    expect(detail).toContain("DeploymentDetailNav")
+    expect(detail).not.toContain("ServiceNav")
     const logsPanel = readFileSync(
       path.join(root, "components/service/deployment-detail-panels.tsx"),
       "utf8",
@@ -343,9 +345,20 @@ describe("UI shell structure", () => {
 
   it("app shell content uses nested panel chrome", () => {
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
+    const css = readFileSync(path.join(root, "styles.css"), "utf8")
     expect(shell).toContain("app-shell-panel")
+    expect(shell).toContain("app-shell-frame")
     expect(shell).toContain("animate-content-in")
     expect(shell).toContain("data-ui-mode")
+    expect(css).toContain(".app-shell-frame")
+    expect(css).toContain("max-w-7xl")
+    // Page scroll is owned by panel-scroll; frame must grow with content
+    // (no flex-1 + min-h-0 trap that clips long pages).
+    expect(css).toContain("overflow-y-auto")
+    expect(css).toMatch(/\.app-shell-panel-scroll[\s\S]*?overflow-y-auto/)
+    expect(css).not.toMatch(
+      /\.app-shell-frame\s*\{[^}]*\bflex-1\b[^}]*min-h-0/,
+    )
   })
 
   it("shell content uses shared content enter animation", () => {

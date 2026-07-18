@@ -8,6 +8,7 @@ import {
   ObserveProjectShell,
   ObserveStatusBadge,
 } from "@/components/observe"
+import { buildDebugPrompt } from "@/lib/observe/debug-prompt"
 import { InlinePending } from "@/components/route-pending"
 import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
@@ -231,6 +232,31 @@ function TraceDetailPage() {
           >
             Copy trace ID
           </Button>
+          {selected ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                void navigator.clipboard.writeText(
+                  buildDebugPrompt({
+                    kind: "span",
+                    title: selected.name,
+                    projectId,
+                    traceId,
+                    spanId: selected.span_id,
+                    service: selected.service,
+                    status: selected.status,
+                    durationMs: selected.duration_ms,
+                    attributes: selected.attributes as
+                      | Record<string, string>
+                      | undefined,
+                  }),
+                )
+              }}
+            >
+              Copy as prompt
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="ghost"

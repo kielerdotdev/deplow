@@ -15,6 +15,7 @@ export function getRouter() {
     defaultPendingMs: 200,
     /** Avoid a one-frame flash of the pending skeleton. */
     defaultPendingMinMs: 200,
+    /** Content-only; top-level AppShell routes set ShellPending explicitly. */
     defaultPendingComponent: RoutePending,
     defaultErrorComponent: ({ error }) => (
       <RouteErrorPage

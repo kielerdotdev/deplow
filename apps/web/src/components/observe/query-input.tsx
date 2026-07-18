@@ -19,12 +19,15 @@ export function QueryInput({
   placeholder = "Search…",
   className,
   debounceMs = 320,
+  shortcutFocus = false,
 }: {
   value: string
   onChange: (next: string) => void
   placeholder?: string
   className?: string
   debounceMs?: number
+  /** Opt in to `/` global shortcut via data-shortcut-focus="search". */
+  shortcutFocus?: boolean
 }) {
   const [draft, setDraft] = useState(value)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -63,6 +66,7 @@ export function QueryInput({
         className="text-sm"
         aria-label="Search"
         autoComplete="off"
+        data-shortcut-focus={shortcutFocus ? "search" : undefined}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault()

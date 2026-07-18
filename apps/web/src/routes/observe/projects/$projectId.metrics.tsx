@@ -117,7 +117,7 @@ function MetricsPage() {
         title="Metrics"
         description={project.name}
       >
-        <ObserveOnboarding projectId={projectId} />
+        <ObserveOnboarding projectId={projectId} surface="metrics" />
         <ObserveEmptyState
           variant="empty"
           className="mt-4"
@@ -184,10 +184,10 @@ function MetricsPage() {
               const qs = new URLSearchParams(
                 serializeTelemetryQuery(q),
               ).toString()
-              window.location.href = `/observe/projects/${projectId}/trends?${qs}`
+              window.location.href = `/observe/projects/${projectId}/insights?new=1&${qs}`
             }}
           >
-            Open in Charts
+            Create chart
           </Button>
         ) : null}
       </div>

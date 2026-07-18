@@ -50,9 +50,41 @@ describe("Observe UI structure", () => {
     expect(layout).toContain("AppShell")
     expect(layout).toContain("Outlet")
     expect(layout).toContain("ShellPending")
+    expect(layout).toContain("GlobalObserveShortcuts")
     expect(shell).not.toContain('from "@/components/app-shell"')
-    expect(shell).toContain("PageHeader")
+    expect(shell).toContain("ObservePageHeader")
     expect(shell).toContain("ContextBar")
+  })
+
+  it("explorer pages use ObservePageLayout filter sidebar", () => {
+    const traces = readFileSync(
+      path.join(root, "routes/observe/projects/$projectId.traces.tsx"),
+      "utf8",
+    )
+    const logs = readFileSync(
+      path.join(root, "routes/observe/projects/$projectId.logs.tsx"),
+      "utf8",
+    )
+    expect(traces).toContain("ObservePageLayout")
+    expect(traces).toContain("ExplorerFacetPanel")
+    expect(logs).toContain("ObservePageLayout")
+    expect(logs).toContain("ExplorerFacetPanel")
+    const facet = readFileSync(
+      path.join(root, "components/observe/explorer/facet-panel.tsx"),
+      "utf8",
+    )
+    expect(facet).toContain("FilterSidebarHeader")
+    expect(facet).toContain("FilterSection")
+  })
+
+  it("context bar wires advanced filter and time hotkey", () => {
+    const bar = readFileSync(
+      path.join(root, "components/observe/context-bar.tsx"),
+      "utf8",
+    )
+    expect(bar).toContain("AdvancedFilterDialog")
+    expect(bar).toContain("hotkey")
+    expect(bar).toContain("shortcutFocus")
   })
 
   it("setup route redirects into project overview", () => {
@@ -86,8 +118,15 @@ describe("Observe UI structure", () => {
     expect(layout).toContain("Outlet")
     expect(overview).toContain("ObserveOnboarding")
     expect(overview).toContain("StatStrip")
+    expect(overview).toContain("SetupChecklist")
     expect(onboarding).toContain("SENTRY_DSN")
     expect(onboarding).toContain("OTEL endpoint")
+    expect(onboarding).toContain("observe-onboarding")
+    expect(onboarding).toContain("onboarding-method-tabs")
+    expect(onboarding).toContain("onboarding-verification")
+    expect(onboarding).not.toContain("justify-center")
+    expect(onboarding).toContain("CopyableField")
+    expect(onboarding).toContain("CodeSnippet")
   })
 
   it("issues list enables project and supports bulk + tabs", () => {
@@ -98,6 +137,8 @@ describe("Observe UI structure", () => {
     expect(src).toContain("client.observe.projects.enable")
     expect(src).toContain("bulkUpdateStatus")
     expect(src).toContain("client.observe.issues")
+    expect(src).toContain("IssuesToolbar")
+    expect(src).toContain("IssuesFilterSidebar")
   })
 
   it("issue detail has event graph, inspector, and correlation", () => {
@@ -113,6 +154,17 @@ describe("Observe UI structure", () => {
     expect(src).toContain("Recommended")
     expect(src).toContain("lifetime events")
     expect(src).toContain("serializeIssueSearch")
+    expect(src).toContain("IssueHero")
+    expect(src).toContain("Copy as prompt")
+  })
+
+  it("overview shows setup checklist and first-signal celebration", () => {
+    const overview = readFileSync(
+      path.join(root, "routes/observe/projects/$projectId.index.tsx"),
+      "utf8",
+    )
+    expect(overview).toContain("SetupChecklist")
+    expect(overview).toContain("FirstSignalCelebration")
   })
 
   it("traces list uses shared context bar facets", () => {
@@ -183,10 +235,51 @@ describe("Observe UI structure", () => {
     expect(src).not.toContain("/setup")
     expect(src).toContain('title: "Issues"')
     expect(src).toContain('title: "Traces"')
-    expect(src).toContain('title: "Charts"')
-    expect(src).toContain('title: "Alerts"')
-    expect(src).toContain('title: "Saved charts"')
-    expect(src).toContain('title: "Boards"')
+    expect(src).toContain('title: "Monitor"')
+    // Charts / Boards / Alerts are Monitor sub-tabs, not top-level peers.
+    expect(src).not.toContain('title: "Saved charts"')
+    expect(src).not.toContain('title: "Boards"')
+    expect(src).not.toContain('title: "Alerts"')
+    expect(src).not.toContain('to: `${base}/trends`')
+  })
+
+  it("Monitor sub-nav covers charts, boards, alerts", () => {
+    const nav = readFileSync(
+      path.join(root, "components/observe/monitor-sub-nav.tsx"),
+      "utf8",
+    )
+    expect(nav).toContain("Charts")
+    expect(nav).toContain("Boards")
+    expect(nav).toContain("Alerts")
+    expect(nav).toContain("/insights")
+    expect(nav).toContain("/dashboards")
+    expect(nav).toContain("/alerts")
+    const shell = readFileSync(
+      path.join(root, "components/observe/project-shell.tsx"),
+      "utf8",
+    )
+    expect(shell).toContain("MonitorSubNav")
+  })
+
+  it("Charts list owns create dialog; trends redirects there", () => {
+    const insights = readFileSync(
+      path.join(root, "routes/observe/projects/$projectId.insights.tsx"),
+      "utf8",
+    )
+    expect(insights).toContain("ChartBuilderDialog")
+    expect(insights).toContain("Create chart")
+    expect(insights).toContain("ResourceTable")
+    const boards = readFileSync(
+      path.join(root, "routes/observe/projects/$projectId.dashboards.tsx"),
+      "utf8",
+    )
+    expect(boards).toContain("CreateBoardDialog")
+    const trends = readFileSync(
+      path.join(root, "routes/observe/projects/$projectId.trends.tsx"),
+      "utf8",
+    )
+    expect(trends).toContain("redirect")
+    expect(trends).toContain("/insights")
   })
 
   it("Charts analysis tabs do not link to other Observe pages", () => {

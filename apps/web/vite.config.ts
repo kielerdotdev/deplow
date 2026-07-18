@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
       include: ["@sentry/react"],
     },
     server: {
-      port: 3000,
+      port: 9565,
     },
   }
 })

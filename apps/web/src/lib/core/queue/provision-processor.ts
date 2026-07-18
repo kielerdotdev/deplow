@@ -1,5 +1,4 @@
 import { eq } from "@deplow/db"
-import type { ResourceKind } from "@deplow/shared"
 
 import {
   markOperationFailed,
@@ -7,6 +6,11 @@ import {
   markOperationSucceeded,
 } from "@/lib/core/queue/operations"
 import type { ProvisionJobData } from "@/lib/core/queue"
+import {
+  markServiceProvisionFailed,
+  markServiceProvisionSucceeded,
+  markServiceProvisioning,
+} from "@/lib/service-lifecycle/completion"
 import {
   db,
   projects,
@@ -31,13 +35,6 @@ export async function processProvisionJob(
     })
     return
   }
-  if (service.type !== "postgres" && service.type !== "redis") {
-    await markOperationFailed(operationId, {
-      message: `Cannot provision service type ${service.type}`,
-      code: "invalid_type",
-    })
-    return
-  }
 
   const [project] = await db
     .select()
@@ -51,43 +48,47 @@ export async function processProvisionJob(
     return
   }
 
-  await db
-    .update(services)
-    .set({ status: "provisioning", errorMessage: null, errorCode: null })
-    .where(eq(services.id, service.id))
+  const { workloadRegistry } = await import("@/lib/k8s/workload")
+  const driver = workloadRegistry().get(service.type)
+  if (!driver?.provision) {
+    await markOperationFailed(operationId, {
+      message: `Cannot provision service type ${service.type}`,
+      code: "invalid_type",
+    })
+    return
+  }
+
+  await markServiceProvisioning(service.id)
 
   try {
-    const kind = service.type as ResourceKind
-    const credentialsEncrypted = await resourceLinkService.provision(
-      kind,
-      project.slug,
-      {
-        projectId: project.id,
-        resourceLinkId: service.legacyResourceLinkId ?? service.id,
-      },
+    const { requireConnectedKubeconfig } = await import(
+      "@/lib/k8s/cluster-store"
     )
-    await db
-      .update(services)
-      .set({
-        status: "running",
-        credentialsEncrypted,
-        errorMessage: null,
-        errorCode: null,
-        lastOperationId: operationId,
-      })
-      .where(eq(services.id, service.id))
+    const kubeconfigYaml = await requireConnectedKubeconfig()
+    const creds = await driver.provision({
+      kubeconfigYaml,
+      projectSlug: project.slug,
+      serviceName: service.name,
+      serviceId: service.id,
+      projectId: project.id,
+    })
+    if (!creds) {
+      throw new Error("Provision returned no credentials")
+    }
+    const credentialsEncrypted = resourceLinkService.encrypt(creds)
+    await markServiceProvisionSucceeded({
+      serviceId: service.id,
+      operationId,
+      credentialsEncrypted,
+    })
     await markOperationSucceeded(operationId, { serviceId: service.id })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    await db
-      .update(services)
-      .set({
-        status: "error",
-        errorMessage: message,
-        errorCode: "provision_failed",
-        lastOperationId: operationId,
-      })
-      .where(eq(services.id, service.id))
+    await markServiceProvisionFailed({
+      serviceId: service.id,
+      operationId,
+      message,
+    })
     await markOperationFailed(operationId, {
       message,
       code: "provision_failed",

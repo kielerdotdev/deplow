@@ -9,38 +9,54 @@ import { describe, expect, it } from "vitest"
 describe("lifecycle structure (create → deploy → proxy → destroy)", () => {
   const root = path.resolve(import.meta.dirname, "../..")
 
-  it("project create pins nodeId and wires services/destroy", () => {
+  it("project create requires k3s cluster and wires services/destroy", () => {
     const src = readFileSync(path.join(root, "orpc/projects.ts"), "utf8")
-    expect(src).toContain("ensureLocalNodeId")
+    expect(src).toContain("requireConnectedKubeconfig")
+    expect(src).toContain("ensureClusterPlacementNode")
     expect(src).toContain("nodeId")
     expect(src).toContain("assertProductionSlug")
-    expect(src).toContain("proxyService.removeServiceRoute")
+    expect(src).toContain("runProjectDestroy")
     expect(src).toContain("resourceLinks")
     expect(src).toContain("services")
-    expect(src).toContain("removeProjectContainers")
+
+    const destroyPipeline = readFileSync(
+      path.join(root, "lib/project-destroy.ts"),
+      "utf8",
+    )
+    expect(destroyPipeline).toContain("serviceLifecycle")
+    expect(destroyPipeline).toContain(".destroy(")
+    expect(destroyPipeline).toContain("ownerId")
+    expect(destroyPipeline).toContain("failures")
+    expect(destroyPipeline).not.toContain("AgentJobCleanupPhase")
 
     const servicesWiring = readFileSync(path.join(root, "lib/services.ts"), "utf8")
     expect(servicesWiring).toContain("enqueueProvision")
-    expect(servicesWiring).toContain("resourceLinkService.provision")
-  })
-
-  it("deploy injects docker-network env, hardens runtime, updates proxy", () => {
-    const src = readFileSync(
-      path.join(root, "lib/core/queue/deploy-processor.ts"),
+    const provision = readFileSync(
+      path.join(root, "lib/core/queue/provision-processor.ts"),
       "utf8",
     )
-    expect(src).toContain("injectDeployEnv")
-    expect(src).toContain("dockerNodeExecutor.deployApp")
-    expect(src).toContain("proxyService.upsertServiceRoute")
-    expect(src).toContain('status: "building"')
-    expect(src).toContain('status: "deploying"')
-    expect(src).toContain('status: "running"')
+    expect(provision).toMatch(/workloadRegistry/)
+    expect(provision).toContain("@/lib/k8s/workload")
+  })
 
+  it("deploy dispatches to k8s via ServiceLifecycle", () => {
     const orpc = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
     expect(orpc).toContain("runProductionDeploy")
     expect(orpc).toContain("runServiceDeploy")
-    expect(orpc).toContain("enqueueDeploy")
-    expect(orpc).toContain('status: "queued"')
+    expect(orpc).toContain("deployService")
+    expect(orpc).not.toContain("runK8sDeploy")
+
+    const lifecycleDeploy = readFileSync(
+      path.join(root, "lib/service-lifecycle/deploy.ts"),
+      "utf8",
+    )
+    expect(lifecycleDeploy).toContain("runK8sDeploy")
+    expect(lifecycleDeploy).toContain("requireConnectedKubeconfig")
+    expect(lifecycleDeploy).toContain("buildServiceDeployEnv")
+
+    const k8s = readFileSync(path.join(root, "lib/k8s/deploy.ts"), "utf8")
+    expect(k8s).toContain("deployWebService")
+    expect(k8s).toContain("Ingress")
   })
 
   it("webhook route drives handleGitWebhook (signature + deploy entry)", () => {
@@ -62,10 +78,43 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     expect(src).toContain("deplow-caddy")
   })
 
-  it("createAndDeploy and connectGit register remote webhooks", () => {
+  it("createAndDeploy and connectGit register remote webhooks via lifecycle", () => {
     const src = readFileSync(path.join(root, "orpc/services.ts"), "utf8")
-    expect(src).toContain("registerServiceWebhook")
-    expect(src).toContain("deleteServiceWebhook")
+    expect(src).toContain("serviceLifecycle")
+    expect(src).toContain("connectGit")
+    const git = readFileSync(
+      path.join(root, "lib/service-lifecycle/git.ts"),
+      "utf8",
+    )
+    expect(git).toContain("registerServiceWebhook")
+    expect(git).toContain("deleteServiceWebhook")
+  })
+
+  it("service and project destroy go through lifecycle orchestrators", () => {
+    const servicesSrc = readFileSync(path.join(root, "orpc/services.ts"), "utf8")
+    expect(servicesSrc).toContain("serviceLifecycle.destroy")
+    expect(servicesSrc).not.toContain("unsyncNetbirdForService")
+    const projectsSrc = readFileSync(path.join(root, "orpc/projects.ts"), "utf8")
+    expect(projectsSrc).toContain("runProjectDestroy")
+    expect(projectsSrc).not.toContain("unsyncNetbirdForService")
+    const destroy = readFileSync(
+      path.join(root, "lib/service-lifecycle/destroy.ts"),
+      "utf8",
+    )
+    expect(destroy).toContain("deleteServiceWebhook")
+    expect(destroy).toContain("destroyWorkload")
+    const surface = readFileSync(
+      path.join(root, "lib/k8s/surface.ts"),
+      "utf8",
+    )
+    expect(surface).toContain("unpublishServiceSurface")
+    expect(surface).toContain("workloadRegistry")
+    expect(surface).toContain("destroyWorkload")
+    const deploy = readFileSync(path.join(root, "lib/k8s/run-deploy.ts"), "utf8")
+    expect(deploy).toContain("runDeployPublishHooks")
+    expect(deploy).not.toContain("syncNetbirdService")
+    const edgeOrpc = readFileSync(path.join(root, "orpc/edge.ts"), "utf8")
+    expect(edgeOrpc).toContain('edgeRegistry().get("netbird")')
   })
 
   it("platform.proxyStatus exposes ingress health for operators", () => {
@@ -73,51 +122,38 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     const platform = readFileSync(path.join(root, "orpc/platform.ts"), "utf8")
     expect(router).toContain("proxyStatus")
     expect(router).toContain("ingressUpdate")
-    expect(router).toContain("operatorWebhookUpdate")
+    expect(router).not.toContain("operatorWebhookUpdate")
+    expect(router).toContain("netbirdConnect")
+    expect(router).toContain("edge:")
     expect(platform).toContain("getProxyIngressStatus")
     expect(platform).toContain("saveIngressSettings")
     expect(platform).toContain("rebuildAutoHostnames")
-    expect(platform).toContain("saveOperatorWebhookSettings")
+    expect(platform).not.toContain("saveOperatorWebhookSettings")
   })
 
-  it("operations markSucceeded/Failed fire operator webhook", () => {
-    const src = readFileSync(
-      path.join(root, "lib/core/queue/operations.ts"),
-      "utf8",
-    )
-    expect(src).toContain("notifyOperatorWebhook")
-  })
-
-  it("deployments.stop removes proxy route", () => {
+  it("deployments.stop goes through serviceLifecycle.stop", () => {
     const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
-    expect(src).toContain("stopApp")
-    expect(src).toContain("proxyService.removeServiceRoute")
-  })
-
-  it("deploy success retains images and rollback uses selectRollbackTarget", () => {
-    const processor = readFileSync(
-      path.join(root, "lib/core/queue/deploy-processor.ts"),
+    expect(src).toContain("stopService")
+    expect(src).not.toContain("scaleWebService")
+    const stop = readFileSync(
+      path.join(root, "lib/service-lifecycle/stop.ts"),
       "utf8",
     )
-    expect(processor).toContain("retainAndPruneDeployImages")
+    expect(stop).toContain("driver.stop")
+    expect(stop).toContain("unpublishServiceSurface")
+  })
+
+  it("deploy success marks prior deployments stopped; rollback uses selectRollbackTarget", () => {
+    const runDeploy = readFileSync(
+      path.join(root, "lib/k8s/run-deploy.ts"),
+      "utf8",
+    )
+    expect(runDeploy).toContain("markPriorDeploymentsStopped")
     const orpc = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
     expect(orpc).toContain("selectRollbackTarget")
-  })
-
-  it("DockerNodeExecutor uses buildUserAppHostConfig for user apps", () => {
-    const webReexport = readFileSync(
-      path.join(root, "lib/core/docker-node-executor.ts"),
-      "utf8",
-    )
-    expect(webReexport).toContain("@deplow/runtime")
-    const src = readFileSync(
-      path.join(root, "../../packages/runtime/src/docker-node-executor.ts"),
-      "utf8",
-    )
-    expect(src).toContain("buildUserAppHostConfig")
-    expect(src).toContain("assertRuntimeAvailable")
-    expect(src).toContain("missingRuntimeError")
-    expect(src).not.toMatch(/Privileged:\s*true/)
+    const queue = readFileSync(path.join(root, "lib/core/queue/index.ts"), "utf8")
+    expect(queue).not.toContain("enqueueDeploy")
+    expect(queue).not.toContain("deplow-deploy")
   })
 })
 

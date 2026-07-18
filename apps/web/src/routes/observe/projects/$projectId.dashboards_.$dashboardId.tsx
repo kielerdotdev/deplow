@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   createFileRoute,
   Link,
@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router"
 import { PlusIcon, Trash2Icon } from "lucide-react"
 
+import { ActionDialog } from "@/components/action-dialog"
 import { ConfirmActionDialog } from "@/components/confirm-action-dialog"
 import {
   InsightWidget,
@@ -58,10 +59,15 @@ function BoardDetailPage() {
     parseContext({}),
   )
   const [name, setName] = useState(board.name)
+  const [renameOpen, setRenameOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setName(board.name)
+  }, [board.name])
 
   const layout: DashboardLayout = useMemo(() => {
     if (
@@ -133,19 +139,11 @@ function BoardDetailPage() {
       title={board.name}
       description={`Board · ${project.name}`}
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            render={
-              <Link
-                to="/observe/projects/$projectId/dashboards"
-                params={{ projectId }}
-              />
-            }
-          >
-            All boards
-          </Button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <TimeRangePicker
+            value={context.time}
+            onChange={(time) => setContext({ ...context, time })}
+          />
           <Button
             size="sm"
             className="gap-1.5"
@@ -157,62 +155,30 @@ function BoardDetailPage() {
           </Button>
           <Button
             size="sm"
+            variant="outline"
+            onClick={() => {
+              setName(board.name)
+              setRenameOpen(true)
+            }}
+          >
+            Rename
+          </Button>
+          <Button
+            size="icon-sm"
             variant="ghost"
-            className="text-destructive"
+            className="text-muted-foreground hover:text-destructive"
+            aria-label="Delete board"
             onClick={() => setDeleteOpen(true)}
           >
             <Trash2Icon className="size-3.5" />
-            Delete
           </Button>
         </div>
       }
     >
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="min-w-[12rem] flex-1">
-          <label className="mb-1 block text-xs text-muted-foreground">
-            Board name
-          </label>
-          <div className="flex gap-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-9"
-              disabled={renaming}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={renaming || !name.trim() || name.trim() === board.name}
-              onClick={() => {
-                void (async () => {
-                  setRenaming(true)
-                  try {
-                    await client.observe.dashboards.update({
-                      projectId,
-                      dashboardId,
-                      name: name.trim(),
-                    })
-                    await router.invalidate()
-                  } finally {
-                    setRenaming(false)
-                  }
-                })()
-              }}
-            >
-              Rename
-            </Button>
-          </div>
-        </div>
-        <TimeRangePicker
-          value={context.time}
-          onChange={(time) => setContext({ ...context, time })}
-        />
-      </div>
-
       {widgets.length === 0 ? (
         <ObserveEmptyState
           title="Empty board"
-          description="Add a saved chart as a widget, or create one in Charts first."
+          description="Add a saved chart as a widget, or create one from Saved charts first."
           action={
             <div className="flex flex-wrap gap-2">
               <Button
@@ -285,59 +251,116 @@ function BoardDetailPage() {
         </div>
       )}
 
-      {addOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-popover p-4 shadow-lg ring-1 ring-foreground/10">
-            <h2 className="text-sm font-semibold">Add chart</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Pick a saved chart to place on this board.
-            </p>
-            {available.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">
-                {insights.length === 0
-                  ? "No saved charts yet."
-                  : "All saved charts are already on this board."}
-              </p>
-            ) : (
-              <ul className="mt-3 max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
-                {available.map((i) => (
-                  <li key={i.id}>
-                    <button
-                      type="button"
-                      className="flex w-full px-3 py-2.5 text-left text-sm hover:bg-muted/40"
-                      onClick={() => void addWidget(i.id)}
-                    >
-                      {i.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="mt-4 flex justify-end gap-2">
+      <ActionDialog
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        title="Rename board"
+        description="Update the display name for this board."
+        size="sm"
+        footer={
+          <div className="flex w-full gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={renaming}
+              onClick={() => setRenameOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={
+                renaming || !name.trim() || name.trim() === board.name
+              }
+              onClick={() => {
+                void (async () => {
+                  setRenaming(true)
+                  try {
+                    await client.observe.dashboards.update({
+                      projectId,
+                      dashboardId,
+                      name: name.trim(),
+                    })
+                    setRenameOpen(false)
+                    await router.invalidate()
+                  } finally {
+                    setRenaming(false)
+                  }
+                })()
+              }}
+            >
+              {renaming ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        }
+      >
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+          disabled={renaming}
+          aria-label="Board name"
+        />
+      </ActionDialog>
+
+      <ActionDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        title="Add chart"
+        description="Pick a saved chart to place on this board."
+        size="md"
+        footer={
+          <div className="flex w-full flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setAddOpen(false)}
+            >
+              Cancel
+            </Button>
+            {insights.length === 0 ? (
               <Button
                 size="sm"
-                variant="outline"
-                onClick={() => setAddOpen(false)}
+                className="flex-1"
+                render={
+                  <Link
+                    to="/observe/projects/$projectId/insights"
+                    params={{ projectId }}
+                    search={{ new: true }}
+                  />
+                }
               >
-                Cancel
+                Create chart
               </Button>
-              {insights.length === 0 ? (
-                <Button
-                  size="sm"
-                  render={
-                    <Link
-                      to="/observe/projects/$projectId/trends"
-                      params={{ projectId }}
-                    />
-                  }
-                >
-                  Create chart
-                </Button>
-              ) : null}
-            </div>
+            ) : null}
           </div>
-        </div>
-      ) : null}
+        }
+      >
+        {available.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {insights.length === 0
+              ? "No saved charts yet."
+              : "All saved charts are already on this board."}
+          </p>
+        ) : (
+          <ul className="max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+            {available.map((i) => (
+              <li key={i.id}>
+                <button
+                  type="button"
+                  className="flex w-full px-3 py-2.5 text-left text-sm hover:bg-muted/40"
+                  onClick={() => void addWidget(i.id)}
+                >
+                  {i.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ActionDialog>
 
       <ConfirmActionDialog
         open={deleteOpen}

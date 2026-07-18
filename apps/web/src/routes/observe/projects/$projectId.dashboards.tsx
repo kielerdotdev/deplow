@@ -12,6 +12,15 @@ import {
   ObserveEmptyState,
   ObserveProjectShell,
 } from "@/components/observe"
+import { CreateBoardDialog } from "@/components/observe/create-board-dialog"
+import {
+  ResourceRow,
+  ResourceTable,
+  ResourceTableBody,
+  ResourceTableHead,
+  ResourceTd,
+  ResourceTh,
+} from "@/components/observe/resource-table"
 import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
 import { parseDashboardLayout } from "@/lib/observe/insights"
@@ -64,7 +73,7 @@ function DashboardsPage() {
   const { projectId } = Route.useParams()
   const router = useRouter()
   const [dashboards, setDashboards] = useState(initial)
-  const [creating, setCreating] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -73,38 +82,26 @@ function DashboardsPage() {
 
   const deleting = dashboards.find((d) => d.id === deleteId)
 
-  async function createBoard() {
-    setCreating(true)
-    try {
-      const { id } = await client.observe.dashboards.create({
-        projectId,
-        name: "Untitled board",
-        template: "blank",
-      })
-      await router.invalidate()
-      void router.navigate({
-        to: "/observe/projects/$projectId/dashboards/$dashboardId",
-        params: { projectId, dashboardId: id },
-      })
-    } finally {
-      setCreating(false)
-    }
+  function openBoard(id: string) {
+    void router.navigate({
+      to: "/observe/projects/$projectId/dashboards/$dashboardId",
+      params: { projectId, dashboardId: id },
+    })
   }
 
   return (
     <ObserveProjectShell
       projectId={projectId}
       title="Boards"
-      description={`Grids of saved charts for ${project.name}`}
+      description={`Chart grids for ${project.name}`}
       actions={
         <Button
           size="sm"
           className="gap-1.5"
-          disabled={creating}
-          onClick={() => void createBoard()}
+          onClick={() => setCreateOpen(true)}
         >
           <PlusIcon className="size-3.5" />
-          {creating ? "Creating…" : "New board"}
+          New board
         </Button>
       }
     >
@@ -112,10 +109,10 @@ function DashboardsPage() {
         <ObserveEmptyState
           icon={LayoutDashboardIcon}
           title="No boards yet"
-          description="Boards are grids of saved charts with a shared time range."
+          description="Group saved charts on a shared time range. Create a board, then add charts."
           action={
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => void createBoard()}>
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
                 New board
               </Button>
               <Button
@@ -128,57 +125,43 @@ function DashboardsPage() {
                   />
                 }
               >
-                Saved charts
+                Charts
               </Button>
             </div>
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">
-                <th className="px-3 py-2.5 font-medium">Board</th>
-                <th className="hidden px-3 py-2.5 font-medium sm:table-cell">
-                  Widgets
-                </th>
-                <th className="px-3 py-2.5 text-right font-medium">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/70">
-              {dashboards.map((d) => (
-                <tr
-                  key={d.id}
-                  className="transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-3 py-3 align-middle">
-                    <Link
-                      to="/observe/projects/$projectId/dashboards/$dashboardId"
-                      params={{ projectId, dashboardId: d.id }}
-                      className="font-medium hover:underline"
-                    >
-                      {d.name}
-                    </Link>
-                    <div className="mt-0.5 text-xs capitalize text-muted-foreground">
-                      {d.template}
+        <ResourceTable>
+          <ResourceTableHead>
+            <ResourceTh>Name</ResourceTh>
+            <ResourceTh className="hidden sm:table-cell">Template</ResourceTh>
+            <ResourceTh className="hidden sm:table-cell">Widgets</ResourceTh>
+            <ResourceTh srOnly>Actions</ResourceTh>
+          </ResourceTableHead>
+          <ResourceTableBody>
+            {dashboards.map((d) => {
+              const count = widgetCount(d)
+              return (
+                <ResourceRow key={d.id} onClick={() => openBoard(d.id)}>
+                  <ResourceTd>
+                    <div className="font-medium leading-snug">{d.name}</div>
+                    <div className="mt-0.5 text-xs capitalize text-muted-foreground sm:hidden">
+                      {d.template} · {count} widget{count === 1 ? "" : "s"}
                     </div>
-                  </td>
-                  <td className="hidden px-3 py-3 align-middle tabular-nums text-muted-foreground sm:table-cell">
-                    {widgetCount(d)}
-                  </td>
-                  <td className="px-3 py-3 align-middle">
+                  </ResourceTd>
+                  <ResourceTd className="hidden capitalize text-xs text-muted-foreground sm:table-cell">
+                    {d.template}
+                  </ResourceTd>
+                  <ResourceTd className="hidden tabular-nums text-muted-foreground sm:table-cell">
+                    {count}
+                  </ResourceTd>
+                  <ResourceTd stopPropagation className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
-                        render={
-                          <Link
-                            to="/observe/projects/$projectId/dashboards/$dashboardId"
-                            params={{ projectId, dashboardId: d.id }}
-                          />
-                        }
+                        type="button"
+                        onClick={() => openBoard(d.id)}
                       >
                         Open
                       </Button>
@@ -193,13 +176,26 @@ function DashboardsPage() {
                         <Trash2Icon className="size-3.5" />
                       </Button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </ResourceTd>
+                </ResourceRow>
+              )
+            })}
+          </ResourceTableBody>
+        </ResourceTable>
       )}
+
+      <CreateBoardDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        projectId={projectId}
+        onCreated={({ id }) => {
+          void router.invalidate()
+          void router.navigate({
+            to: "/observe/projects/$projectId/dashboards/$dashboardId",
+            params: { projectId, dashboardId: id },
+          })
+        }}
+      />
 
       <ConfirmActionDialog
         open={deleteId != null}

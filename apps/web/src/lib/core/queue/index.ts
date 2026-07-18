@@ -3,7 +3,6 @@ import { Queue, Worker, type ConnectionOptions, type Job } from "bullmq"
 import { env } from "@/lib/env"
 
 export const QUEUE_NAMES = {
-  deploy: "deplow-deploy",
   provision: "deplow-provision",
   backup: "deplow-backup",
   restore: "deplow-restore",
@@ -12,17 +11,6 @@ export const QUEUE_NAMES = {
 } as const
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES]
-
-export type DeployJobData = {
-  operationId: string
-  deploymentId: string
-  serviceId: string
-  fromGit?: boolean
-  image?: string
-  sourcePath?: string
-  triggeredBy?: string
-  options?: Record<string, unknown>
-}
 
 export type ProvisionJobData = {
   operationId: string
@@ -75,16 +63,6 @@ export function getQueue(name: QueueName): Queue {
     queues.set(name, q)
   }
   return q
-}
-
-export async function enqueueDeploy(data: DeployJobData): Promise<void> {
-  const queue = getQueue(QUEUE_NAMES.deploy)
-  await queue.add("deploy", data, {
-    jobId: `deploy:${data.serviceId}:${data.deploymentId}`,
-    removeOnComplete: 100,
-    removeOnFail: 200,
-    attempts: 1,
-  })
 }
 
 export async function enqueueProvision(data: ProvisionJobData): Promise<void> {
@@ -141,7 +119,6 @@ export async function enqueueObserveDigest(
 }
 
 type ProcessorMap = {
-  deploy?: (job: Job<DeployJobData>) => Promise<void>
   provision?: (job: Job<ProvisionJobData>) => Promise<void>
   backup?: (job: Job<BackupJobData>) => Promise<void>
   restore?: (job: Job<RestoreJobData>) => Promise<void>
@@ -157,16 +134,6 @@ const LONG_JOB_LOCK_MS = 30 * 60 * 1000
 export function startQueueWorkers(processors: ProcessorMap): void {
   if (!env.useQueue) return
 
-  if (processors.deploy) {
-    workers.push(
-      new Worker(QUEUE_NAMES.deploy, processors.deploy, {
-        connection: getQueueConnection(),
-        concurrency: 2,
-        lockDuration: LONG_JOB_LOCK_MS,
-        stalledInterval: 60_000,
-      }),
-    )
-  }
   if (processors.provision) {
     workers.push(
       new Worker(QUEUE_NAMES.provision, processors.provision, {
@@ -224,19 +191,6 @@ export function startQueueWorkers(processors: ProcessorMap): void {
         `[deplow] queue job failed ${job?.queueName}/${job?.id}`,
         err,
       )
-      // Stall/crash failures bypass the processor catch — sync DB so UI leaves "checking".
-      if (job?.queueName === QUEUE_NAMES.deploy && job.data) {
-        void import("@/lib/core/queue/deploy-processor")
-          .then(({ failDeployAfterQueueLoss }) =>
-            failDeployAfterQueueLoss(
-              job.data,
-              err instanceof Error ? err : new Error(String(err)),
-            ),
-          )
-          .catch((e) =>
-            console.error("[deplow] failDeployAfterQueueLoss failed", e),
-          )
-      }
     })
   }
 }

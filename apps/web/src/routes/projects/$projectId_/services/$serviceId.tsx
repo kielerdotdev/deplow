@@ -8,6 +8,8 @@ import { z } from "zod"
 
 import { AppShell } from "@/components/app-shell"
 import { BackupsPanel } from "@/components/backups-panel"
+import { PageContent } from "@/components/page-layout"
+import { ShellPending } from "@/components/route-pending"
 import { DatabasePanel } from "@/components/database-panel"
 import { DeploymentRow } from "@/components/service/deployment-row"
 import { ServiceHeader } from "@/components/service/service-header"
@@ -52,6 +54,7 @@ const serviceSearchSchema = z.object({
 export const Route = createFileRoute(
   "/projects/$projectId_/services/$serviceId",
 )({
+  pendingComponent: ShellPending,
   validateSearch: (search) => serviceSearchSchema.parse(search),
   loader: async ({ params, location }) => {
     const session = await getSession()
@@ -309,7 +312,7 @@ function ServicePage() {
       activeOrganization={shell.activeOrganization}
       observeEnabled={shell.observeEnabled}
     >
-      <div className="flex w-full flex-col gap-6">
+      <PageContent width="wide" className="gap-6">
         <ServiceHeader
           projectId={project.id}
           projectName={project.name}
@@ -447,7 +450,7 @@ function ServicePage() {
             onDestroy={destroyService}
           />
         ) : null}
-      </div>
+      </PageContent>
     </AppShell>
   )
 }

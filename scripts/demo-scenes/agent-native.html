@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hostrig — Agent Native</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #09090b;
+        --fg: #fafafa;
+        --muted: #a1a1aa;
+        --dim: #71717a;
+        --line: rgba(255, 255, 255, 0.1);
+        --surface: #111318;
+        --ok: #d4d4d8;
+        --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+        --spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "DM Sans", system-ui, sans-serif;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      .stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: grid;
+        place-items: center;
+        background: var(--bg);
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(1.03);
+        transition:
+          opacity 0.4s var(--ease),
+          transform 1.1s var(--ease);
+      }
+      .scene.on {
+        opacity: 1;
+        pointer-events: auto;
+        transform: scale(1);
+      }
+      .scene.zoom-in {
+        transform: scale(1.06);
+      }
+
+      .eyebrow {
+        font-size: 13px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--dim);
+        font-weight: 600;
+        margin-bottom: 18px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 0.45s var(--ease),
+          transform 0.45s var(--ease);
+      }
+      .eyebrow.on {
+        opacity: 1;
+        transform: none;
+      }
+      .hero-title {
+        font-size: clamp(52px, 6.5vw, 84px);
+        font-weight: 700;
+        letter-spacing: -0.045em;
+        line-height: 0.98;
+        text-align: center;
+        text-wrap: balance;
+        opacity: 0;
+        transform: translateY(12px);
+        transition:
+          opacity 0.5s var(--ease) 0.08s,
+          transform 0.5s var(--ease) 0.08s;
+      }
+      .hero-title.on {
+        opacity: 1;
+        transform: none;
+      }
+      .hero-sub {
+        margin-top: 20px;
+        font-size: 24px;
+        color: var(--muted);
+        text-align: center;
+        font-weight: 500;
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.5s var(--ease) 0.16s,
+          transform 0.5s var(--ease) 0.16s;
+      }
+      .hero-sub.on {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* Chat */
+      .chat {
+        width: min(780px, 88vw);
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 48px 1fr;
+        gap: 14px;
+        align-items: start;
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.4s var(--ease),
+          transform 0.4s var(--ease);
+      }
+      .row.on {
+        opacity: 1;
+        transform: none;
+      }
+      .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        display: grid;
+        place-items: center;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: var(--dim);
+        font-weight: 500;
+      }
+      .bubble {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 18px 20px;
+        font-size: 20px;
+        line-height: 1.45;
+        color: var(--fg);
+      }
+      .bubble.mono {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 18px;
+        color: #e4e4e7;
+        min-height: 56px;
+      }
+      .caret {
+        display: inline-block;
+        width: 0.55ch;
+        height: 1.05em;
+        margin-left: 1px;
+        background: var(--fg);
+        vertical-align: text-bottom;
+        animation: blink 1s step-end infinite;
+      }
+      .caret.off {
+        display: none;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      .steps {
+        margin-top: 16px;
+        display: grid;
+        gap: 0;
+      }
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        font-size: 16px;
+        color: var(--dim);
+        opacity: 0;
+        transform: translateX(-6px);
+        transition:
+          opacity 0.35s var(--ease),
+          transform 0.35s var(--ease),
+          color 0.3s var(--ease);
+      }
+      .step:first-child {
+        border-top: 0;
+        padding-top: 4px;
+      }
+      .step.on {
+        opacity: 1;
+        transform: none;
+        color: var(--muted);
+      }
+      .step.done {
+        color: var(--fg);
+      }
+      .check {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1.5px solid #3f3f46;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        transition:
+          border-color 0.25s var(--ease),
+          background 0.25s var(--ease),
+          transform 0.35s var(--spring);
+      }
+      .step.done .check {
+        border-color: var(--fg);
+        background: var(--fg);
+        transform: scale(1.05);
+      }
+      .check svg {
+        width: 12px;
+        height: 12px;
+        opacity: 0;
+        transform: scale(0.4);
+        transition:
+          opacity 0.2s var(--ease),
+          transform 0.35s var(--spring);
+      }
+      .step.done .check svg {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .check path {
+        stroke: #09090b;
+        stroke-width: 2.2;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 16;
+        stroke-dashoffset: 16;
+      }
+      .step.done .check path {
+        animation: draw 0.35s var(--ease) forwards;
+      }
+      @keyframes draw {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      /* Log / progress */
+      .panel {
+        width: min(720px, 88vw);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 18px;
+        padding: 28px 28px 22px;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      .panel-head h2 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+      }
+      .pill {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        color: var(--dim);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+      }
+      .pill.live {
+        color: var(--fg);
+        border-color: rgba(255, 255, 255, 0.28);
+      }
+      .bar {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: var(--fg);
+        border-radius: 999px;
+        transition: width 0.45s var(--ease);
+      }
+      .log {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 14px;
+        display: grid;
+        gap: 8px;
+      }
+      .line {
+        color: var(--dim);
+        opacity: 0;
+        transform: translateY(4px);
+        transition:
+          opacity 0.3s var(--ease),
+          transform 0.3s var(--ease),
+          color 0.25s var(--ease);
+      }
+      .line.on {
+        opacity: 1;
+        transform: none;
+        color: var(--muted);
+      }
+      .line.ok {
+        color: var(--fg);
+      }
+      .line .mark {
+        display: inline-block;
+        width: 1.2em;
+        color: var(--dim);
+      }
+      .line.ok .mark {
+        color: var(--fg);
+      }
+
+      /* Live */
+      .url {
+        margin-top: 28px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 22px;
+        color: var(--fg);
+        padding: 14px 22px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        opacity: 0;
+        transform: scale(0.96);
+        transition:
+          opacity 0.4s var(--ease),
+          transform 0.45s var(--spring);
+      }
+      .url.on {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .chips {
+        margin-top: 22px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .chip {
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        font-size: 15px;
+        color: var(--muted);
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 0.35s var(--ease),
+          transform 0.35s var(--ease);
+      }
+      .chip.on {
+        opacity: 1;
+        transform: none;
+      }
+      .chip strong {
+        color: var(--fg);
+        font-weight: 600;
+      }
+
+      .timer {
+        position: absolute;
+        top: 36px;
+        right: 48px;
+        z-index: 5;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--dim);
+        letter-spacing: 0.04em;
+        opacity: 0;
+        transition: opacity 0.35s var(--ease), color 0.35s var(--ease);
+        font-variant-numeric: tabular-nums;
+      }
+      .timer.on {
+        opacity: 1;
+      }
+      .timer.done {
+        color: var(--fg);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="timer" id="timer"><span id="timerVal">0:00</span></div>
+
+      <section class="scene" id="s1">
+        <div>
+          <div class="eyebrow" id="e1">AI agent native</div>
+          <h1 class="hero-title" id="t1">One prompt.<br />Fully deployed.</h1>
+          <p class="hero-sub" id="s1sub">Bare project → live product.</p>
+        </div>
+      </section>
+
+      <section class="scene" id="s2">
+        <div class="chat">
+          <div class="row" id="userRow">
+            <div class="avatar">YOU</div>
+            <div class="bubble mono">
+              <span id="typed"></span><span class="caret" id="caret"></span>
+            </div>
+          </div>
+          <div class="row" id="agentRow">
+            <div class="avatar">AI</div>
+            <div class="bubble">
+              On it.
+              <div class="steps" id="steps">
+                <div class="step" data-step>
+                  <span class="check"
+                    ><svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.7 9.5 3.5" /></svg
+                  ></span>
+                  Create project
+                </div>
+                <div class="step" data-step>
+                  <span class="check"
+                    ><svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.7 9.5 3.5" /></svg
+                  ></span>
+                  Provision Postgres
+                </div>
+                <div class="step" data-step>
+                  <span class="check"
+                    ><svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.7 9.5 3.5" /></svg
+                  ></span>
+                  Bind DATABASE_URL
+                </div>
+                <div class="step" data-step>
+                  <span class="check"
+                    ><svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.7 9.5 3.5" /></svg
+                  ></span>
+                  Deploy web
+                </div>
+                <div class="step" data-step>
+                  <span class="check"
+                    ><svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.7 9.5 3.5" /></svg
+                  ></span>
+                  Return public URL
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" id="s3">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Deploying showcase</h2>
+            <span class="pill" id="pill">running</span>
+          </div>
+          <div class="bar"><i id="bar"></i></div>
+          <div class="log">
+            <div class="line" data-i="0"><span class="mark">›</span> create project</div>
+            <div class="line" data-i="1"><span class="mark">›</span> pull postgres:16</div>
+            <div class="line" data-i="2"><span class="mark">›</span> bind DATABASE_URL</div>
+            <div class="line" data-i="3"><span class="mark">›</span> schedule web on k3s</div>
+            <div class="line" data-i="4"><span class="mark">›</span> wait for ready</div>
+            <div class="line ok" data-i="5"><span class="mark">✓</span> healthy · 47s</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" id="s4">
+        <div style="text-align: center">
+          <div class="eyebrow" id="e4">Shipped</div>
+          <h1 class="hero-title" id="t4" style="font-size: clamp(44px, 5.5vw, 68px)">
+            Live in under a minute.
+          </h1>
+          <div class="url" id="urlPill">https://showcase.waitforit.cc</div>
+          <div class="chips">
+            <div class="chip" data-c><strong>web</strong>&nbsp;healthy</div>
+            <div class="chip" data-c><strong>postgres</strong>&nbsp;healthy</div>
+            <div class="chip" data-c><strong>0:47</strong>&nbsp;elapsed</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+      async function typeText(el, text, cps = 38) {
+        el.textContent = ""
+        for (const ch of text) {
+          el.textContent += ch
+          await sleep(1000 / cps)
+        }
+      }
+
+      async function show(id) {
+        document.querySelectorAll(".scene").forEach((s) => {
+          s.classList.remove("on", "zoom-in")
+        })
+        document.getElementById(id).classList.add("on")
+      }
+
+      function startTimer() {
+        const el = document.getElementById("timer")
+        const val = document.getElementById("timerVal")
+        el.classList.add("on")
+        const t0 = performance.now()
+        const tick = () => {
+          const elapsed = ((performance.now() - t0) / 1000) * (47 / 12)
+          const s = Math.min(47, Math.floor(elapsed))
+          val.textContent = `0:${String(s).padStart(2, "0")}`
+          if (s < 47) requestAnimationFrame(tick)
+          else el.classList.add("done")
+        }
+        requestAnimationFrame(tick)
+        return () => {
+          val.textContent = "0:47"
+          el.classList.add("done")
+        }
+      }
+
+      async function run() {
+        await show("s1")
+        await sleep(80)
+        document.getElementById("e1").classList.add("on")
+        document.getElementById("t1").classList.add("on")
+        document.getElementById("s1sub").classList.add("on")
+        await sleep(700)
+        document.getElementById("s1").classList.add("zoom-in")
+        await sleep(1100)
+
+        const finishTimer = startTimer()
+        await show("s2")
+        await sleep(120)
+        document.getElementById("userRow").classList.add("on")
+        await sleep(200)
+        await typeText(
+          document.getElementById("typed"),
+          "Deploy my app with Postgres and give me a URL.",
+          40,
+        )
+        document.getElementById("caret").classList.add("off")
+        await sleep(280)
+        document.getElementById("agentRow").classList.add("on")
+        await sleep(350)
+
+        const steps = [...document.querySelectorAll("[data-step]")]
+        for (const step of steps) {
+          step.classList.add("on")
+          await sleep(220)
+          step.classList.add("done")
+          await sleep(180)
+        }
+        await sleep(400)
+
+        await show("s3")
+        await sleep(200)
+        const lines = [...document.querySelectorAll(".log .line")]
+        const bar = document.getElementById("bar")
+        for (let i = 0; i < lines.length; i++) {
+          lines[i].classList.add("on")
+          bar.style.width = `${((i + 1) / lines.length) * 100}%`
+          await sleep(280)
+        }
+        document.getElementById("pill").textContent = "ready"
+        document.getElementById("pill").classList.add("live")
+        await sleep(700)
+
+        finishTimer()
+        await show("s4")
+        await sleep(100)
+        document.getElementById("e4").classList.add("on")
+        document.getElementById("t4").classList.add("on")
+        await sleep(250)
+        document.getElementById("urlPill").classList.add("on")
+        for (const chip of document.querySelectorAll("[data-c]")) {
+          await sleep(140)
+          chip.classList.add("on")
+        }
+        await sleep(1500)
+        document.body.dataset.done = "1"
+      }
+
+      run()
+    </script>
+  </body>
+</html>

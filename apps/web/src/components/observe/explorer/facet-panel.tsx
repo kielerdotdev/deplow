@@ -1,9 +1,22 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
-import { cn } from "@/lib/utils"
-import { client } from "@/lib/orpc"
-import type { TelemetryQuery } from "@/lib/observe/telemetry"
+import {
+  FilterSection,
+  SearchableFilterSection,
+  SingleCheckboxFilter,
+} from "@/components/observe/filter-section"
+import {
+  FilterSidebarBody,
+  FilterSidebarError,
+  FilterSidebarFrame,
+  FilterSidebarHeader,
+  FilterSidebarLoading,
+} from "@/components/observe/filter-sidebar"
+import { Separator } from "@/components/ui/separator"
 import { emptyFilterGroup } from "@/lib/observe/telemetry"
+import type { TelemetryQuery } from "@/lib/observe/telemetry"
+import { serviceColorMap } from "@/lib/observe/service-color"
+import { client } from "@/lib/orpc"
 
 type Facet = {
   field: string
@@ -23,6 +36,27 @@ const FIELD_LABELS: Record<string, string> = {
   severity: "Severity",
 }
 
+const SEARCHABLE = new Set([
+  "service",
+  "operation",
+  "http.route",
+  "host.name",
+])
+
+function selectedForField(query: TelemetryQuery, field: string): string[] {
+  return query.filter.clauses
+    .filter((c) => c.key === field && c.op === "eq" && c.value)
+    .map((c) => c.value!)
+}
+
+function hasErrorSelected(query: TelemetryQuery): boolean {
+  return query.filter.clauses.some(
+    (c) =>
+      (c.key === "status" && c.op === "eq" && c.value === "error") ||
+      (c.key === "has_error" && c.op === "eq" && c.value === "true"),
+  )
+}
+
 export function ExplorerFacetPanel({
   projectId,
   query,
@@ -36,8 +70,9 @@ export function ExplorerFacetPanel({
 }) {
   const [facets, setFacets] = useState<Facet[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [retryToken, setRetryToken] = useState(0)
 
-  // Stabilize refetch key — full query object identity churns every render.
   const facetKey = JSON.stringify({
     signal: query.signal,
     timeRange: query.timeRange,
@@ -50,6 +85,7 @@ export function ExplorerFacetPanel({
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setError(false)
     void client.observe.query
       .facets({ projectId, query })
       .then((rows) => {
@@ -62,90 +98,148 @@ export function ExplorerFacetPanel({
         if (!cancelled) {
           setFacets([])
           setLoading(false)
+          setError(true)
         }
       })
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- facetKey captures query slice
-  }, [projectId, facetKey])
+  }, [projectId, facetKey, retryToken])
 
-  function toggle(field: string, value: string) {
+  const serviceColors = useMemo(() => {
+    const svc = facets.find((f) => f.field === "service")
+    return svc ? serviceColorMap(svc.buckets.map((b) => b.value)) : {}
+  }, [facets])
+
+  const activeCount = query.filter.clauses.length
+
+  function setFieldSelected(field: string, selected: string[]) {
     const filter = query.filter ?? emptyFilterGroup()
-    const existing = filter.clauses.findIndex(
-      (c) => c.key === field && c.op === "eq" && c.value === value,
-    )
-    const clauses =
-      existing >= 0
-        ? filter.clauses.filter((_, i) => i !== existing)
-        : [...filter.clauses, { key: field, op: "eq" as const, value }]
+    const others = filter.clauses.filter((c) => !(c.key === field && c.op === "eq"))
+    const nextClauses = [
+      ...others,
+      ...selected.map((value) => ({
+        key: field,
+        op: "eq" as const,
+        value,
+      })),
+    ]
     onChange({
       ...query,
-      filter: { ...filter, clauses },
+      filter: { ...filter, clauses: nextClauses },
       environment:
         field === "environment"
-          ? existing >= 0
-            ? undefined
-            : [value]
+          ? selected.length > 0
+            ? selected
+            : undefined
           : query.environment,
     })
   }
 
-  function isActive(field: string, value: string) {
-    return query.filter.clauses.some(
-      (c) => c.key === field && c.op === "eq" && c.value === value,
+  function setHasError(checked: boolean) {
+    const filter = query.filter ?? emptyFilterGroup()
+    const without = filter.clauses.filter(
+      (c) =>
+        !(
+          (c.key === "status" && c.op === "eq" && c.value === "error") ||
+          (c.key === "has_error" && c.op === "eq")
+        ),
+    )
+    onChange({
+      ...query,
+      filter: {
+        ...filter,
+        clauses: checked
+          ? [...without, { key: "status", op: "eq", value: "error" }]
+          : without,
+      },
+    })
+  }
+
+  function clearAll() {
+    onChange({
+      ...query,
+      filter: emptyFilterGroup(),
+      environment: undefined,
+    })
+  }
+
+  if (loading && facets.length === 0) {
+    return (
+      <div className={className} data-testid="explorer-facet-panel">
+        <FilterSidebarLoading sectionCount={4} />
+      </div>
     )
   }
 
-  return (
-    <aside
-      className={cn(
-        "w-full shrink-0 space-y-3 border-r border-border pr-3 md:w-52",
-        className,
-      )}
-      data-testid="explorer-facet-panel"
-    >
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Quick filters
+  if (error && facets.length === 0) {
+    return (
+      <div className={className} data-testid="explorer-facet-panel">
+        <FilterSidebarError
+          onRetry={() => setRetryToken((n) => n + 1)}
+        />
       </div>
-      {loading && facets.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Loading facets…</p>
-      ) : null}
-      {facets.map((facet) => (
-        <div key={facet.field} className="space-y-1">
-          <div className="text-xs font-medium text-foreground">
-            {FIELD_LABELS[facet.field] ?? facet.field}
-          </div>
-          {facet.buckets.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">No values</p>
-          ) : (
-            <ul className="space-y-0.5">
-              {facet.buckets.map((b) => {
-                const active = isActive(facet.field, b.value)
-                return (
-                  <li key={b.value}>
-                    <button
-                      type="button"
-                      className={cn(
-                        "flex w-full min-h-8 items-center justify-between gap-2 rounded px-1.5 text-left text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        active
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                      )}
-                      onClick={() => toggle(facet.field, b.value)}
-                    >
-                      <span className="truncate">{b.value}</span>
-                      <span className="shrink-0 tabular-nums text-[11px]">
-                        {b.count.toLocaleString()}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
-      ))}
-    </aside>
+    )
+  }
+
+  const errorFacet = facets.find((f) => f.field === "status")
+  const errorCount =
+    errorFacet?.buckets.find((b) => b.value === "error")?.count ??
+    errorFacet?.buckets.reduce(
+      (sum, b) =>
+        sum + (b.value === "error" || b.value === "ERROR" ? b.count : 0),
+      0,
+    )
+
+  return (
+    <div className={className} data-testid="explorer-facet-panel">
+      <FilterSidebarFrame waiting={loading}>
+        <FilterSidebarHeader
+          canClear={activeCount > 0}
+          onClear={clearAll}
+        />
+        <FilterSidebarBody>
+          {query.signal !== "logs" ? (
+            <>
+              <SingleCheckboxFilter
+                title="Has Error"
+                checked={hasErrorSelected(query)}
+                onChange={setHasError}
+                count={errorCount}
+              />
+              <Separator className="my-2" />
+            </>
+          ) : null}
+
+          {facets.map((facet) => {
+            const options = facet.buckets.map((b) => ({
+              name: b.value,
+              count: b.count,
+            }))
+            const selected = selectedForField(query, facet.field)
+            const title = FIELD_LABELS[facet.field] ?? facet.field
+            const Section = SEARCHABLE.has(facet.field)
+              ? SearchableFilterSection
+              : FilterSection
+            return (
+              <div key={facet.field}>
+                <Section
+                  title={title}
+                  options={options}
+                  selected={selected}
+                  onChange={(next) => setFieldSelected(facet.field, next)}
+                  colorMap={
+                    facet.field === "service" ? serviceColors : undefined
+                  }
+                  maxVisible={facet.field === "service" ? 8 : 5}
+                />
+                <Separator className="my-1" />
+              </div>
+            )
+          })}
+        </FilterSidebarBody>
+      </FilterSidebarFrame>
+    </div>
   )
 }

@@ -21,6 +21,7 @@ coverage
 /deploy-data/
 packages/db/data/
 tmp/
+.venv-demo/
 infra/caddy/routes/*.caddy
 !infra/caddy/routes/.gitkeep
 
@@ -40,3 +41,10 @@ skills-lock.json
 .cta.json
 apps/web/data/
 **/git-clones/
+.devcontainer/.docker-gid
+.devcontainer/.env
+.tools/
+.env.demo
+
+# built agent binary (not source)
+deploy/bin/deplow-agent

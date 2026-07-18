@@ -5,8 +5,7 @@ import { and, eq } from "@deplow/db"
 import {
   createProjectInputSchema,
   deriveProjectStatus,
-  setProjectNodeInputSchema,
-  type ProjectStatus,
+    type ProjectStatus,
 } from "@deplow/shared"
 import {
   listProjectEnvSecretsInputSchema,
@@ -26,9 +25,6 @@ import {
   backupScheduler,
   backupService,
   db,
-  dockerNodeExecutor,
-  ensureLocalNodeId,
-  nodes,
   getBackupTargets,
   getPostgresCredentials,
   getProjectCredentials,
@@ -46,8 +42,6 @@ import {
   saveProjectEnvSecrets,
   services,
 } from "@/lib/services"
-import { removeAllHostnames } from "@/lib/service-hostnames"
-
 import { authedProcedure } from "./middleware"
 import {
   maskProjectEnvEntries,
@@ -268,19 +262,21 @@ export const create = authedProcedure
     }
 
     const id = crypto.randomUUID()
-    let nodeId = input.nodeId
-    if (nodeId) {
-      const [node] = await db.select().from(nodes).where(eq(nodes.id, nodeId))
-      if (!node) {
-        throw new ORPCError("BAD_REQUEST", { message: "Node not found" })
-      }
-      if (node.provider !== "docker" && node.provider !== "agent") {
-        throw new ORPCError("BAD_REQUEST", {
-          message: "Project must pin to a docker or agent node",
-        })
-      }
-    } else {
-      nodeId = await ensureLocalNodeId()
+    let nodeId: string
+    try {
+      const {
+        ensureClusterPlacementNode,
+        requireConnectedKubeconfig,
+      } = await import("@/lib/k8s/cluster-store")
+      await requireConnectedKubeconfig()
+      nodeId = await ensureClusterPlacementNode()
+    } catch (e) {
+      throw new ORPCError("BAD_REQUEST", {
+        message:
+          e instanceof Error
+            ? e.message
+            : "Connect a k3s cluster under Settings → Cluster before creating projects.",
+      })
     }
     const interval = BackupScheduler.defaultIntervalMs()
     await db.insert(projects).values({
@@ -298,40 +294,6 @@ export const create = authedProcedure
     return detail(await loadAccessibleProject(id, context.session!))
   })
 
-export const setNode = authedProcedure
-  .input(setProjectNodeInputSchema)
-  .handler(async ({ context, input }) => {
-    const project = await assertProjectAccess(
-      input.id,
-      context.session!,
-      "owner",
-    )
-    const [node] = await db
-      .select()
-      .from(nodes)
-      .where(eq(nodes.id, input.nodeId))
-    if (!node) {
-      throw new ORPCError("BAD_REQUEST", { message: "Node not found" })
-    }
-    if (node.provider !== "docker" && node.provider !== "agent") {
-      throw new ORPCError("BAD_REQUEST", {
-        message: "Project must pin to a docker or agent node",
-      })
-    }
-    if (node.provider === "agent") {
-      const { isAgentOnline } = await import("@/lib/agent/tokens")
-      if (!isAgentOnline(node)) {
-        throw new ORPCError("BAD_REQUEST", {
-          message: "Agent node is offline",
-        })
-      }
-    }
-    await db
-      .update(projects)
-      .set({ nodeId: node.id })
-      .where(eq(projects.id, project.id))
-    return detail(await loadAccessibleProject(project.id, context.session!))
-  })
 
 export const destroy = authedProcedure
   .input(z.object({ id: z.string().min(1) }))
@@ -341,49 +303,12 @@ export const destroy = authedProcedure
       context.session!,
       "owner",
     )
-    await db
-      .update(projects)
-      .set({ status: "destroying" })
-      .where(eq(projects.id, project.id))
-    backupScheduler.unschedule(project.id)
-    const [serviceRows, links] = await Promise.all([
-      db.select().from(services).where(eq(services.projectId, project.id)),
-      db
-        .select()
-        .from(resourceLinks)
-        .where(eq(resourceLinks.projectId, project.id)),
-    ])
-    await Promise.all(
-      serviceRows.map((service) =>
-        Promise.all([
-          proxyService.removeServiceRoute(service.id).catch(() => undefined),
-          removeAllHostnames(service.id).catch(() => undefined),
-        ]),
-      ),
-    )
-    await dockerNodeExecutor
-      .removeProjectContainers(project.id)
-      .catch(() => undefined)
-    for (const link of links) {
-      await resourceLinkService
-        .destroy(
-          link.kind as "postgres" | "redis" | "s3",
-          project.slug,
-          link.credentialsEncrypted,
-          { projectId: project.id, resourceLinkId: link.id },
-        )
-        .catch(() => undefined)
-    }
-    for (const svc of serviceRows) {
-      if (svc.type !== "postgres" && svc.type !== "redis") continue
-      await resourceLinkService
-        .destroy(svc.type, project.slug, svc.credentialsEncrypted, {
-          projectId: project.id,
-          resourceLinkId: svc.legacyResourceLinkId ?? svc.id,
-        })
-        .catch(() => undefined)
-    }
-    await db.delete(projects).where(eq(projects.id, project.id))
+    const { runProjectDestroy } = await import("@/lib/project-destroy")
+    await runProjectDestroy({
+      projectId: project.id,
+      projectSlug: project.slug,
+      nodeId: project.nodeId,
+    })
     return { ok: true as const }
   })
 
@@ -706,12 +631,17 @@ export const rotatePostgresRole = authedProcedure
       rotated.password,
     )
     if (updated) {
+      const encrypted = resourceLinkService.encrypt(updated)
       await db
-        .update(resourceLinks)
-        .set({
-          credentialsEncrypted: resourceLinkService.encrypt(updated),
-        })
-        .where(eq(resourceLinks.id, pg.linkId))
+        .update(services)
+        .set({ credentialsEncrypted: encrypted })
+        .where(eq(services.id, pg.serviceId))
+      if (pg.linkId !== pg.serviceId) {
+        await db
+          .update(resourceLinks)
+          .set({ credentialsEncrypted: encrypted })
+          .where(eq(resourceLinks.id, pg.linkId))
+      }
     }
 
     return rotated
@@ -797,12 +727,17 @@ export const rotateRedisUser = authedProcedure
       rotated.password,
     )
     if (updated) {
+      const encrypted = resourceLinkService.encrypt(updated)
       await db
-        .update(resourceLinks)
-        .set({
-          credentialsEncrypted: resourceLinkService.encrypt(updated),
-        })
-        .where(eq(resourceLinks.id, redis.linkId))
+        .update(services)
+        .set({ credentialsEncrypted: encrypted })
+        .where(eq(services.id, redis.serviceId))
+      if (redis.linkId !== redis.serviceId) {
+        await db
+          .update(resourceLinks)
+          .set({ credentialsEncrypted: encrypted })
+          .where(eq(resourceLinks.id, redis.linkId))
+      }
     }
     return rotated
   })

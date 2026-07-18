@@ -24,6 +24,7 @@ function pitrEnabled(): boolean {
 export class PostgresContainerDriver implements DataServiceDriver {
   readonly kind = "postgres" as const
   readonly source = "dedicated-container" as const
+  readonly defaultEnvKey = "DATABASE_URL"
   readonly capabilities = {
     backup: true,
     pitr: true,

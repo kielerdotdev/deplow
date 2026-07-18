@@ -25,11 +25,11 @@ describe("command recents", () => {
     expect(loadRecentCommands()).toEqual([])
 
     pushRecentCommand("nav.home", "Home")
-    pushRecentCommand("nav.nodes", "Nodes")
+    pushRecentCommand("nav.cluster", "Cluster")
     pushRecentCommand("nav.home", "Home")
 
     const recents = loadRecentCommands()
-    expect(recents.map((r) => r.id)).toEqual(["nav.home", "nav.nodes"])
+    expect(recents.map((r) => r.id)).toEqual(["nav.home", "nav.cluster"])
     expect(recents[0]?.label).toBe("Home")
   })
 

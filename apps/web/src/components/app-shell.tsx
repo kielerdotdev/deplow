@@ -2,14 +2,11 @@ import { useEffect, useMemo } from "react"
 import { Link, useRouterState } from "@tanstack/react-router"
 import {
   ActivityIcon,
-  BellIcon,
-  BookmarkIcon,
   BugIcon,
   ChartLineIcon,
   CompassIcon,
   GaugeIcon,
   KeyRoundIcon,
-  LayoutDashboardIcon,
   LayoutGridIcon,
   ListTreeIcon,
   LogOutIcon,
@@ -82,7 +79,10 @@ function buildDeployNav(projectId?: string) {
       title: "Deployments",
       to: `${base}/deployments`,
       icon: RocketIcon,
-      match: (path: string) => path.includes("/deployments"),
+      // Project list only — not /services/.../deployments/...
+      match: (path: string) =>
+        path === `${base}/deployments` ||
+        path.startsWith(`${base}/deployments/`),
     },
     {
       title: "Secrets",
@@ -129,28 +129,15 @@ function buildObserveNav(projectId?: string): NavGroup[] {
           match: (path: string) => path.includes("/services"),
         },
         {
-          title: "Charts",
-          to: `${base}/trends`,
-          icon: ChartLineIcon,
-          match: (path: string) => path.includes("/trends"),
-        },
-        {
-          title: "Saved charts",
+          // Charts · Boards · Alerts live under Monitor sub-tabs (not top-level).
+          title: "Monitor",
           to: `${base}/insights`,
-          icon: BookmarkIcon,
-          match: (path: string) => path.includes("/insights"),
-        },
-        {
-          title: "Boards",
-          to: `${base}/dashboards`,
-          icon: LayoutDashboardIcon,
-          match: (path: string) => path.includes("/dashboards"),
-        },
-        {
-          title: "Alerts",
-          to: `${base}/alerts`,
-          icon: BellIcon,
-          match: (path: string) => path.includes("/alerts"),
+          icon: ChartLineIcon,
+          match: (path: string) =>
+            path.includes("/insights") ||
+            path.includes("/trends") ||
+            path.includes("/dashboards") ||
+            path.includes("/alerts"),
         },
       ],
     },
@@ -221,12 +208,13 @@ function NavTab({
             ? (search as never)
             : undefined
         }
-        className="flex h-8 items-center gap-2 px-2"
+        className="flex h-8 items-center gap-1.5 px-1.5 sm:px-2"
+        title={item.title}
       >
         <span className="flex size-5 items-center justify-center">
           <item.icon
             className={cn(
-              "size-4 transition-colors",
+              "size-3.5 transition-colors sm:size-4",
               active
                 ? "text-foreground"
                 : "text-foreground/40 group-hover/h:text-foreground",
@@ -234,7 +222,7 @@ function NavTab({
             strokeWidth={1.75}
           />
         </span>
-        <span className="text-[14px] font-medium text-foreground">
+        <span className="text-[13px] font-medium text-foreground sm:text-[14px]">
           {item.title}
         </span>
       </Link>
@@ -417,8 +405,11 @@ export function AppShell({
     mode === "observe" && !accountHome
       ? buildObserveNav(activeProjectId ?? undefined).flatMap((g) => g.items)
       : []
+  // Service pages own their own nav (Overview / Deployments / …).
+  // Hiding project chrome avoids tab-under-tab with identical labels.
+  const onServiceRoute = /\/projects\/[^/]+\/services\//.test(pathname)
   const deployNav =
-    mode === "deploy" && !accountHome
+    mode === "deploy" && !accountHome && !onServiceRoute
       ? buildDeployNav(activeProjectId ?? undefined)
       : []
   const navItems = mode === "observe" ? observeNav : deployNav
@@ -544,8 +535,10 @@ export function AppShell({
           ) : null}
 
           <div className="app-shell-panel">
-            <div className="app-shell-panel-scroll animate-content-in flex min-w-0 flex-col">
-              {children}
+            {/* Not a flex container: content must grow taller than the
+                viewport so overflow-y-auto on panel-scroll can engage. */}
+            <div className="app-shell-panel-scroll animate-content-in min-w-0">
+              <div className="app-shell-frame">{children}</div>
             </div>
           </div>
         </div>

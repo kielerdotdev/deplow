@@ -16,28 +16,20 @@ import {
   loadGitLabOAuthConfig,
   resolveListTokenForUser,
 } from "@/lib/git-auth"
+import {
+  GitHostRegistry,
+  type GitHostProvider,
+  type GitWebhookDeleteInput,
+  type GitWebhookRegisterInput,
+  type GitWebhookRegisterResult,
+} from "@/lib/git/host-provider"
 import { platformConfig } from "@/lib/services"
 
-export type RegisterServiceWebhookInput = {
-  userId: string
-  serviceId: string
+export type RegisterServiceWebhookInput = GitWebhookRegisterInput & {
   provider: "github" | "gitlab"
-  repoUrl: string
-  repoFullName?: string | null
-  installationId?: string | null
-  accessToken?: string | null
-  secret: string
-  /** Skip remote API when false */
-  autoWebhook?: boolean
 }
 
-export type RegisterServiceWebhookResult = {
-  remoteWebhookId: string | null
-  webhookManaged: boolean
-  webhookUrl: string
-  /** Shown when auto-register failed or skipped — operator pastes hook manually */
-  warning: string | null
-}
+export type RegisterServiceWebhookResult = GitWebhookRegisterResult
 
 function webhookUrlForService(serviceId: string): string {
   const base = platformConfig.publicControlPlaneUrl.replace(/\/$/, "")
@@ -57,11 +49,10 @@ function isLocalPublicUrl(url: string): boolean {
   }
 }
 
-export async function registerServiceWebhook(
-  input: RegisterServiceWebhookInput,
-): Promise<RegisterServiceWebhookResult> {
+function earlyRegisterResult(
+  input: GitWebhookRegisterInput,
+): GitWebhookRegisterResult | null {
   const webhookUrl = webhookUrlForService(input.serviceId)
-
   if (input.autoWebhook === false) {
     return {
       remoteWebhookId: null,
@@ -71,7 +62,6 @@ export async function registerServiceWebhook(
         "Auto webhook disabled. Add a push webhook in your repo settings using the URL and secret.",
     }
   }
-
   if (isLocalPublicUrl(webhookUrl)) {
     return {
       remoteWebhookId: null,
@@ -81,7 +71,6 @@ export async function registerServiceWebhook(
         "Control plane URL is not publicly reachable. Add a push webhook manually (set DEPLOW_PUBLIC_URL to a tunnel for auto-register).",
     }
   }
-
   const parsed = parseRepoFullName(input.repoFullName || input.repoUrl)
   if (!parsed) {
     return {
@@ -92,136 +81,14 @@ export async function registerServiceWebhook(
         "Could not parse repository name for webhook registration. Add the hook manually.",
     }
   }
-
-  try {
-    if (input.provider === "github") {
-      const token = await resolveGithubToken(input)
-      if (!token) {
-        return {
-          remoteWebhookId: null,
-          webhookManaged: false,
-          webhookUrl,
-          warning:
-            "No GitHub token available to create the webhook. Add a push webhook manually.",
-        }
-      }
-      const hook = await createRepoWebhook({
-        installationToken: token,
-        owner: parsed.owner,
-        repo: parsed.repo,
-        webhookUrl,
-        secret: input.secret,
-      })
-      return {
-        remoteWebhookId: hook.id,
-        webhookManaged: true,
-        webhookUrl,
-        warning: null,
-      }
-    }
-
-    const gitlab = await resolveGitlabToken(input)
-    if (!gitlab) {
-      return {
-        remoteWebhookId: null,
-        webhookManaged: false,
-        webhookUrl,
-        warning:
-          "No GitLab token available to create the webhook. Add a push webhook manually.",
-      }
-    }
-    const hook = await createGitLabProjectHook({
-      config: gitlab.config,
-      accessToken: gitlab.token,
-      projectId: parsed.fullName,
-      webhookUrl,
-      secret: input.secret,
-    })
-    return {
-      remoteWebhookId: hook.id,
-      webhookManaged: true,
-      webhookUrl,
-      warning: null,
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return {
-      remoteWebhookId: null,
-      webhookManaged: false,
-      webhookUrl,
-      warning: `Could not register webhook automatically (${message}). Add a push webhook manually using the URL and secret.`,
-    }
-  }
+  return null
 }
 
-export async function deleteServiceWebhook(input: {
+async function resolveGithubToken(input: {
   userId: string
-  provider: "github" | "gitlab" | null
-  repoUrl: string | null
-  repoFullName: string | null
-  installationId: string | null
-  accessTokenEncrypted: string | null
-  remoteWebhookId: string | null
-  decryptAccessToken: (encrypted: string) => string
-}): Promise<void> {
-  if (!input.remoteWebhookId || !input.provider || !input.repoUrl) return
-  const parsed = parseRepoFullName(input.repoFullName || input.repoUrl)
-  if (!parsed) return
-
-  try {
-    if (input.provider === "github") {
-      const token = await resolveGithubToken({
-        userId: input.userId,
-        provider: "github",
-        installationId: input.installationId,
-        accessToken: input.accessTokenEncrypted
-          ? input.decryptAccessToken(input.accessTokenEncrypted)
-          : null,
-        serviceId: "",
-        repoUrl: input.repoUrl,
-        secret: "",
-      })
-      if (!token) return
-      await deleteRepoWebhook({
-        installationToken: token,
-        owner: parsed.owner,
-        repo: parsed.repo,
-        hookId: input.remoteWebhookId,
-      })
-      return
-    }
-
-    const gitlab = await resolveGitlabToken({
-      userId: input.userId,
-      provider: "gitlab",
-      accessToken: input.accessTokenEncrypted
-        ? input.decryptAccessToken(input.accessTokenEncrypted)
-        : null,
-      serviceId: "",
-      repoUrl: input.repoUrl,
-      secret: "",
-    })
-    if (!gitlab) return
-    await deleteGitLabProjectHook({
-      config: gitlab.config,
-      accessToken: gitlab.token,
-      projectId: parsed.fullName,
-      hookId: input.remoteWebhookId,
-    })
-  } catch (error) {
-    console.warn(
-      "[deplow] failed to delete remote webhook:",
-      error instanceof Error ? error.message : error,
-    )
-  }
-}
-
-async function resolveGithubToken(
-  input: Pick<
-    RegisterServiceWebhookInput,
-    "userId" | "installationId" | "accessToken"
-  >,
-): Promise<string | null> {
+  installationId?: string | null
+  accessToken?: string | null
+}): Promise<string | null> {
   if (input.installationId) {
     const config = await loadGitHubAppConfig()
     if (config) {
@@ -245,11 +112,13 @@ async function resolveGithubToken(
   }
 }
 
-async function resolveGitlabToken(
-  input: Pick<RegisterServiceWebhookInput, "userId" | "accessToken">,
-): Promise<{ token: string; config: NonNullable<
-  Awaited<ReturnType<typeof loadGitLabOAuthConfig>>
-> } | null> {
+async function resolveGitlabToken(input: {
+  userId: string
+  accessToken?: string | null
+}): Promise<{
+  token: string
+  config: NonNullable<Awaited<ReturnType<typeof loadGitLabOAuthConfig>>>
+} | null> {
   const config = await loadGitLabOAuthConfig()
   if (!config) return null
   if (input.accessToken?.trim()) {
@@ -263,5 +132,181 @@ async function resolveGitlabToken(
     return { token: auth.token, config }
   } catch {
     return null
+  }
+}
+
+export class GitHubWebhookProvider implements GitHostProvider {
+  readonly id = "github" as const
+
+  async registerWebhook(
+    input: GitWebhookRegisterInput,
+  ): Promise<GitWebhookRegisterResult> {
+    const early = earlyRegisterResult(input)
+    if (early) return early
+    const webhookUrl = webhookUrlForService(input.serviceId)
+    const parsed = parseRepoFullName(input.repoFullName || input.repoUrl)!
+    try {
+      const token = await resolveGithubToken(input)
+      if (!token) {
+        return {
+          remoteWebhookId: null,
+          webhookManaged: false,
+          webhookUrl,
+          warning:
+            "No GitHub token available to create the webhook. Add a push webhook manually.",
+        }
+      }
+      const hook = await createRepoWebhook({
+        installationToken: token,
+        owner: parsed.owner,
+        repo: parsed.repo,
+        webhookUrl,
+        secret: input.secret,
+      })
+      return {
+        remoteWebhookId: hook.id,
+        webhookManaged: true,
+        webhookUrl,
+        warning: null,
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        remoteWebhookId: null,
+        webhookManaged: false,
+        webhookUrl,
+        warning: `Could not register webhook automatically (${message}). Add a push webhook manually using the URL and secret.`,
+      }
+    }
+  }
+
+  async deleteWebhook(input: GitWebhookDeleteInput): Promise<void> {
+    if (!input.repoUrl) return
+    const parsed = parseRepoFullName(input.repoFullName || input.repoUrl)
+    if (!parsed) return
+    const token = await resolveGithubToken({
+      userId: input.userId,
+      installationId: input.installationId,
+      accessToken: input.accessTokenEncrypted
+        ? input.decryptAccessToken(input.accessTokenEncrypted)
+        : null,
+    })
+    if (!token) return
+    await deleteRepoWebhook({
+      installationToken: token,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      hookId: input.remoteWebhookId,
+    })
+  }
+}
+
+export class GitLabWebhookProvider implements GitHostProvider {
+  readonly id = "gitlab" as const
+
+  async registerWebhook(
+    input: GitWebhookRegisterInput,
+  ): Promise<GitWebhookRegisterResult> {
+    const early = earlyRegisterResult(input)
+    if (early) return early
+    const webhookUrl = webhookUrlForService(input.serviceId)
+    const parsed = parseRepoFullName(input.repoFullName || input.repoUrl)!
+    try {
+      const gitlab = await resolveGitlabToken(input)
+      if (!gitlab) {
+        return {
+          remoteWebhookId: null,
+          webhookManaged: false,
+          webhookUrl,
+          warning:
+            "No GitLab token available to create the webhook. Add a push webhook manually.",
+        }
+      }
+      const hook = await createGitLabProjectHook({
+        config: gitlab.config,
+        accessToken: gitlab.token,
+        projectId: parsed.fullName,
+        webhookUrl,
+        secret: input.secret,
+      })
+      return {
+        remoteWebhookId: hook.id,
+        webhookManaged: true,
+        webhookUrl,
+        warning: null,
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        remoteWebhookId: null,
+        webhookManaged: false,
+        webhookUrl,
+        warning: `Could not register webhook automatically (${message}). Add a push webhook manually using the URL and secret.`,
+      }
+    }
+  }
+
+  async deleteWebhook(input: GitWebhookDeleteInput): Promise<void> {
+    if (!input.repoUrl) return
+    const parsed = parseRepoFullName(input.repoFullName || input.repoUrl)
+    if (!parsed) return
+    const gitlab = await resolveGitlabToken({
+      userId: input.userId,
+      accessToken: input.accessTokenEncrypted
+        ? input.decryptAccessToken(input.accessTokenEncrypted)
+        : null,
+    })
+    if (!gitlab) return
+    await deleteGitLabProjectHook({
+      config: gitlab.config,
+      accessToken: gitlab.token,
+      projectId: parsed.fullName,
+      hookId: input.remoteWebhookId,
+    })
+  }
+}
+
+const registry = new GitHostRegistry([
+  new GitHubWebhookProvider(),
+  new GitLabWebhookProvider(),
+])
+
+export function gitHostRegistry(): GitHostRegistry {
+  return registry
+}
+
+export async function registerServiceWebhook(
+  input: RegisterServiceWebhookInput,
+): Promise<RegisterServiceWebhookResult> {
+  const { provider, ...rest } = input
+  return registry.get(provider).registerWebhook(rest)
+}
+
+export async function deleteServiceWebhook(input: {
+  userId: string
+  provider: "github" | "gitlab" | null
+  repoUrl: string | null
+  repoFullName: string | null
+  installationId: string | null
+  accessTokenEncrypted: string | null
+  remoteWebhookId: string | null
+  decryptAccessToken: (encrypted: string) => string
+}): Promise<void> {
+  if (!input.remoteWebhookId || !input.provider || !input.repoUrl) return
+  try {
+    await registry.get(input.provider).deleteWebhook({
+      userId: input.userId,
+      remoteWebhookId: input.remoteWebhookId,
+      repoUrl: input.repoUrl,
+      repoFullName: input.repoFullName,
+      installationId: input.installationId,
+      accessTokenEncrypted: input.accessTokenEncrypted,
+      decryptAccessToken: input.decryptAccessToken,
+    })
+  } catch (error) {
+    console.warn(
+      "[deplow] failed to delete remote webhook:",
+      error instanceof Error ? error.message : error,
+    )
   }
 }

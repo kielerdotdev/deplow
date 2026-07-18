@@ -180,12 +180,18 @@ export function FilterBuilder({
           type="button"
           size="sm"
           variant="outline"
-          className="h-7 gap-1 px-2"
+          className="h-8 min-h-8 gap-1 px-2.5 disabled:cursor-not-allowed disabled:opacity-40"
           onClick={add}
           disabled={!key.trim() || (needsValue && !value.trim())}
+          aria-disabled={!key.trim() || (needsValue && !value.trim())}
+          title={
+            !key.trim() || (needsValue && !value.trim())
+              ? "Complete the field and value to add a filter"
+              : "Add filter"
+          }
         >
           <PlusIcon className="size-3.5" />
-          Add
+          Add filter
         </Button>
       </div>
     </div>

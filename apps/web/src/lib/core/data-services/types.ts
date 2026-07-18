@@ -20,6 +20,8 @@ export type ProvisionContext = {
   projectId: string
   projectSlug: string
   resourceLinkId: string
+  /** Workload name for k8s resource naming (defaults per kind when omitted). */
+  serviceName?: string
 }
 
 export type DestroyContext = ProvisionContext & {
@@ -102,6 +104,8 @@ export interface DataServiceDriver {
   readonly kind: ResourceKind
   readonly source: "dedicated-container" | "shared-instance"
   readonly capabilities: ResourceCapabilities
+  /** Default env key when binding this resource into a consumer service. */
+  readonly defaultEnvKey?: string
   provision(ctx: ProvisionContext): Promise<ResourceCredentials>
   destroy(ctx: DestroyContext): Promise<void>
   backup?: BackupCapable

@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react"
-import { CheckIcon, Loader2Icon, RocketIcon } from "lucide-react"
+import {
+  CheckIcon,
+  DatabaseIcon,
+  GitBranchIcon,
+  GlobeIcon,
+  Loader2Icon,
+  RocketIcon,
+  ServerIcon,
+  WorkflowIcon,
+} from "lucide-react"
 
 import { ActionDialog } from "@/components/action-dialog"
 import {
@@ -11,6 +20,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { client } from "@/lib/orpc"
+import {
+  SERVICE_TEMPLATES,
+  type ImageServiceTemplate,
+  type ServiceTemplate,
+} from "@/lib/service-templates"
 import { cn } from "@/lib/utils"
 
 type Analysis = Awaited<ReturnType<typeof client.services.analyzeSource>>
@@ -26,10 +40,18 @@ type DeployStatus =
   | "stopped"
   | "pending"
 
+type Step = "pick" | "git" | "template"
+
 const STAGES = [
   { key: "analyzing", label: "Analyzing" },
   { key: "building", label: "Building" },
   { key: "deploying", label: "Starting" },
+  { key: "checking", label: "Checking health" },
+  { key: "running", label: "Live" },
+] as const
+
+const TEMPLATE_STAGES = [
+  { key: "deploying", label: "Pulling image" },
   { key: "checking", label: "Checking health" },
   { key: "running", label: "Live" },
 ] as const
@@ -44,6 +66,32 @@ function stageIndex(status: DeployStatus | null): number {
   if (status === "running") return 4
   if (status === "failed") return -2
   return -1
+}
+
+function templateStageIndex(status: DeployStatus | null): number {
+  if (!status) return -1
+  if (
+    status === "queued" ||
+    status === "pending" ||
+    status === "analyzing" ||
+    status === "building" ||
+    status === "deploying"
+  ) {
+    return 0
+  }
+  if (status === "checking") return 1
+  if (status === "running") return 2
+  if (status === "failed") return -2
+  return -1
+}
+
+function templateIcon(t: ServiceTemplate) {
+  if (t.kind === "data") {
+    return t.type === "postgres" ? DatabaseIcon : WorkflowIcon
+  }
+  if (t.id === "nginx") return GlobeIcon
+  if (t.id === "httpbin") return ServerIcon
+  return RocketIcon
 }
 
 type AddServiceDialogProps = {
@@ -61,6 +109,9 @@ export function AddServiceDialog({
   onCreated,
   onError,
 }: AddServiceDialogProps) {
+  const [step, setStep] = useState<Step>("pick")
+  const [template, setTemplate] = useState<ServiceTemplate | null>(null)
+
   const [selection, setSelection] = useState<RepoSelectorValue | null>(null)
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -93,6 +144,8 @@ export function AddServiceDialog({
   const analyzeSeq = useRef(0)
 
   function resetForm() {
+    setStep("pick")
+    setTemplate(null)
     setSelection(null)
     setAnalysis(null)
     setAnalyzing(false)
@@ -118,6 +171,14 @@ export function AddServiceDialog({
   function handleOpenChange(next: boolean) {
     onOpenChange(next)
     if (!next) resetForm()
+  }
+
+  function pickTemplate(t: ServiceTemplate) {
+    setTemplate(t)
+    setName(t.name)
+    setStep("template")
+    setDeployError(null)
+    onError(null)
   }
 
   async function runAnalysis(
@@ -192,7 +253,6 @@ export function AddServiceDialog({
         if (d.status === "failed") {
           setDeployError(d.errorMessage ?? "Deployment failed")
           setPending(false)
-          // Service still exists — parent already refreshed
           await onCreated(createdServiceId ?? undefined)
           return
         }
@@ -211,7 +271,7 @@ export function AddServiceDialog({
 
   const needsAppChoice = analysis?.needsChoice === "application"
   const needsDockerChoice = analysis?.needsChoice === "dockerfile"
-  const canSubmit =
+  const canSubmitGit =
     Boolean(selection?.cloneUrl) &&
     Boolean(analysis) &&
     !analyzing &&
@@ -219,6 +279,59 @@ export function AddServiceDialog({
     !needsDockerChoice &&
     Boolean(name) &&
     !pending
+
+  const canSubmitTemplate =
+    Boolean(template) && Boolean(name.trim()) && !pending
+
+  async function createFromTemplate(event: React.FormEvent) {
+    event.preventDefault()
+    if (!template) return
+    const serviceName = name.trim()
+    if (!serviceName) return
+    setPending(true)
+    onError(null)
+    setDeployError(null)
+    try {
+      if (template.kind === "data") {
+        const created = await client.services.create({
+          projectId,
+          name: serviceName,
+          type: template.type,
+        })
+        setCreatedServiceId(created.id)
+        setDeployStatus("running")
+        await onCreated(created.id)
+        setPending(false)
+        return
+      }
+
+      const img = template as ImageServiceTemplate
+      const created = await client.services.create({
+        projectId,
+        name: serviceName,
+        type: img.type,
+        containerPort: img.containerPort,
+      })
+      setCreatedServiceId(created.id)
+      const deployment = await client.deployments.create({
+        serviceId: created.id,
+        image: img.image,
+        options: {
+          image: img.image,
+          containerPort: img.containerPort,
+          serviceName,
+        },
+      })
+      setDeployId(deployment.id)
+      setDeployStatus(deployment.status as DeployStatus)
+      await onCreated(created.id)
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause)
+      onError(message)
+      setDeployError(message)
+      setPending(false)
+    }
+  }
 
   async function createAndDeploy(event: React.FormEvent) {
     event.preventDefault()
@@ -248,9 +361,16 @@ export function AddServiceDialog({
         startCommand: startCommand.trim() || null,
         healthCheckPath: healthCheckPath.trim() || null,
       })
-      setDeployId(result.deployment.id)
       setCreatedServiceId(result.service.id)
-      setDeployStatus(result.deployment.status as DeployStatus)
+      if (result.deployment) {
+        setDeployId(result.deployment.id)
+        setDeployStatus(result.deployment.status as DeployStatus)
+      } else {
+        // Git connect without image: service + webhook only (not deployed).
+        setDeployId(null)
+        setDeployStatus(null)
+        setPending(false)
+      }
       if (result.webhookWarning || result.webhookSecret) {
         setWebhookNotice({
           warning: result.webhookWarning ?? null,
@@ -267,25 +387,42 @@ export function AddServiceDialog({
     }
   }
 
-  const activeStage = stageIndex(deployStatus)
   const deploying = Boolean(pending || deployId)
+  const imageTemplates = SERVICE_TEMPLATES.filter((t) => t.kind === "image")
+  const dataTemplates = SERVICE_TEMPLATES.filter((t) => t.kind === "data")
+
+  const description =
+    step === "pick"
+      ? "Start from a hello-world image, a database, or connect a Git repo."
+      : deploying
+        ? "Deployment in progress."
+        : step === "template"
+          ? template?.kind === "data"
+            ? "Creates and provisions a dedicated data service."
+            : `Deploys ${template && template.kind === "image" ? template.image : "the image"} on your agent node.`
+          : "Pick a repository — we detect Dockerfile or Railpack, then create and deploy."
 
   return (
     <ActionDialog
       open={open}
       onOpenChange={handleOpenChange}
       title="Add service"
-      description={
-        deploying
-          ? "Deployment in progress."
-          : "Pick a repository — we detect Dockerfile or Railpack, then create and deploy."
-      }
+      description={description}
       icon={RocketIcon}
       size="xl"
       footer={
-        deployStatus === "running" ? (
+        deployStatus === "running" ||
+        (createdServiceId && !deployId && !pending) ? (
           <Button type="button" onClick={() => handleOpenChange(false)}>
             Done
+          </Button>
+        ) : step === "pick" ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+          >
+            Cancel
           </Button>
         ) : deploying ? (
           <Button type="button" disabled>
@@ -293,75 +430,197 @@ export function AddServiceDialog({
               className="size-4 animate-spin"
               data-icon="inline-start"
             />
-            Deploying…
+            {template?.kind === "data" ? "Provisioning…" : "Deploying…"}
           </Button>
+        ) : step === "template" ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                setStep("pick")
+                setTemplate(null)
+                setDeployError(null)
+              }}
+            >
+              Back
+            </Button>
+            <Button
+              type="submit"
+              form="add-service-template"
+              disabled={!canSubmitTemplate}
+            >
+              {template?.kind === "data" ? "Create" : "Create and deploy"}
+            </Button>
+          </>
         ) : (
-          <Button type="submit" form="add-service" disabled={!canSubmit}>
-            Create and deploy
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                setStep("pick")
+                setSelection(null)
+                setAnalysis(null)
+              }}
+            >
+              Back
+            </Button>
+            <Button type="submit" form="add-service" disabled={!canSubmitGit}>
+              Create and deploy
+            </Button>
+          </>
         )
       }
     >
-      {deploying ? (
-        <div className="space-y-3">
-          {selection ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="truncate font-medium text-foreground">
-                {selection.fullName}
+      {deploying && step !== "pick" ? (
+        <DeployProgress
+          stages={step === "template" ? TEMPLATE_STAGES : STAGES}
+          activeStage={
+            step === "template"
+              ? templateStageIndex(deployStatus)
+              : stageIndex(deployStatus)
+          }
+          deployStatus={deployStatus}
+          deployError={deployError}
+          subtitle={
+            step === "git" && selection
+              ? `${selection.fullName} @${selection.branch}`
+              : template
+                ? template.title
+                : null
+          }
+          webhookNotice={webhookNotice}
+        />
+      ) : step === "pick" ? (
+        <div className="space-y-5">
+          <section className="space-y-2">
+            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Hello world
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {imageTemplates.map((t) => {
+                const Icon = templateIcon(t)
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => pickTemplate(t)}
+                    className="flex flex-col items-start gap-2 rounded-xl border border-border bg-muted/15 p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out-ui hover:border-foreground/25 hover:bg-muted/40 active:scale-[0.98]"
+                  >
+                    <span className="flex size-8 items-center justify-center rounded-lg border bg-background">
+                      <Icon className="size-4" />
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      {t.title}
+                    </span>
+                    <span className="text-xs text-pretty text-muted-foreground">
+                      {t.description}
+                    </span>
+                    {t.kind === "image" ? (
+                      <span className="font-mono text-[10px] text-muted-foreground/80">
+                        {t.image}
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Data
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {dataTemplates.map((t) => {
+                const Icon = templateIcon(t)
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => pickTemplate(t)}
+                    className="flex items-start gap-3 rounded-xl border border-border bg-muted/15 p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out-ui hover:border-foreground/25 hover:bg-muted/40 active:scale-[0.98]"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+                      <Icon className="size-4" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-medium text-foreground">
+                        {t.title}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-pretty text-muted-foreground">
+                        {t.description}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              From source
+            </h3>
+            <button
+              type="button"
+              onClick={() => setStep("git")}
+              className="flex w-full items-start gap-3 rounded-xl border border-border bg-muted/15 p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out-ui hover:border-foreground/25 hover:bg-muted/40 active:scale-[0.98]"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+                <GitBranchIcon className="size-4" />
               </span>
-              <span className="text-xs">@{selection.branch}</span>
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Git repository
+                </span>
+                <span className="mt-0.5 block text-xs text-pretty text-muted-foreground">
+                  Analyze a repo, then build with Railpack or Dockerfile.
+                </span>
+              </span>
+            </button>
+          </section>
+        </div>
+      ) : step === "template" && template ? (
+        <form
+          id="add-service-template"
+          className="space-y-3"
+          onSubmit={(e) => void createFromTemplate(e)}
+        >
+          <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-sm">
+            <p className="text-xs font-medium text-muted-foreground">
+              Template
             </p>
-          ) : null}
-          <ol className="flex flex-col gap-1.5">
-            {STAGES.map((stage, i) => {
-              const done = activeStage > i || deployStatus === "running"
-              const current = activeStage === i && deployStatus !== "running"
-              return (
-                <li
-                  key={stage.key}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md border px-3 py-2 text-sm",
-                    done && "border-primary/40 bg-primary/10 text-foreground",
-                    current && "border-foreground/30 bg-muted",
-                    !done && !current && "text-muted-foreground",
-                  )}
-                >
-                  {done ? (
-                    <CheckIcon className="size-3.5 shrink-0" />
-                  ) : current ? (
-                    <Loader2Icon className="size-3.5 shrink-0 animate-spin" />
-                  ) : (
-                    <span className="size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
-                  )}
-                  {stage.label}
-                </li>
-              )
-            })}
-          </ol>
+            <p className="mt-0.5 font-medium">{template.title}</p>
+            {template.kind === "image" ? (
+              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                {template.image} · port {template.containerPort}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Provisioned on the project&apos;s agent node
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="template-service-name">Name</Label>
+            <Input
+              id="template-service-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={template.name}
+              autoFocus
+            />
+          </div>
           {deployError ? (
             <Alert variant="destructive">
               <AlertDescription>{deployError}</AlertDescription>
             </Alert>
           ) : null}
-          {webhookNotice?.warning || webhookNotice?.secret ? (
-            <Alert>
-              <AlertDescription className="space-y-2 text-xs">
-                {webhookNotice.warning ? <p>{webhookNotice.warning}</p> : null}
-                {webhookNotice.url ? (
-                  <p className="font-mono break-all">{webhookNotice.url}</p>
-                ) : null}
-                {webhookNotice.secret ? (
-                  <p>
-                    Secret (copy once):{" "}
-                    <span className="font-mono break-all">
-                      {webhookNotice.secret}
-                    </span>
-                  </p>
-                ) : null}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-        </div>
+        </form>
       ) : (
         <form
           id="add-service"
@@ -644,5 +903,84 @@ export function AddServiceDialog({
         </form>
       )}
     </ActionDialog>
+  )
+}
+
+function DeployProgress({
+  stages,
+  activeStage,
+  deployStatus,
+  deployError,
+  subtitle,
+  webhookNotice,
+}: {
+  stages: ReadonlyArray<{ key: string; label: string }>
+  activeStage: number
+  deployStatus: DeployStatus | null
+  deployError: string | null
+  subtitle: string | null
+  webhookNotice: {
+    warning: string | null
+    secret: string | null
+    url: string | null
+  } | null
+}) {
+  return (
+    <div className="space-y-3">
+      {subtitle ? (
+        <p className="truncate text-sm font-medium text-foreground">
+          {subtitle}
+        </p>
+      ) : null}
+      <ol className="flex flex-col gap-1.5">
+        {stages.map((stage, i) => {
+          const done = activeStage > i || deployStatus === "running"
+          const current = activeStage === i && deployStatus !== "running"
+          return (
+            <li
+              key={stage.key}
+              className={cn(
+                "flex items-center gap-2 rounded-md border px-3 py-2 text-sm",
+                done && "border-primary/40 bg-primary/10 text-foreground",
+                current && "border-foreground/30 bg-muted",
+                !done && !current && "text-muted-foreground",
+              )}
+            >
+              {done ? (
+                <CheckIcon className="size-3.5 shrink-0" />
+              ) : current ? (
+                <Loader2Icon className="size-3.5 shrink-0 animate-spin" />
+              ) : (
+                <span className="size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
+              )}
+              {stage.label}
+            </li>
+          )
+        })}
+      </ol>
+      {deployError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{deployError}</AlertDescription>
+        </Alert>
+      ) : null}
+      {webhookNotice?.warning || webhookNotice?.secret ? (
+        <Alert>
+          <AlertDescription className="space-y-2 text-xs">
+            {webhookNotice.warning ? <p>{webhookNotice.warning}</p> : null}
+            {webhookNotice.url ? (
+              <p className="font-mono break-all">{webhookNotice.url}</p>
+            ) : null}
+            {webhookNotice.secret ? (
+              <p>
+                Secret (copy once):{" "}
+                <span className="font-mono break-all">
+                  {webhookNotice.secret}
+                </span>
+              </p>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+    </div>
   )
 }

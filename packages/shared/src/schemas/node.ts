@@ -28,35 +28,31 @@ export const nodeStatusSchema = z.object({
 
 export type NodeStatus = z.infer<typeof nodeStatusSchema>
 
-export const registerNodeInputSchema = z.object({
-  name: z
-    .string()
-    .min(1)
-    .max(64)
-    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/),
-  provider: z.enum(["docker", "ssh"]).default("docker"),
-  host: z.string().min(1).default("local"),
-  port: z.number().int().optional().default(22),
-  username: z.string().optional(),
-  sshPrivateKey: z.string().optional(),
-})
-
-export type RegisterNodeInput = z.infer<typeof registerNodeInputSchema>
+/** All nodes are agents. Future cloud providers spawn agents; they are not node kinds. */
+export const nodeProviderSchema = z.literal("agent")
+export type NodeProvider = z.infer<typeof nodeProviderSchema>
 
 export const nodeSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
-  provider: z.enum(["docker", "ssh", "hetzner", "agent"]),
+  provider: nodeProviderSchema,
   host: z.string(),
   status: z.enum(["online", "offline", "unknown"]),
   createdAt: z.string(),
   lastSeenAt: z.string().nullable().optional(),
   advertiseHost: z.string().nullable().optional(),
   agentVersion: z.string().nullable().optional(),
-  /** OCI runtime for user apps (e.g. runsc) when known */
   appRuntime: z.string().optional(),
   appRuntimeAvailable: z.boolean().optional(),
   appRuntimeRequired: z.boolean().optional(),
+  meshProvider: z.enum(["netbird", "tailscale"]).nullable().optional(),
+  meshStatus: z.enum(["missing", "logged_out", "ready"]).nullable().optional(),
+  meshIp: z.string().nullable().optional(),
+  meshHostname: z.string().nullable().optional(),
+  edgeMode: z.string().nullable().optional(),
+  localProxyReady: z.boolean().optional(),
+  meshReady: z.boolean().optional(),
+  deployReady: z.boolean().optional(),
 })
 
 export type NodeSummary = z.infer<typeof nodeSummarySchema>

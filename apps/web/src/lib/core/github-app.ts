@@ -210,11 +210,21 @@ export async function listUserInstallations(input: {
   }))
 }
 
+export type GitHubOAuthToken = {
+  accessToken: string
+  tokenType: string
+  scope: string
+  /** Present for expiring GitHub App user tokens. */
+  refreshToken?: string
+  /** Seconds until access token expires (GitHub App user tokens). */
+  expiresIn?: number
+}
+
 export async function exchangeGitHubOAuthCode(input: {
   config: GitHubAppConfig
   code: string
   fetchImpl?: FetchLike
-}): Promise<{ accessToken: string; tokenType: string; scope: string }> {
+}): Promise<GitHubOAuthToken> {
   const fetchImpl = input.fetchImpl ?? fetch
   const res = await fetchImpl("https://github.com/login/oauth/access_token", {
     method: "POST",
@@ -235,6 +245,8 @@ export async function exchangeGitHubOAuthCode(input: {
     access_token?: string
     token_type?: string
     scope?: string
+    refresh_token?: string
+    expires_in?: number
     error?: string
     error_description?: string
   }
@@ -249,6 +261,65 @@ export async function exchangeGitHubOAuthCode(input: {
     accessToken: data.access_token,
     tokenType: data.token_type ?? "bearer",
     scope: data.scope ?? "",
+    refreshToken: data.refresh_token,
+    expiresIn:
+      typeof data.expires_in === "number" && data.expires_in > 0
+        ? data.expires_in
+        : undefined,
+  }
+}
+
+/**
+ * Refresh an expiring GitHub App user access token.
+ * Classic non-expiring tokens have no refresh_token — callers should skip.
+ */
+export async function refreshGitHubUserToken(input: {
+  config: GitHubAppConfig
+  refreshToken: string
+  fetchImpl?: FetchLike
+}): Promise<GitHubOAuthToken> {
+  const fetchImpl = input.fetchImpl ?? fetch
+  const res = await fetchImpl("https://github.com/login/oauth/access_token", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "User-Agent": "deplow",
+    },
+    body: JSON.stringify({
+      client_id: input.config.clientId,
+      client_secret: input.config.clientSecret,
+      grant_type: "refresh_token",
+      refresh_token: input.refreshToken,
+    }),
+  })
+  await assertOk(res, "GitHub OAuth token refresh failed")
+
+  const data = (await res.json()) as {
+    access_token?: string
+    token_type?: string
+    scope?: string
+    refresh_token?: string
+    expires_in?: number
+    error?: string
+    error_description?: string
+  }
+  if (!data.access_token) {
+    throw new Error(
+      data.error_description ||
+        data.error ||
+        "GitHub OAuth refresh did not return an access token",
+    )
+  }
+  return {
+    accessToken: data.access_token,
+    tokenType: data.token_type ?? "bearer",
+    scope: data.scope ?? "",
+    refreshToken: data.refresh_token ?? input.refreshToken,
+    expiresIn:
+      typeof data.expires_in === "number" && data.expires_in > 0
+        ? data.expires_in
+        : undefined,
   }
 }
 
@@ -445,12 +516,12 @@ export function buildGitHubAppManifest(input: {
   extraCallbackOrigins?: string[]
   description?: string
 }): Record<string, unknown> {
-  const base = input.publicUrl.replace(/\/$/, "") || "http://localhost:3000"
+  const base = input.publicUrl.replace(/\/$/, "") || "http://localhost:9565"
   const publicNet = isPublicInternetUrl(base)
 
   const callbackOrigins = new Set<string>([
     base,
-    "http://localhost:3000",
+    "http://localhost:9565",
     ...(input.extraCallbackOrigins ?? []).map((o) => o.replace(/\/$/, "")),
   ])
 
@@ -537,24 +608,77 @@ export function githubOAuthCallbackUrls(publicUrl: string): string[] {
   const base = publicUrl.replace(/\/$/, "")
   return [
     `${base}${GITHUB_OAUTH_CALLBACK_PATH}`,
-    "http://localhost:3000/api/git/oauth/github/callback",
+    "http://localhost:9565/api/git/oauth/github/callback",
   ]
 }
 
 /**
- * Prefer the Host GitHub redirected to (browser origin), not DEPLOW_PUBLIC_URL.
+ * Resolve the browser-facing origin for post-OAuth / post-manifest redirects.
+ *
+ * When DEPLOW_PUBLIC_URL is a public hostname (e.g. https://deplow.waitforit.cc),
+ * always prefer it. Reverse proxies often present request.url as an internal
+ * LAN bind address (http://192.168.x.x:3001) which must not leak into redirects.
+ *
+ * Priority:
+ * 1. Configured public DEPLOW_PUBLIC_URL
+ * 2. X-Forwarded-Host / Proto when public
+ * 3. request.url origin when public
+ * 4. request origin (dev / LAN)
+ * 5. configured URL / localhost fallback
  */
 export function redirectBaseFromRequest(
   request: Request,
   configuredPublicUrl?: string,
 ): string {
+  const configured = (configuredPublicUrl ?? "http://localhost:9565").replace(
+    /\/$/,
+    "",
+  )
+  const fromForwarded = originFromForwardedHeaders(request)
+  const fromRequest = originFromRequestUrl(request)
+
+  if (configured && isPublicInternetUrl(configured)) {
+    return configured
+  }
+  if (fromForwarded && isPublicInternetUrl(fromForwarded)) {
+    return fromForwarded
+  }
+  if (fromRequest && isPublicInternetUrl(fromRequest)) {
+    return fromRequest
+  }
+  // Dev / LAN: prefer the host the browser actually hit
+  if (fromRequest) return fromRequest
+  if (fromForwarded) return fromForwarded
+  return configured
+}
+
+function originFromRequestUrl(request: Request): string | null {
   try {
     const origin = new URL(request.url).origin
     if (origin && origin !== "null") return origin
   } catch {
-    // fall through
+    // ignore
   }
-  return (configuredPublicUrl ?? "http://localhost:3000").replace(/\/$/, "")
+  return null
+}
+
+/**
+ * Build origin from reverse-proxy headers when present.
+ * Uses the first X-Forwarded-Host / Proto value only.
+ */
+export function originFromForwardedHeaders(request: Request): string | null {
+  const hostRaw = request.headers.get("x-forwarded-host")
+  if (!hostRaw?.trim()) return null
+  const host = hostRaw.split(",")[0]?.trim()
+  if (!host) return null
+  const protoRaw = request.headers.get("x-forwarded-proto")
+  const proto = (protoRaw?.split(",")[0]?.trim() || "https").toLowerCase()
+  if (proto !== "http" && proto !== "https") return null
+  try {
+    return new URL(`${proto}://${host}`).origin
+  } catch {
+    return null
+  }
 }
 
 /** Accept only http(s) origins from the browser for manifest redirect_url. */

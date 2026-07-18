@@ -40,11 +40,13 @@ No extra env vars required. Opt out with `DEPLOW_OBSERVE_DOGFOOD=0`.
 Optional overrides:
 
 ```bash
-DEPLOW_OBSERVE_DOGFOOD_DSN=http://…@localhost:3000/1   # skip auto-mint
+DEPLOW_OBSERVE_DOGFOOD_DSN=http://…@localhost:9565/1   # skip auto-mint
 DEPLOW_OBSERVE_DOGFOOD_PROJECT_ID=<uuid>                 # use an existing project
 ```
 
-Look for `[observe-dogfood]` in the server/browser console. Open Observe → project **deplow-dogfood** → Issues.
+Node dogfood OTEL/Sentry always export to `http://127.0.0.1:$PORT` (vite default **9565**), not `DEPLOW_OBSERVE_INGEST_URL` — that env is for browser/external SDKs and a stale LAN port will silently drop all telemetry.
+
+Look for `[observe-dogfood] … otel=http://127.0.0.1:9565/api/…/otlp` in the server console. Open Observe → project **deplow-dogfood**.
 
 ## Architecture
 

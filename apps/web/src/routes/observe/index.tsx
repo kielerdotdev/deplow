@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
 import { PageContent, PageHeader } from "@/components/page-layout"
+import { ShellPending } from "@/components/route-pending"
 import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
@@ -9,6 +10,7 @@ import { useProjectStore } from "@/lib/project-store"
 import { loadShellContext } from "@/lib/shell-context"
 
 export const Route = createFileRoute("/observe/")({
+  pendingComponent: ShellPending,
   loader: async () => {
     const session = await getSession()
     if (!session) {

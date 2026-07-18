@@ -183,6 +183,13 @@ export function RepoSelector({
   const [oauthPending, setOauthPending] = useState<"github" | "gitlab" | null>(
     null,
   )
+  /**
+   * When true, session PAT is sent to the API. Only set after "Browse with token"
+   * so a leftover Advanced PAT cannot override a healthy OAuth/App connection.
+   */
+  const [preferPat, setPreferPat] = useState<
+    Record<"github" | "gitlab", boolean>
+  >({ github: false, gitlab: false })
 
   const githubLink = status?.links.find((l) => l.provider === "github")
   const gitlabLink = status?.links.find((l) => l.provider === "gitlab")
@@ -196,11 +203,38 @@ export function RepoSelector({
     return list
   }, [githubBrowsable, gitlabBrowsable])
 
+  function clearStoredPat(provider: "github" | "gitlab") {
+    storeToken(provider, "")
+    setTokens((prev) => ({ ...prev, [provider]: "" }))
+    setPreferPat((prev) => ({ ...prev, [provider]: false }))
+  }
+
+  /** Only send session PAT when Advanced "Browse with token" was used. */
+  function tokenForRequest(provider: "github" | "gitlab"): string | undefined {
+    if (!preferPat[provider]) return undefined
+    const t = tokens[provider].trim()
+    return t || undefined
+  }
+
   const refreshStatus = useCallback(async () => {
     setStatusLoading(true)
     try {
       const s = await client.git.connectionStatus()
       setStatus(s)
+      // Connected OAuth/App wins — drop any leftover Advanced PAT so it cannot
+      // keep causing 401s against the live installation.
+      const gh = s.links.find((l) => l.provider === "github")
+      const gl = s.links.find((l) => l.provider === "gitlab")
+      if (gh?.connected) {
+        storeToken("github", "")
+        setTokens((prev) => ({ ...prev, github: "" }))
+        setPreferPat((prev) => ({ ...prev, github: false }))
+      }
+      if (gl?.connected) {
+        storeToken("gitlab", "")
+        setTokens((prev) => ({ ...prev, gitlab: "" }))
+        setPreferPat((prev) => ({ ...prev, gitlab: false }))
+      }
     } catch {
       setStatus(null)
     } finally {
@@ -231,7 +265,7 @@ export function RepoSelector({
         return
       }
       onProviderChange?.(repo.provider)
-      const token = tokens[repo.provider]?.trim() || ""
+      const token = tokenForRequest(repo.provider) ?? ""
       onChange({
         provider: repo.provider,
         cloneUrl: repo.cloneUrl,
@@ -242,7 +276,7 @@ export function RepoSelector({
         accessToken: token || undefined,
       })
     },
-    [onChange, onProviderChange, tokens],
+    [onChange, onProviderChange, tokens, preferPat],
   )
 
   const loadRepos = useCallback(
@@ -260,12 +294,9 @@ export function RepoSelector({
             try {
               const result = await client.projects.listGitRepos({
                 provider,
-                token: tokens[provider].trim() || undefined,
+                token: tokenForRequest(provider),
                 query: search || undefined,
               })
-              if (tokens[provider].trim()) {
-                storeToken(provider, tokens[provider].trim())
-              }
               return {
                 provider,
                 repos: result.repos as RemoteRepo[],
@@ -275,13 +306,23 @@ export function RepoSelector({
                 error: null as string | null,
               }
             } catch (e) {
+              const message = e instanceof Error ? e.message : String(e)
+              // Drop a bad Advanced PAT so the next refresh can use OAuth/App.
+              if (
+                preferPat[provider] &&
+                (message.includes("401") ||
+                  message.includes("403") ||
+                  /rejected the (token|credentials)/i.test(message))
+              ) {
+                clearStoredPat(provider)
+              }
               return {
                 provider,
                 repos: [] as RemoteRepo[],
                 truncated: false,
                 authSource: null,
                 installationId: undefined,
-                error: e instanceof Error ? e.message : String(e),
+                error: message,
               }
             }
           }),
@@ -315,7 +356,7 @@ export function RepoSelector({
         setLoading(false)
       }
     },
-    [canBrowse, connectedProviders, tokens],
+    [canBrowse, connectedProviders, tokens, preferPat],
   )
 
   useEffect(() => {
@@ -382,7 +423,7 @@ export function RepoSelector({
       const result = await client.projects.listGitBranches({
         provider: repo.provider,
         fullName: repo.fullName,
-        token: tokens[repo.provider].trim() || undefined,
+        token: tokenForRequest(repo.provider),
       })
       setBranches(result.branches)
       const b = result.branches.includes(repo.defaultBranch)
@@ -673,15 +714,33 @@ export function RepoSelector({
                       size="sm"
                       className="w-full"
                       onClick={() => {
-                        storeToken(
-                          advancedProvider,
-                          tokens[advancedProvider].trim(),
-                        )
+                        const value = tokens[advancedProvider].trim()
+                        storeToken(advancedProvider, value)
+                        setPreferPat((prev) => ({
+                          ...prev,
+                          [advancedProvider]: true,
+                        }))
                         setPanel("repos")
                         void loadRepos(debouncedQuery)
                       }}
                     >
                       Browse with token
+                    </Button>
+                  ) : null}
+                  {preferPat[advancedProvider] &&
+                  tokens[advancedProvider].trim() ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => {
+                        clearStoredPat(advancedProvider)
+                        setPanel("repos")
+                        void loadRepos(debouncedQuery)
+                      }}
+                    >
+                      Clear saved token (use Connect instead)
                     </Button>
                   ) : null}
                 </div>

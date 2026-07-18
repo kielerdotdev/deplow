@@ -10,10 +10,18 @@ import { z } from "zod"
 import {
   DetailDrawer,
   EventInspector,
+  IssuesFilterSidebar,
+  IssuesToolbar,
   ObserveEmptyState,
+  ObservePageLayout,
   ObserveProjectShell,
   Sparkline,
+  filterIssuesByContext,
 } from "@/components/observe"
+import {
+  hasStructuredIssueFilters,
+} from "@/components/observe/issues-filter-sidebar"
+import { resolveIssuesEmptyState } from "@/components/observe/issues-empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -59,11 +67,31 @@ export const Route = createFileRoute("/observe/projects/$projectId/issues")({
     const issueStatus = issueStatusSchema
       .catch("unresolved")
       .parse((location.search as { status?: string }).status)
-    const issues = await client.observe.issues
-      .list({ projectId: params.projectId, status: issueStatus })
-      .catch(() => [])
-    const project = await client.projects.get({ id: params.projectId })
-    return { issues, project, issueStatus }
+    const [issues, unresolved, resolved, muted, project] = await Promise.all([
+      client.observe.issues
+        .list({ projectId: params.projectId, status: issueStatus })
+        .catch(() => []),
+      client.observe.issues
+        .list({ projectId: params.projectId, status: "unresolved" })
+        .catch(() => []),
+      client.observe.issues
+        .list({ projectId: params.projectId, status: "resolved" })
+        .catch(() => []),
+      client.observe.issues
+        .list({ projectId: params.projectId, status: "muted" })
+        .catch(() => []),
+      client.projects.get({ id: params.projectId }),
+    ])
+    return {
+      issues,
+      project,
+      issueStatus,
+      statusCounts: {
+        unresolved: unresolved.length,
+        resolved: resolved.length,
+        muted: muted.length,
+      },
+    }
   },
   component: IssuesPage,
 })
@@ -75,7 +103,7 @@ const TABS = [
 ]
 
 function IssuesPage() {
-  const { issues, project, issueStatus } = Route.useLoaderData()
+  const { issues, project, issueStatus, statusCounts } = Route.useLoaderData()
   const { projectId } = Route.useParams()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -100,16 +128,17 @@ function IssuesPage() {
     })
   }
 
-  const filteredIssues = useMemo(() => {
-    const q = (context.query.q ?? "").trim().toLowerCase()
-    if (!q) return issues
-    return issues.filter(
-      (i) =>
-        i.title.toLowerCase().includes(q) ||
-        (i.culprit?.toLowerCase().includes(q) ?? false) ||
-        (i.level?.toLowerCase().includes(q) ?? false),
-    )
-  }, [issues, context.query.q])
+  function setContext(next: typeof context) {
+    void navigate({
+      search: serializeIssuesListSearch(next, issueStatus, drawerIssueId),
+      replace: true,
+    })
+  }
+
+  const filteredIssues = useMemo(
+    () => filterIssuesByContext(issues, context),
+    [issues, context],
+  )
 
   const allSelected = useMemo(
     () =>
@@ -233,18 +262,132 @@ function IssuesPage() {
     await router.invalidate()
   }
 
+  const emptyDecision = resolveIssuesEmptyState({
+    issueStatus,
+    statusCounts,
+    statusIssueCount: issues.length,
+    filteredCount: filteredIssues.length,
+    hasStructuredFilters: hasStructuredIssueFilters(context),
+  })
+
+  function emptyAction(kind: NonNullable<typeof emptyDecision>["primaryAction"]) {
+    if (kind === "setup") {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          render={
+            <Link to="/observe/projects/$projectId" params={{ projectId }} />
+          }
+        >
+          View setup instructions
+        </Button>
+      )
+    }
+    if (kind === "view_resolved") {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            void navigate({
+              search: serializeIssuesListSearch(
+                context,
+                "resolved",
+                drawerIssueId,
+              ),
+            })
+          }
+        >
+          View resolved
+        </Button>
+      )
+    }
+    if (kind === "clear_filters") {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            setContext({
+              ...context,
+              filters: [],
+              query: {
+                ...context.query,
+                q: undefined,
+                errorsOnly: undefined,
+              },
+            })
+          }
+        >
+          Clear filters
+        </Button>
+      )
+    }
+    if (kind === "expand_time") {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            setContext({
+              ...context,
+              time: { kind: "preset", preset: "7d" },
+            })
+          }
+        >
+          Expand time range
+        </Button>
+      )
+    }
+    return undefined
+  }
+
+  function emptySecondary(
+    kind: NonNullable<typeof emptyDecision>["secondaryAction"],
+  ) {
+    if (kind === "go_traces") {
+      return (
+        <Button
+          size="sm"
+          variant="ghost"
+          render={
+            <Link
+              to="/observe/projects/$projectId/traces"
+              params={{ projectId }}
+            />
+          }
+        >
+          Go to traces
+        </Button>
+      )
+    }
+    if (kind === "expand_time") {
+      return (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            setContext({
+              ...context,
+              time: { kind: "preset", preset: "7d" },
+            })
+          }
+        >
+          Expand time range
+        </Button>
+      )
+    }
+    return undefined
+  }
+
   return (
     <ObserveProjectShell
       projectId={projectId}
       title="Issues"
-      description={`${project.name} · grouped by fingerprint`}
+      description={`${project.name} · Grouped by fingerprint`}
       context={context}
-      onContextChange={(next) =>
-        void navigate({
-          search: serializeIssuesListSearch(next, issueStatus, drawerIssueId),
-          replace: true,
-        })
-      }
+      onContextChange={setContext}
       onSaveView={(name) => {
         void client.observe.savedViews.create({
           projectId,
@@ -254,248 +397,259 @@ function IssuesPage() {
         })
       }}
     >
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {TABS.map((t) => (
-          <Button
-            key={t.id}
-            size="sm"
-            variant={issueStatus === t.id ? "default" : "outline"}
-            onClick={() =>
+      <ObservePageLayout.Root>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <IssuesToolbar
+            tabs={TABS.map((t) => ({
+              value: t.id,
+              label: t.label,
+              count: statusCounts[t.id],
+            }))}
+            active={issueStatus}
+            onChange={(id) =>
               void navigate({
-                search: serializeIssuesListSearch(
-                  context,
-                  t.id,
-                  drawerIssueId,
-                ),
+                search: serializeIssuesListSearch(context, id, drawerIssueId),
               })
             }
-          >
-            {t.label}
-          </Button>
-        ))}
-        {selected.size > 0 ? (
-          <div className="ml-auto flex gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void bulk("resolved")}
-            >
-              Resolve ({selected.size})
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void bulk("muted")}
-            >
-              Ignore
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void bulk("unresolved")}
-            >
-              Reopen
-            </Button>
-          </div>
-        ) : (
-          <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
-            {filteredIssues.length.toLocaleString()} issues
-          </span>
-        )}
-      </div>
-
-      {filteredIssues.length === 0 ? (
-        <ObserveEmptyState
-          title={
-            issues.length === 0
-              ? `No ${issueStatus === "muted" ? "ignored" : issueStatus} issues`
-              : "No matching issues"
-          }
-          description={
-            issues.length === 0
-              ? "Grouped errors will show up here when events arrive."
-              : "Try clearing search or widening the time range."
-          }
-        />
-      ) : (
-        <div className="surface-panel overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="data-table-head data-table-cell w-10 pl-4">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(v) => {
-                      if (v) {
-                        setSelected(new Set(filteredIssues.map((i) => i.id)))
-                      } else setSelected(new Set())
-                    }}
-                    aria-label="Select all"
-                  />
-                </TableHead>
-                <TableHead className="data-table-head data-table-cell">
-                  Issue
-                </TableHead>
-                <TableHead className="data-table-head data-table-cell w-28">
-                  Trend
-                </TableHead>
-                <TableHead className="data-table-head data-table-cell w-20">
-                  Events
-                </TableHead>
-                <TableHead className="data-table-head data-table-cell w-28">
-                  First
-                </TableHead>
-                <TableHead className="data-table-head data-table-cell w-28 pr-4">
-                  Last
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredIssues.map((issue, idx) => (
-                <TableRow
-                  key={issue.id}
-                  className={cn(
-                    "data-table-row",
-                    selected.has(issue.id) && "bg-muted/40",
-                    focusIdx === idx && "ring-1 ring-inset ring-ring/40",
-                  )}
-                >
-                  <TableCell className="data-table-cell pl-4">
-                    <Checkbox
-                      checked={selected.has(issue.id)}
-                      onCheckedChange={() => toggle(issue.id)}
-                      aria-label={`Select ${issue.title}`}
-                    />
-                  </TableCell>
-                  <TableCell className="data-table-cell whitespace-normal">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        to="/observe/projects/$projectId/issues/$issueId"
-                        params={{ projectId, issueId: issue.id }}
-                        search={serializeIssueSearch(context)}
-                        className="font-medium hover:underline"
-                      >
-                        {issue.title}
-                      </Link>
-                      {issue.level ? (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                          {issue.level}
-                        </span>
-                      ) : null}
-                    </div>
-                    {issue.culprit ? (
-                      <div className="text-xs text-muted-foreground">
-                        {issue.culprit}
-                      </div>
-                    ) : null}
-                    <div className="mt-1 flex gap-2">
-                      <button
-                        type="button"
-                        className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
-                        onClick={() => setDrawerIssueId(issue.id)}
-                      >
-                        Inspect
-                      </button>
-                      {issue.lastTraceId ? (
-                        <Link
-                          to="/observe/projects/$projectId/traces/$traceId"
-                          params={{
-                            projectId,
-                            traceId: issue.lastTraceId,
-                          }}
-                          search={serializeTraceSearch(context)}
-                          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
-                        >
-                          Trace
-                        </Link>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="data-table-cell">
-                    <Sparkline buckets={trends[issue.id] ?? []} />
-                  </TableCell>
-                  <TableCell className="data-table-cell">
-                    <Link
-                      to="/observe/projects/$projectId/issues/$issueId"
-                      params={{ projectId, issueId: issue.id }}
-                      search={serializeIssueSearch(context)}
-                      className="tabular-nums hover:underline"
-                    >
-                      {issue.count}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="data-table-cell text-muted-foreground">
-                    {formatRelativeTime(issue.firstSeen)}
-                  </TableCell>
-                  <TableCell className="data-table-cell pr-4 text-muted-foreground">
-                    {formatRelativeTime(issue.lastSeen)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      <DetailDrawer
-        open={!!drawerIssueId}
-        onOpenChange={(open) => {
-          if (!open) setDrawerIssueId(null)
-        }}
-        title="Event"
-        description={drawerIssueId ?? undefined}
-        className="sm:max-w-lg md:max-w-xl"
-      >
-        {drawerEventState === "loading" ? (
-          <p className="text-sm text-muted-foreground">Loading event…</p>
-        ) : drawerEventState === "error" ? (
-          <p className="text-sm text-muted-foreground">
-            Could not load the latest event for this issue.
-          </p>
-        ) : drawerEventState === "empty" ? (
-          <p className="text-sm text-muted-foreground">
-            No event recorded for this issue yet.
-          </p>
-        ) : (
-          <EventInspector
-            event={drawerEvent}
-            projectId={projectId}
-            context={context}
-            issueId={drawerIssueId ?? undefined}
-            compact
-            onContextChange={(next) =>
-              void navigate({
-                search: serializeIssuesListSearch(
-                  next,
-                  issueStatus,
-                  drawerIssueId,
-                ),
-                replace: true,
-              })
+            totalCount={filteredIssues.length}
+            trailing={
+              selected.size > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void bulk("resolved")}
+                  >
+                    Resolve ({selected.size})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void bulk("muted")}
+                  >
+                    Ignore
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void bulk("unresolved")}
+                  >
+                    Reopen
+                  </Button>
+                </div>
+              ) : null
             }
           />
-        )}
-        {drawerIssueId ? (
-          <div className="mt-4">
-            <Button
-              size="sm"
-              variant="outline"
-              render={
-                <Link
-                  to="/observe/projects/$projectId/issues/$issueId"
-                  params={{ projectId, issueId: drawerIssueId }}
-                  search={serializeIssueSearch(
-                    context,
-                    drawerEvent?.event_id,
-                  )}
-                />
-              }
+          <ObservePageLayout.FilterSidebarTrigger />
+        </div>
+
+        <ObservePageLayout.Body>
+          <ObservePageLayout.FilterSidebar>
+            <IssuesFilterSidebar
+              issues={issues}
+              context={context}
+              onChange={setContext}
+            />
+          </ObservePageLayout.FilterSidebar>
+          <ObservePageLayout.Content>
+            {filteredIssues.length === 0 && emptyDecision ? (
+              <ObserveEmptyState
+                variant={emptyDecision.variant}
+                title={emptyDecision.title}
+                description={emptyDecision.description}
+                action={emptyAction(emptyDecision.primaryAction)}
+                secondaryAction={emptySecondary(emptyDecision.secondaryAction)}
+              />
+            ) : filteredIssues.length === 0 ? (
+              <ObserveEmptyState
+                variant="empty"
+                title="No issues"
+                description="No grouped errors to show."
+              />
+            ) : (
+              <div className="surface-panel overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="data-table-head data-table-cell w-10 pl-4">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={(v) => {
+                            if (v) {
+                              setSelected(
+                                new Set(filteredIssues.map((i) => i.id)),
+                              )
+                            } else setSelected(new Set())
+                          }}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead className="data-table-head data-table-cell">
+                        Issue
+                      </TableHead>
+                      <TableHead className="data-table-head data-table-cell w-28">
+                        Trend
+                      </TableHead>
+                      <TableHead className="data-table-head data-table-cell w-20">
+                        Events
+                      </TableHead>
+                      <TableHead className="data-table-head data-table-cell w-28">
+                        First
+                      </TableHead>
+                      <TableHead className="data-table-head data-table-cell w-28 pr-4">
+                        Last
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredIssues.map((issue, idx) => (
+                      <TableRow
+                        key={issue.id}
+                        className={cn(
+                          "data-table-row",
+                          selected.has(issue.id) && "bg-muted/40",
+                          focusIdx === idx && "ring-1 ring-inset ring-ring/40",
+                        )}
+                      >
+                        <TableCell className="data-table-cell pl-4">
+                          <Checkbox
+                            checked={selected.has(issue.id)}
+                            onCheckedChange={() => toggle(issue.id)}
+                            aria-label={`Select ${issue.title}`}
+                          />
+                        </TableCell>
+                        <TableCell className="data-table-cell whitespace-normal">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              to="/observe/projects/$projectId/issues/$issueId"
+                              params={{ projectId, issueId: issue.id }}
+                              search={serializeIssueSearch(context)}
+                              className="font-medium hover:underline"
+                            >
+                              {issue.title}
+                            </Link>
+                            {issue.level ? (
+                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                {issue.level}
+                              </span>
+                            ) : null}
+                          </div>
+                          {issue.culprit ? (
+                            <div className="text-xs text-muted-foreground">
+                              {issue.culprit}
+                            </div>
+                          ) : null}
+                          <div className="mt-1 flex gap-2">
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                              onClick={() => setDrawerIssueId(issue.id)}
+                            >
+                              Inspect
+                            </button>
+                            {issue.lastTraceId ? (
+                              <Link
+                                to="/observe/projects/$projectId/traces/$traceId"
+                                params={{
+                                  projectId,
+                                  traceId: issue.lastTraceId,
+                                }}
+                                search={serializeTraceSearch(context)}
+                                className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                              >
+                                Trace
+                              </Link>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="data-table-cell">
+                          <Sparkline buckets={trends[issue.id] ?? []} />
+                        </TableCell>
+                        <TableCell className="data-table-cell">
+                          <Link
+                            to="/observe/projects/$projectId/issues/$issueId"
+                            params={{ projectId, issueId: issue.id }}
+                            search={serializeIssueSearch(context)}
+                            className="tabular-nums hover:underline"
+                          >
+                            {issue.count}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="data-table-cell text-muted-foreground">
+                          {formatRelativeTime(issue.firstSeen)}
+                        </TableCell>
+                        <TableCell className="data-table-cell pr-4 text-muted-foreground">
+                          {formatRelativeTime(issue.lastSeen)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            <DetailDrawer
+              open={!!drawerIssueId}
+              onOpenChange={(open) => {
+                if (!open) setDrawerIssueId(null)
+              }}
+              title="Event"
+              description={drawerIssueId ?? undefined}
+              className="sm:max-w-lg md:max-w-xl"
             >
-              Open full issue
-            </Button>
-          </div>
-        ) : null}
-      </DetailDrawer>
+              {drawerEventState === "loading" ? (
+                <p className="text-sm text-muted-foreground">Loading event…</p>
+              ) : drawerEventState === "error" ? (
+                <p className="text-sm text-muted-foreground">
+                  Could not load the latest event for this issue.
+                </p>
+              ) : drawerEventState === "empty" ? (
+                <p className="text-sm text-muted-foreground">
+                  No event recorded for this issue yet.
+                </p>
+              ) : (
+                <EventInspector
+                  event={drawerEvent}
+                  projectId={projectId}
+                  context={context}
+                  issueId={drawerIssueId ?? undefined}
+                  compact
+                  onContextChange={(next) =>
+                    void navigate({
+                      search: serializeIssuesListSearch(
+                        next,
+                        issueStatus,
+                        drawerIssueId,
+                      ),
+                      replace: true,
+                    })
+                  }
+                />
+              )}
+              {drawerIssueId ? (
+                <div className="mt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    render={
+                      <Link
+                        to="/observe/projects/$projectId/issues/$issueId"
+                        params={{ projectId, issueId: drawerIssueId }}
+                        search={serializeIssueSearch(
+                          context,
+                          drawerEvent?.event_id,
+                        )}
+                      />
+                    }
+                  >
+                    Open full issue
+                  </Button>
+                </div>
+              ) : null}
+            </DetailDrawer>
+          </ObservePageLayout.Content>
+        </ObservePageLayout.Body>
+      </ObservePageLayout.Root>
     </ObserveProjectShell>
   )
 }

@@ -1,20 +1,21 @@
 # Hostrig
 
-Opinionated self-hosted project runtime: **one project = typed services (web, worker, postgres, redis) + bindings + S3**, built with **Railpack or Dockerfile**, run on **local Docker under gVisor**, with **public URLs via Caddy + cloudflared** (platform wildcard), per-service **git push-to-deploy**, and scheduled Postgres backups.
+Opinionated self-hosted project runtime: **one project = typed services (web, worker, postgres, redis) + bindings + S3**, built with **Railpack or Dockerfile**, run on **k3s under gVisor**, with **public URLs via Traefik + edge** (platform wildcard), per-service **git push-to-deploy**, and scheduled Postgres backups.
 
-Launch bar: [docs/gtm.md](./docs/gtm.md) — **service-first stack + gVisor + wildcard Domains + git push**, not Coolify/Dokploy catalog sprawl. Custom domains and previews are v2; multi-node is v3.
+Launch bar: [docs/gtm.md](./docs/gtm.md) — **service-first stack + gVisor on k3s + wildcard Domains + git push**, not Coolify/Dokploy catalog sprawl. Custom domains and previews are v2.
 
-Most apps only need a database, object storage, and a runtime. Hostrig runs that stack on a host you control — no spinning up hosted Postgres/Redis/S3 per project, and no hand-rolled backup cron.
+Most apps only need a database, object storage, and a runtime. Hostrig runs that stack on infrastructure you control — no spinning up hosted Postgres/Redis/S3 per project, and no hand-rolled backup cron.
 
 **Canonical docs:** [`docs/`](./docs/) — start with [philosophy](./docs/philosophy.md), [product](./docs/product.md), [gtm](./docs/gtm.md), and [security](./docs/security.md).
 
 ```
-create empty project (pin local Docker node)
+connect or create k3s cluster
+  → create empty project
   → add web/worker services
-  → add postgres/redis services (dedicated containers)
+  → add postgres/redis (project namespace)
   → bind apps to data (DATABASE_URL / REDIS_URL)
-  → deploy each app service under gVisor
-  → proxy web services on *.{baseDomain}; workers remain private
+  → deploy each app service under gVisor RuntimeClass
+  → Ingress on *.{baseDomain}; workers remain private
   → scheduled Postgres backups → platform S3
 ```
 
@@ -23,10 +24,10 @@ create empty project (pin local Docker node)
 | Layer         | Tech                                                       |
 | ------------- | ---------------------------------------------------------- |
 | Control plane | TanStack Start, oRPC, Better Auth, Drizzle + SQLite        |
-| Data plane    | Dedicated Postgres/Redis containers + operator S3 (MinIO/R2) |
-| Proxy / edge  | **Caddy** reverse proxy + **cloudflared** (v1 edge)        |
+| Data plane    | Postgres/Redis in-cluster + operator S3 (MinIO/R2)         |
+| Proxy / edge  | **Traefik** Ingress + Cloudflare / Netbird / Tailscale     |
 | Build         | **Railpack** (default) or **Dockerfile** + Docker BuildKit |
-| Runtime       | **Docker** + **gVisor (`runsc`)** for user apps            |
+| Runtime       | **k3s** + **gVisor RuntimeClass** for user apps            |
 | Tooling       | pnpm monorepo, Vite+, Oxlint, Oxfmt, Vitest                |
 
 ## Packages
@@ -44,19 +45,17 @@ Core business logic is under `apps/web/src/lib/core/` and stays framework-agnost
 
 ### VPS / production
 
-- **Docker Engine** + Compose v2 plugin
-- **gVisor (`runsc`)** — default runtime for user apps ([install](https://gvisor.dev/docs/user_guide/install/); see [docs/secure-runtime.md](./docs/secure-runtime.md))
-- For public HTTPS: a domain + Cloudflare account (tunnel token) — TLS at Cloudflare, not Let’s Encrypt on Caddy
+- **k3s cluster** (BYO kubeconfig or managed Hetzner cloud-init)
+- **gVisor (`runsc`)** on every node — managed cloud-init, Cluster UI self-hosted join script, or [`scripts/install-gvisor-k3s.sh`](./scripts/install-gvisor-k3s.sh) (see [docs/secure-runtime.md](./docs/secure-runtime.md))
+- For public HTTPS: a domain + edge (Cloudflare / Netbird / Tailscale) — TLS at the edge
 
-BuildKit is started by the install script. Railpack ships inside the control-plane image. You do **not** need Node on the host for production.
-
-Recommended: enable `userns-remap: default` in `/etc/docker/daemon.json` (see [docs/secure-runtime.md](./docs/secure-runtime.md)).
+BuildKit is started by the install script. Railpack ships inside the control-plane image. You do **not** need Node on the host for production. Apps do **not** use Docker-agent.
 
 ### Development
 
 - Docker Engine on the host (socket shared into the Dev Container)
 - Cursor / VS Code + Dev Containers extension
-- Open the repo in the Dev Container — Node, pnpm, kubectl, helm, and the official `hetzner-k3s` CLI are provided there
+- Open the repo in the Dev Container — Node, pnpm, kubectl, and helm are provided there
 
 ## Quick start (VPS / production)
 
@@ -75,13 +74,14 @@ sudo bash deploy/install.sh
 
 The installer:
 
-- installs Docker (if missing) + Compose
-- installs gVisor (`runsc`) for sandboxed app deploys
-- starts BuildKit
+- installs Docker (if missing) + Compose for the **control plane** stack
+- starts BuildKit (builds on the CP host)
 - bundles MinIO for object storage / backups
 - generates secrets and detects your public URL
 - pulls `ghcr.io/kielerdotdev/deplow` and starts the stack
-- prints the URL — open it, create the first user, set Domains
+- prints the URL — open it, create the first user, connect a **k3s** cluster (Settings → Cluster), set Domains
+
+App sandboxing (gVisor) is installed on **cluster nodes**, not via Docker-agent.
 
 ```bash
 # Upgrade later (preserves volumes + .env):
@@ -131,49 +131,40 @@ Attach `hostrig.com` under the Worker’s **Domains** tab after the first deploy
 3. Wait for start — infra, DB, and the web app come up automatically
 4. Open **http://localhost:9565**
 
-Details: [`.devcontainer/README.md`](./.devcontainer/README.md). The image includes the official [hetzner-k3s](https://hetzner-k3s.com/) CLI plus kubectl/helm.
+Details: [`.devcontainer/README.md`](./.devcontainer/README.md).
 
 `DEPLOW_BASE_DOMAIN` only seeds Domains on first boot; day-to-day changes are in the **Domains** tab.
 
 Production VPS install remains `deploy/install.sh` / the curl installer above — that is not a local-dev path.
 
-## Public URLs (Caddy + cloudflared)
+## Public URLs (Traefik + edge)
 
-Hostrig owns the local reverse proxy (**Caddy**). **Domains are configured in the app** (Domains tab), not by editing env for day-to-day changes. Edges only forward HTTP with the `Host` header intact. The v1 edge is **cloudflared**.
+**Traefik (k3s Ingress) owns Host → Service.** Domains are configured in the app (Domains tab). Edges only forward HTTP with the `Host` header intact.
 
 ```text
-Internet → cloudflared → Caddy (Host: {slug}.{baseDomain}) → user app (gVisor)
+Internet → Cloudflare / Netbird / Tailscale
+  → Traefik on the k3s server (usually http://127.0.0.1:80)
+  → Service → Pod (user apps under gVisor)
 ```
 
-**Stable origins:** `http://caddy:80` (compose network) · `http://127.0.0.1:8088` (host).
-
-1. Open **Domains**: set base domain (e.g. `apps.example.com`), protocol `https`, enable auto-assign subdomains.
-2. Create a Cloudflare Tunnel. Public hostname:
-   - Hostname: `*.apps.example.com`
-   - Path: `/`
-   - Service: `http://caddy:80` (cloudflared on compose profile `edge` shares Caddy’s default network)
-3. Point a **wildcard** DNS CNAME `*.apps.example.com` at the tunnel **once** (proxied).
-4. Start the edge profile:
-
-```bash
-# Production install (/opt/deplow):
-# edit CLOUDFLARE_TUNNEL_TOKEN in /opt/deplow/.env, then:
-docker compose -p deplow --project-directory /opt/deplow --profile edge up -d
-
-# Dev (repo checkout):
-export CLOUDFLARE_TUNNEL_TOKEN=...   # from Cloudflare Zero Trust
-docker compose --profile edge up -d
-```
+1. **Settings → Cluster**: connect or create k3s (Traefik detected).
+2. Open **Domains**: set base domain (e.g. `apps.example.com`), protocol `https`, enable auto-assign subdomains.
+3. Point an edge at Traefik on the k3s server — e.g. Cloudflare Tunnel public hostname `*.apps.example.com` → `http://127.0.0.1:80`, or use NetBird guided setup under Settings → Networking.
+4. Grow capacity with **Add Hetzner worker** or **Add self-hosted worker** (Settings → Cluster).
 
 Every new web service gets `https://{slug}.{baseDomain}` (primary) or `https://{project}-{service}.{baseDomain}` without more DNS. Postgres and Redis are **never** exposed through the proxy.
 
-`DEPLOW_BASE_DOMAIN` / `DEPLOW_PUBLIC_URL_PROTOCOL` only **seed** the DB on first boot. After that, change domains in the UI.
+Local check (from a host that can hit Traefik):
 
-Local check: `curl -H "Host: {slug}.{baseDomain}" http://127.0.0.1:8088/`
+```bash
+curl -H "Host: {slug}.{baseDomain}" http://127.0.0.1:80/
+```
 
-Hostnames are stored in `service_hostnames` (`auto` now; `custom` / `preview` later — **custom domains are v2**). Route files live in the Caddy routes volume (`infra/caddy/routes/` in monorepo/dev). See [docs/access.md](./docs/access.md) and [docs/gtm.md](./docs/gtm.md).
+See [docs/access.md](./docs/access.md) and [docs/gtm.md](./docs/gtm.md).
 
-**TLS:** terminates at Cloudflare on the tunnel. Caddy is HTTP-only on the host — there is no Let’s Encrypt on Caddy in v1.
+**TLS:** terminates at the edge. Traefik stays HTTP-only in-cluster for v1 — there is no Let’s Encrypt on Traefik in this ship slice.
+
+**Honest security:** user apps run under gVisor by default; we do not claim MicroVM-grade or unbreakable isolation.
 
 ## Git push-to-deploy
 
@@ -204,13 +195,12 @@ Webhook endpoint: `POST /api/webhooks/git/{serviceId}`.
 | `DEPLOW_PITR_ENABLED`               | Enable PITR APIs / UI               | unset (`1` to enable)                  |
 | `PGBACKREST_CONFIG`                 | Path to pgBackRest conf             | unset (required when PITR is on)       |
 | `DEPLOW_PGBACKREST_IMAGE`           | Docker image if host binary missing | `woblerr/pgbackrest:2.58.0-alpine`     |
-| `DEPLOW_APP_RUNTIME`                | OCI runtime for user apps           | `runsc` (gVisor)                       |
-| `DEPLOW_APP_RUNTIME_REQUIRED`       | Fail deploy if runtime missing      | `true`                                 |
-| `DEPLOW_APP_MEMORY_MB` / `_CPUS`    | User app resource limits            | `512` / `1`                            |
+| `DEPLOW_APP_RUNTIME`                | `runsc` → RuntimeClass `gvisor`     | `runsc`                                |
+| `DEPLOW_APP_RUNTIME_REQUIRED`       | Fail deploy if RuntimeClass missing | `true`                                 |
+| `DEPLOW_APP_MEMORY_MB` / `_CPUS`    | User app pod resource limits        | `512` / `1`                            |
 | `DEPLOW_BASE_DOMAIN`                | Seeds platform base domain once     | empty / `apps.localhost` in dev        |
 | `DEPLOW_PUBLIC_URL_PROTOCOL`        | Seeds shown URL protocol once       | `https` / `http` for localhost         |
-| `DEPLOW_PROXY_ROUTES_DIR`           | Caddy route snippets directory      | `infra/caddy/routes`                   |
-| `CLOUDFLARE_TUNNEL_TOKEN`           | cloudflared tunnel token            | empty                                  |
+| `CLOUDFLARE_TUNNEL_TOKEN`           | cloudflared tunnel token (edge)     | empty                                  |
 | `BUILDKIT_HOST`                     | For Railpack                        | `docker-container://buildkit`          |
 | `RAILPACK_BIN`                      | Railpack executable                 | `railpack`                             |
 | `DEPLOW_PUBLIC_URL`                 | Control plane public URL            | OAuth callbacks + webhook base         |
@@ -227,7 +217,7 @@ Full template: [`.env.example`](./.env.example).
 
 Every app service receives bound `DATABASE_URL` / `REDIS_URL` / `S3_*` (when linked) plus its service-specific environment. Web services receive a URL; workers run without proxy routes or published ports.
 
-User app containers run under **gVisor** with hardened defaults (dropped caps, no-new-privileges, readonly rootfs, resource limits). Platform services (Redis/Caddy) stay on runc; object storage is an external MinIO or Cloudflare R2. Compose deploys, SSH/Hetzner multi-host, preview deploys, and other DBs are **out of scope**.
+User app pods run under **gVisor** (`runtimeClassName: gvisor`) with hardened defaults (non-root, dropped caps, readonly rootfs, resource limits, NetworkPolicy). Postgres/Redis stay on the default runtime; object storage is an external MinIO or Cloudflare R2. Compose-as-deploy, MicroVMs as default, preview deploys, and other DBs are **out of scope**.
 
 ## Scripts
 
@@ -243,12 +233,11 @@ User app containers run under **gVisor** with hardened defaults (dropped caps, n
 | `pnpm db:push`                                  | Apply control-plane schema                       |
 | `pnpm e2e`                                      | Docker-backed smoke                              |
 
-## Ports (compose)
+## Ports (compose — control plane)
 
 | Service        | Host    |
 | -------------- | ------- |
 | Control plane  | `3000`  |
-| Caddy proxy    | `8088`  |
 | Platform Redis | `56380` |
 
-Postgres and Redis run as **dedicated containers per project** (ephemeral localhost ports for operator tools; Docker DNS for apps).
+Postgres and Redis for apps run as **Kubernetes workloads** in the project namespace.

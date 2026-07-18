@@ -9,13 +9,8 @@ export const createProjectInputSchema = z.object({
       message: "Use lowercase letters, numbers, and hyphens",
     }),
   organizationId: z.string().min(1).optional(),
-  /** Pin project to a node (local docker or online agent). Defaults to local. */
+  /** Internal placement id (k3s-cluster). Callers usually omit this. */
   nodeId: z.string().min(1).optional(),
-})
-
-export const setProjectNodeInputSchema = z.object({
-  id: z.string().min(1),
-  nodeId: z.string().min(1),
 })
 
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>

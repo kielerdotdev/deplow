@@ -50,7 +50,7 @@ function ensureDogfood() {
               projectId: boot.projectId,
             })
           }
-          initDogfoodSentryServer(boot.dsn)
+          initDogfoodSentryServer(boot.serverDsn || boot.dsn)
           dogfoodLog(
             `request path online project=${boot.projectId} sentryId=${boot.sentryId}`,
             "info",

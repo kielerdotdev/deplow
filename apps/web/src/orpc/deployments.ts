@@ -5,30 +5,28 @@ import { and, desc, eq, inArray } from "@deplow/db"
 import { createDeploymentInputSchema } from "@deplow/shared"
 
 import { assertProjectAccess } from "@/lib/access"
-import {
-  createOperation,
-  enqueueDeploy,
-  markOperationQueued,
-  selectBuildStrategy,
-  type BuildStrategyOverride,
-} from "@/lib/core"
-import { env } from "@/lib/env"
 import type { Session } from "@/lib/auth"
+import {
+  deployService,
+  ServiceLifecycleError,
+  stopService,
+} from "@/lib/service-lifecycle"
 import {
   db,
   deployments,
-  dockerNodeExecutor,
-  ensureLocalNodeId,
-  nodes,
   operations,
   projects,
-  proxyService,
   services,
 } from "@/lib/services"
 
-import { removeAllHostnames } from "@/lib/service-hostnames"
-
 import { authedProcedure } from "./middleware"
+
+function lifecycleError(e: unknown): never {
+  if (e instanceof ServiceLifecycleError) {
+    throw new ORPCError(e.code, { message: e.message })
+  }
+  throw e
+}
 
 function toSummary(row: typeof deployments.$inferSelect) {
   return {
@@ -95,156 +93,10 @@ async function loadAccessibleService(serviceId: string, session?: Session) {
 }
 
 export async function runServiceDeploy(input: DeployInput) {
-  const { service, project } = await loadAccessibleService(input.serviceId)
-  if (service.type !== "web" && service.type !== "worker") {
-    throw new ORPCError("BAD_REQUEST", {
-      message: "Only web and worker services can be deployed",
-    })
-  }
-  if (input.fromGit && !service.gitRepoUrl) {
-    throw new ORPCError("BAD_REQUEST", {
-      message: "Connect a Git repository before deploying this service",
-    })
-  }
-
-  let nodeId = input.nodeId ?? project.nodeId
-  if (!nodeId) {
-    nodeId = await ensureLocalNodeId()
-    await db.update(projects).set({ nodeId }).where(eq(projects.id, project.id))
-  }
-  const [node] = await db.select().from(nodes).where(eq(nodes.id, nodeId))
-  if (!node || (node.provider !== "docker" && node.provider !== "agent")) {
-    throw new ORPCError("BAD_REQUEST", {
-      message: "A Docker or agent node is required",
-    })
-  }
-  if (node.provider === "agent") {
-    const { isAgentOnline } = await import("@/lib/agent/tokens")
-    if (!isAgentOnline(node)) {
-      throw new ORPCError("BAD_REQUEST", {
-        message: "Agent node is offline — wait for a heartbeat and retry",
-      })
-    }
-  }
-
-  const image = input.image ?? input.options?.image
-  let strategy = "railpack"
-  if (!input.fromGit) {
-    try {
-      strategy = selectBuildStrategy({
-        image,
-        sourcePath: input.sourcePath,
-        strategyOverride:
-          (service.buildStrategyOverride as BuildStrategyOverride) || undefined,
-        dockerfilePath: service.dockerfilePath,
-      })
-    } catch (error) {
-      throw new ORPCError("BAD_REQUEST", {
-        message: error instanceof Error ? error.message : String(error),
-      })
-    }
-  }
-
-  const operation = await createOperation({
-    projectId: project.id,
-    serviceId: service.id,
-    type: "deploy",
-    triggeredBy: input.triggeredBy ?? "manual",
-    input: {
-      fromGit: input.fromGit,
-      image,
-      sourcePath: input.sourcePath,
-    },
-    stage: "queued",
-  })
-
-  const id = crypto.randomUUID()
-  await db.insert(deployments).values({
-    id,
-    serviceId: service.id,
-    projectId: project.id,
-    nodeId,
-    operationId: operation.id,
-    serviceName: service.name,
-    image: image ?? null,
-    sourcePath: input.sourcePath ?? null,
-    buildStrategy: strategy,
-    status: "queued",
-    triggeredBy: input.triggeredBy ?? "manual",
-    gitBranch: service.gitBranch || null,
-  })
-  await db
-    .update(services)
-    .set({
-      status: "deploying",
-      errorMessage: null,
-      errorCode: null,
-      lastOperationId: operation.id,
-    })
-    .where(eq(services.id, service.id))
-
-  await markOperationQueued(operation.id)
-
-  if (node.provider === "agent") {
-    const { enqueueAgentDeploy } = await import("@/lib/agent/dispatch")
-    await enqueueAgentDeploy({
-      nodeId,
-      operationId: operation.id,
-      deploymentId: id,
-      service,
-      project,
-      fromGit: input.fromGit,
-      image,
-      sourcePath: input.sourcePath,
-      options: input.options,
-    })
-  } else {
-    const jobData = {
-      operationId: operation.id,
-      deploymentId: id,
-      serviceId: service.id,
-      fromGit: input.fromGit,
-      image,
-      sourcePath: input.sourcePath,
-      triggeredBy: input.triggeredBy,
-      options: input.options as Record<string, unknown> | undefined,
-    }
-
-    if (env.useQueue) {
-      try {
-        await enqueueDeploy(jobData)
-      } catch (error) {
-        console.error(
-          "[deplow] enqueue deploy failed; running in-process",
-          error,
-        )
-        const { processDeployJob } = await import(
-          "@/lib/core/queue/deploy-processor"
-        )
-        void processDeployJob(jobData).catch((err) => {
-          console.error(`[deplow] service deploy ${id} crashed`, err)
-        })
-      }
-    } else {
-      const { processDeployJob } = await import(
-        "@/lib/core/queue/deploy-processor"
-      )
-      void processDeployJob(jobData).catch((error) => {
-        console.error(`[deplow] service deploy ${id} crashed`, error)
-      })
-    }
-  }
-
-  const [row] = await db
-    .select()
-    .from(deployments)
-    .where(eq(deployments.id, id))
-  return {
-    ...toSummary(row!),
-    operation: {
-      id: operation.id,
-      status: "queued" as const,
-    },
+  try {
+    return await deployService(input)
+  } catch (e) {
+    lifecycleError(e)
   }
 }
 
@@ -396,11 +248,26 @@ export const logs = authedProcedure
       deploymentStatus === "analyzing" ||
       deploymentStatus === "building"
 
-    const runtimeLogs = buildPhase
-      ? ""
-      : await dockerNodeExecutor
-          .getLogs(project.nodeId ?? (await ensureLocalNodeId()), service.slug)
-          .catch(() => "")
+    let runtimeLogs = ""
+    if (!buildPhase) {
+      try {
+        const { requireConnectedKubeconfig } = await import(
+          "@/lib/k8s/cluster-store"
+        )
+        const { getPodLogs } = await import("@/lib/k8s/deploy")
+        const kubeconfigYaml = await requireConnectedKubeconfig()
+        runtimeLogs = await getPodLogs({
+          kubeconfigYaml,
+          projectSlug: project.slug,
+          serviceName: service.name,
+        })
+      } catch (e) {
+        runtimeLogs =
+          e instanceof Error
+            ? `Failed to load logs: ${e.message}`
+            : `Failed to load logs: ${String(e)}`
+      }
+    }
 
     const inProgress =
       Boolean(deploymentStatus) &&
@@ -436,22 +303,15 @@ export const stop = authedProcedure
       .where(eq(deployments.id, input.id))
     if (!row)
       throw new ORPCError("NOT_FOUND", { message: "Deployment not found" })
-    const { service } = await loadAccessibleService(
-      row.serviceId,
-      context.session!,
-    )
-    await dockerNodeExecutor.stopApp(row.nodeId, service.slug)
-    await proxyService.removeServiceRoute(service.id).catch(() => undefined)
-    await removeAllHostnames(service.id).catch(() => undefined)
-    await db
-      .update(deployments)
-      .set({ status: "stopped" })
-      .where(eq(deployments.id, row.id))
-    await db
-      .update(services)
-      .set({ status: "stopped", publicUrl: null })
-      .where(eq(services.id, service.id))
-    return { ok: true as const }
+    await loadAccessibleService(row.serviceId, context.session!)
+    try {
+      return await stopService({
+        serviceId: row.serviceId,
+        deploymentId: row.id,
+      })
+    } catch (e) {
+      lifecycleError(e)
+    }
   })
 
 export const retry = authedProcedure

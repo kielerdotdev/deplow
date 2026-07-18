@@ -9,12 +9,14 @@ import {
 } from "@deplow/db"
 
 import { env } from "@/lib/env"
-import { db, ensureLocalNodeId } from "@/lib/services"
+import { db } from "@/lib/services"
+
+import { buildDsn } from "@deplow/observe"
 
 import {
   buildProjectDsn,
-  buildProjectOtelEndpoint,
   enableObserveForProject,
+  findObserveProjectBySentryId,
 } from "./store"
 
 export const DOGFOOD_PROJECT_SLUG = "deplow-dogfood"
@@ -38,6 +40,37 @@ export function isDogfoodMetaPath(pathname: string): boolean {
   )
 }
 
+/**
+ * Base URL for in-process dogfood exporters (Node Sentry + OTEL).
+ * Always loopback — never hairpin through DEPLOW_OBSERVE_INGEST_URL (LAN/public),
+ * which often points at a stale port (e.g. :3010 while vite listens on :9565).
+ */
+export function dogfoodSelfBaseUrl(): string {
+  const port = (
+    process.env.PORT ||
+    process.env.DEPLOW_DEV_PORT ||
+    "9565"
+  ).trim()
+  return `http://127.0.0.1:${port}`
+}
+
+export function buildDogfoodOtelEndpoint(sentryId: number): string {
+  return `${dogfoodSelfBaseUrl()}/api/${sentryId}/otlp`
+}
+
+export function buildDogfoodServerDsn(
+  sentryId: number,
+  publicKey: string,
+): string {
+  const u = new URL(dogfoodSelfBaseUrl())
+  return buildDsn({
+    publicKey,
+    host: u.host,
+    sentryId,
+    protocol: "http",
+  })
+}
+
 /** Shared Sentry.init options for dogfood → self-hosted Observe ingest. */
 export function dogfoodSentryOptions(dsn: string) {
   return {
@@ -57,7 +90,10 @@ export function dogfoodSentryOptions(dsn: string) {
 }
 
 export type DogfoodBootstrap = {
+  /** Browser-facing DSN (public / ingest URL). */
   dsn: string
+  /** Node Sentry DSN (loopback — same process). */
+  serverDsn: string
   otelEndpoint: string
   otelHeaders: string
   projectId: string
@@ -79,19 +115,32 @@ export async function ensureDogfoodBootstrap(): Promise<DogfoodBootstrap | null>
   bootstrapPromise = (async () => {
     if (env.observeDogfoodDsn) {
       const dsn = env.observeDogfoodDsn
-      const sentryId = Number(new URL(dsn).pathname.replace(/^\//, ""))
-      const publicKey = new URL(dsn).username
+      const parsed = new URL(dsn)
+      const sentryId = Number(parsed.pathname.replace(/^\/+|\/+$/g, ""))
+      const publicKey = parsed.username
+      let projectId = env.observeDogfoodProjectId || ""
+      if (!projectId && Number.isFinite(sentryId)) {
+        const op = await findObserveProjectBySentryId(sentryId)
+        projectId = op?.projectId ?? ""
+      }
       cached = {
         dsn,
+        serverDsn:
+          Number.isFinite(sentryId) && publicKey
+            ? buildDogfoodServerDsn(sentryId, publicKey)
+            : dsn,
         otelEndpoint: Number.isFinite(sentryId)
-          ? buildProjectOtelEndpoint(sentryId)
+          ? buildDogfoodOtelEndpoint(sentryId)
           : "",
         otelHeaders: publicKey
           ? `x-sentry-auth=sentry sentry_key=${publicKey}`
           : "",
-        projectId: env.observeDogfoodProjectId || "",
+        projectId,
         sentryId: Number.isFinite(sentryId) ? sentryId : 0,
       }
+      console.info(
+        `[observe-dogfood] env DSN sentryId=${cached.sentryId} otel=${cached.otelEndpoint} project=${projectId || "(missing)"}`,
+      )
       return cached
     }
 
@@ -124,14 +173,17 @@ export async function ensureDogfoodBootstrap(): Promise<DogfoodBootstrap | null>
       }
 
       cached = {
+        // Browser / external SDKs use the configured ingest URL.
         dsn: buildProjectDsn(observeProject.sentryId, publicKey),
-        otelEndpoint: buildProjectOtelEndpoint(observeProject.sentryId),
+        // In-process exporters always hit loopback on this server's listen port.
+        serverDsn: buildDogfoodServerDsn(observeProject.sentryId, publicKey),
+        otelEndpoint: buildDogfoodOtelEndpoint(observeProject.sentryId),
         otelHeaders: `x-sentry-auth=sentry sentry_key=${publicKey}`,
         projectId,
         sentryId: observeProject.sentryId,
       }
       console.info(
-        `[observe-dogfood] project=${projectId} sentryId=${observeProject.sentryId} otel=${cached.otelEndpoint}`,
+        `[observe-dogfood] project=${projectId} sentryId=${observeProject.sentryId} otel=${cached.otelEndpoint} dsnHost=${new URL(cached.dsn).host}`,
       )
       return cached
     } catch (err) {
@@ -198,7 +250,8 @@ async function ensureDogfoodProjectId(): Promise<string | null> {
     return existing.id
   }
 
-  const nodeId = await ensureLocalNodeId().catch(() => null)
+  const { ensureClusterPlacementNode } = await import("@/lib/k8s/cluster-store")
+  const nodeId = await ensureClusterPlacementNode().catch(() => null)
   const id = crypto.randomUUID()
   await db.insert(projects).values({
     id,

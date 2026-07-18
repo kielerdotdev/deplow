@@ -395,7 +395,18 @@ export const issuesEventSeries = authedProcedure
       projectId: z.string().uuid(),
       issueId: z.string().uuid(),
       preset: z
-        .enum(["15m", "1h", "6h", "24h", "7d", "14d", "30d"])
+        .enum([
+          "1m",
+          "5m",
+          "15m",
+          "1h",
+          "6h",
+          "12h",
+          "24h",
+          "7d",
+          "14d",
+          "30d",
+        ])
         .optional(),
       from: z.string().optional(),
       to: z.string().optional(),

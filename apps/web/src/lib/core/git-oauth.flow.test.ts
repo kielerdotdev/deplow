@@ -487,6 +487,114 @@ describe("git oauth e2e flow (mocked)", () => {
     expect(list.token).toBe("ghs_install_token_abc")
   })
 
+  it("prefers GitHub App installation over a session PAT (stale Advanced token)", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      privateKeyEncoding: { type: "pkcs8", format: "pem" },
+      publicKeyEncoding: { type: "spki", format: "pem" },
+    })
+    const fetchImpl = mockFetch([
+      {
+        match: (u, init) =>
+          u.includes("/app/installations/99/access_tokens") &&
+          init?.method === "POST",
+        response: () =>
+          jsonResponse({
+            token: "ghs_install_fresh",
+            expires_at: new Date(Date.now() + 3600_000).toISOString(),
+          }),
+      },
+    ])
+    const deps: ResolveGitAuthDeps = {
+      decrypt: (p) => decryptString(p, SECRET),
+      encrypt: (p) => encryptString(p, SECRET),
+      loadGitHubAppConfig: async () => ({
+        appId: "42",
+        clientId: "Iv1.client",
+        clientSecret: "secret",
+        privateKey,
+      }),
+      loadGitLabOAuthConfig: async () => null,
+      loadUserLink: async () => ({
+        provider: "github",
+        accessTokenEncrypted: encryptString("gho_user", SECRET),
+        refreshTokenEncrypted: null,
+        expiresAt: null,
+        githubInstallationId: "99",
+      }),
+      fetchImpl,
+    }
+    const list = await resolveUserListToken(
+      {
+        userId: "u1",
+        provider: "github",
+        // Stale session PAT must not override installation token
+        explicitToken: "ghp_expired_session_pat",
+      },
+      deps,
+    )
+    expect(list.source).toBe("github_app")
+    expect(list.token).toBe("ghs_install_fresh")
+  })
+
+  it("refreshes expiring GitHub user OAuth tokens when listing repos", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      privateKeyEncoding: { type: "pkcs8", format: "pem" },
+      publicKeyEncoding: { type: "spki", format: "pem" },
+    })
+    const updates: unknown[] = []
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (!url.includes("github.com/login/oauth/access_token")) {
+        throw new Error(`Unhandled fetch: ${url}`)
+      }
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
+        grant_type?: string
+        refresh_token?: string
+      }
+      expect(body.grant_type).toBe("refresh_token")
+      expect(body.refresh_token).toBe("ghr_old")
+      return jsonResponse({
+        access_token: "ghu_refreshed",
+        refresh_token: "ghr_new",
+        expires_in: 28_800,
+        scope: "",
+        token_type: "bearer",
+      })
+    }) as unknown as typeof fetch
+    const deps: ResolveGitAuthDeps = {
+      decrypt: (p) => decryptString(p, SECRET),
+      encrypt: (p) => encryptString(p, SECRET),
+      loadGitHubAppConfig: async () => ({
+        appId: "42",
+        clientId: "Iv1.client",
+        clientSecret: "secret",
+        privateKey,
+      }),
+      loadGitLabOAuthConfig: async () => null,
+      loadUserLink: async () => ({
+        provider: "github",
+        accessTokenEncrypted: encryptString("ghu_old", SECRET),
+        refreshTokenEncrypted: encryptString("ghr_old", SECRET),
+        expiresAt: new Date(Date.now() - 1000),
+        githubInstallationId: null,
+      }),
+      updateUserLinkTokens: async (input) => {
+        updates.push(input)
+      },
+      fetchImpl,
+    }
+    const list = await resolveUserListToken(
+      { userId: "u1", provider: "github" },
+      deps,
+    )
+    expect(list.source).toBe("oauth")
+    expect(list.token).toBe("ghu_refreshed")
+    expect(updates).toHaveLength(1)
+    expect(fetchImpl).toHaveBeenCalled()
+  })
+
   it("fails gracefully when stored GitLab OAuth token cannot be decrypted", async () => {
     const stale = encryptString("glpat-stale", "other-secrets-key")
     const deps: ResolveGitAuthDeps = {

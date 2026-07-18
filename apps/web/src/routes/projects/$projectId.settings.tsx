@@ -2,37 +2,28 @@ import { useState } from "react"
 import {
   createFileRoute,
   getRouteApi,
+  Link,
   useRouter,
 } from "@tanstack/react-router"
 
 import { ProjectDeleteDialog } from "@/components/project-delete-dialog"
 import { PageContent, PageHeader, SettingsPanel } from "@/components/page-layout"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { client } from "@/lib/orpc"
 import { useProjectUi } from "@/components/project-ui-context"
+import { client } from "@/lib/orpc"
 
 const projectRoute = getRouteApi("/projects/$projectId")
 
 export const Route = createFileRoute("/projects/$projectId/settings")({
-  loader: async () => {
-    const nodes = await client.nodes.list()
-    return { nodes }
-  },
   component: ProjectSettingsPage,
 })
 
 function ProjectSettingsPage() {
   const { project } = projectRoute.useLoaderData()
-  const { nodes } = Route.useLoaderData()
   const { setError } = useProjectUi()
   const router = useRouter()
   const [destroyOpen, setDestroyOpen] = useState(false)
   const [pending, setPending] = useState(false)
-  const [nodePending, setNodePending] = useState(false)
-  const [nodeId, setNodeId] = useState(project.nodeId ?? "")
-
-  const selected = nodes.find((n) => n.id === nodeId)
 
   return (
     <>
@@ -60,70 +51,17 @@ function ProjectSettingsPage() {
           </SettingsPanel>
 
           <SettingsPanel
-            title="Deploy node"
-            description="Apps and data plane for this project run on one node. Agent nodes must be online."
+            title="Runtime"
+            description="This project deploys to the connected k3s cluster. Add capacity under Settings → Cluster."
           >
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="project-node">Node</Label>
-                <select
-                  id="project-node"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-                  value={nodeId}
-                  onChange={(e) => setNodeId(e.target.value)}
-                >
-                  <option value="" disabled>
-                    Select a node
-                  </option>
-                  {nodes.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.name} ({n.provider}
-                      {n.status === "offline" ? " · offline" : ""})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {selected ? (
-                <p className="text-xs text-muted-foreground font-mono">
-                  {selected.advertiseHost || selected.host}
-                  {selected.agentVersion
-                    ? ` · agent v${selected.agentVersion}`
-                    : ""}
-                </p>
-              ) : null}
-              <Button
-                size="sm"
-                disabled={
-                  nodePending || !nodeId || nodeId === (project.nodeId ?? "")
-                }
-                onClick={() => {
-                  void (async () => {
-                    setNodePending(true)
-                    setError(null)
-                    try {
-                      await client.projects.setNode({
-                        id: project.id,
-                        nodeId,
-                      })
-                      await router.invalidate()
-                    } catch (cause) {
-                      setError(
-                        cause instanceof Error ? cause.message : String(cause),
-                      )
-                    } finally {
-                      setNodePending(false)
-                    }
-                  })()
-                }}
-              >
-                {nodePending ? "Saving…" : "Save node"}
-              </Button>
-            </div>
+            <Button size="sm" variant="outline" render={<Link to="/settings/cluster" />}>
+              Open Cluster settings
+            </Button>
           </SettingsPanel>
 
           <SettingsPanel
             title="Danger zone"
-            description="Destroying a project removes all services, data containers, and backups for this project. Available only from settings — not the project header."
+            description="Destroying a project removes all services, volumes, and backups for this project."
           >
             <Button
               size="sm"

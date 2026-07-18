@@ -25,6 +25,7 @@ import {
   normalizeProductionStartCommand,
   resolveProductionBuildCommand,
 } from "./normalize-start-command"
+import { resolveRailpackBin } from "./railpack-bin"
 
 const SKIP_DIRS = new Set([
   ".git",
@@ -361,11 +362,22 @@ export async function analyzeDirectory(
     (override === "auto" && strategy !== "dockerfile")
   ) {
     strategy = "railpack"
-    const railpack = await runRailpackAnalysis({
-      directory: appRootAbs,
-      railpackBin: input.railpackBin ?? process.env.RAILPACK_BIN ?? "railpack",
-      runCommand: input.runCommand ?? defaultRunCommand,
-    })
+    let railpack: Awaited<ReturnType<typeof runRailpackAnalysis>>
+    try {
+      railpack = await runRailpackAnalysis({
+        directory: appRootAbs,
+        railpackBin: input.railpackBin ?? resolveRailpackBin(),
+        runCommand: input.runCommand ?? defaultRunCommand,
+      })
+    } catch (err) {
+      railpack = {
+        runtime: null,
+        framework: null,
+        startCommand: null,
+        buildCommand: null,
+        error: err instanceof Error ? err.message : String(err),
+      }
+    }
     if (railpack.error) {
       errors.push(railpack.error)
     }

@@ -144,13 +144,20 @@ export const githubAppManifestStart = authedProcedure
     await assertInstanceAdmin(context.session!)
     const configured = platformConfig.publicControlPlaneUrl
     const origin = sanitizeBrowserOrigin(input?.origin)
-    const publicUrl = origin ?? configured
+    // Prefer the public control-plane URL over a private LAN browser origin so
+    // App callback/setup URLs are not registered as 192.168.x.x.
+    const publicUrl =
+      configured && isPublicInternetUrl(configured)
+        ? configured
+        : (origin ?? configured)
     const publicNet = isPublicInternetUrl(publicUrl)
+    const extraOrigins: string[] = []
+    if (origin && origin !== publicUrl) extraOrigins.push(origin)
+    if (configured && configured !== publicUrl) extraOrigins.push(configured)
     const manifest = buildGitHubAppManifest({
       name: "Hostrig",
       publicUrl,
-      extraCallbackOrigins:
-        origin && origin !== configured ? [configured] : undefined,
+      extraCallbackOrigins: extraOrigins.length ? extraOrigins : undefined,
     })
     // GitHub expects POST form to https://github.com/settings/apps/new
     // with manifest JSON — client submits

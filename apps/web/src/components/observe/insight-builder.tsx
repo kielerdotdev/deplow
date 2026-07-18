@@ -1,14 +1,17 @@
-import { Link } from "@tanstack/react-router"
-
-import { Button } from "@/components/ui/button"
+import { ChartBuilder } from "@/components/observe/trends/chart-builder"
 import type { ObserveContext } from "@/lib/observe/context"
 import type { TrendsQuery } from "@/lib/observe/trends"
+import { Button } from "@/components/ui/button"
 
-/** @deprecated Use the Trends page editor instead. */
+/**
+ * @deprecated Prefer ChartBuilderDialog from Saved charts.
+ * Kept for any remaining call sites that embed the builder inline.
+ */
 export function InsightBuilder({
   projectId,
   initial,
   onCancel,
+  onSaved,
 }: {
   projectId: string
   context: ObserveContext
@@ -22,27 +25,26 @@ export function InsightBuilder({
   onSaved: () => Promise<void>
 }) {
   return (
-    <div className="flex flex-col surface-panel gap-3 p-6">
-      <h2 className="text-sm font-semibold">Insights editor moved to Trends</h2>
-      <p className="text-sm text-muted-foreground">
-        Charts are now built with the Trends query builder (multi-series,
-        formulas, nested filters).
-      </p>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          render={
-            <Link
-              to="/observe/projects/$projectId/trends"
-              params={{ projectId }}
-              search={initial ? { insightId: initial.id } : {}}
-            />
-          }
-        >
-          Open Trends
-        </Button>
+    <div className="flex flex-col gap-3">
+      <ChartBuilder
+        projectId={projectId}
+        initialQuery={initial?.spec}
+        insightMeta={
+          initial
+            ? {
+                id: initial.id,
+                name: initial.name,
+                description: initial.description,
+              }
+            : null
+        }
+        onSaved={() => {
+          void onSaved()
+        }}
+      />
+      <div className="flex justify-end">
         <Button size="sm" variant="ghost" onClick={onCancel}>
-          Cancel
+          Close
         </Button>
       </div>
     </div>

@@ -6,6 +6,7 @@ import {
   normalizeProductionStartCommand,
   resolveProductionBuildCommand,
 } from "./normalize-start-command"
+import { resolveRailpackBin } from "./railpack-bin"
 
 export type BuildStrategy = "dockerfile" | "railpack" | "image"
 export type BuildStrategyOverride = "auto" | "railpack" | "dockerfile"
@@ -90,17 +91,24 @@ export interface BuildServiceOptions {
  * Builds deployable images from source via Dockerfile or Railpack.
  */
 export class BuildService {
-  private readonly railpackBin: string
+  private readonly railpackBinOverride?: string
   private readonly dockerBin: string
   private readonly buildkitHost?: string
   private readonly runCommand: NonNullable<BuildServiceOptions["runCommand"]>
 
   constructor(options: BuildServiceOptions = {}) {
-    this.railpackBin = options.railpackBin ?? process.env.RAILPACK_BIN ?? "railpack"
+    // Never resolve at construct time — services.ts is imported by many routes
+    // (e.g. settings/cluster). Missing railpack must not crash the whole app.
+    this.railpackBinOverride = options.railpackBin
     this.dockerBin = options.dockerBin ?? "docker"
     this.buildkitHost =
       options.buildkitHost ?? process.env.BUILDKIT_HOST ?? "docker-container://buildkit"
     this.runCommand = options.runCommand ?? defaultRunCommand
+  }
+
+  /** Resolved on first build/analyze use only. */
+  private get railpackBin(): string {
+    return this.railpackBinOverride ?? resolveRailpackBin()
   }
 
   imageTag(projectSlug: string, deploymentId: string): string {

@@ -37,11 +37,11 @@ A project is a container. Services are the primary durable operational units (ap
 
 Apps receive credentials only through explicit bindings (e.g. `DATABASE_URL` → a Postgres service). Nothing is auto-injected to every service.
 
-### 3. Dedicated data containers per service
+### 3. Dedicated data services per project
 
-Each Postgres/Redis service gets its own Docker container and volume on the node. Object storage remains shared MinIO with per-project buckets provisioned lazily.
+Each Postgres/Redis service gets its own Kubernetes workload and volume in the project namespace. Object storage remains shared MinIO with per-project buckets provisioned lazily.
 
-If one host is too small, add a node later (v3) or scale the box. Dedicated per-project Postgres/Redis containers keep restores and PITR scoped to one project without a multi-tenant cluster tax.
+If one cluster is too small, **add a k3s worker** (Hetzner or self-hosted) — not a second Docker-agent runtime. Dedicated per-project data services keep restores and PITR scoped without a multi-tenant DB cluster tax.
 
 ### 3. Railway-shaped DX, self-hosted
 
@@ -49,25 +49,25 @@ Familiar “push / build / run with env injected” feel. Not a Dokploy/Coolify 
 
 ### 4. Security is a product feature
 
-Convenience does not outrank isolation. User apps run under a hardened runtime (gVisor by default). Secrets are encrypted at rest. The Docker socket never enters user containers. See [security.md](./security.md) and [secure-runtime.md](./secure-runtime.md).
+Convenience does not outrank isolation. User apps run under **gVisor RuntimeClass** by default on k3s, with hardened pods and per-project NetworkPolicy. Secrets are encrypted at rest. The Docker socket / host paths never enter user pods. See [security.md](./security.md) and [secure-runtime.md](./secure-runtime.md).
 
 **Priority order:** security → easy install → decent performance.
 
-Marketing and docs must say this out loud. “Fewer tabs” is true; “just plain Docker with no sandbox story” is not.
+Marketing must name gVisor and state what we do **not** claim (unbreakable isolation, MicroVMs, hostile multi-tenant cloud). “Fewer tabs” is true; “Secure by default” as a blank check is not.
 
 ### 5. Opinionated build and runtime
 
 - Build: **Railpack** (default) or **Dockerfile** / prebuilt image
-- Runtime: **local Docker only** (single host)
-- No Compose-as-deploy, no multi-DB menu, no multi-cluster orchestration in v1
+- Runtime: **k3s** (Deployments / StatefulSets / Ingress) with gVisor for user apps
+- No Compose-as-deploy, no multi-DB menu, no MicroVM default in v1
 
 ### 6. Backups are part of the loop
 
 Postgres dumps to the platform backup bucket are on-demand and scheduled. Users should not invent cron + `pg_dump` + bucket wiring for every project.
 
-### 7. Proxy-owned URLs, cloudflared edge (v1)
+### 7. Traefik-owned URLs, edge TLS (v1)
 
-People need public app URLs without per-project DNS. **Hostrig owns the local reverse proxy** and assigns `{project}.{baseDomain}`. Domains are **app-managed** (env seeds once). v1 edge is **cloudflared** (wildcard once). Other edges (Tailscale Serve, Netbird) forward to the same Caddy origin — [access.md](./access.md), [sequencing.md](./sequencing.md).
+People need public app URLs without per-project DNS. **Traefik owns Host → Service** and assigns `{project}.{baseDomain}`. Domains are **app-managed** (env seeds once). Edges (Cloudflare Tunnel, Tailscale Serve, Netbird) forward to Traefik on the k3s server — [access.md](./access.md), [sequencing.md](./sequencing.md).
 
 ### 8. Git push-to-deploy (v1); previews later
 
@@ -77,11 +77,12 @@ People need public app URLs without per-project DNS. **Hostrig owns the local re
 
 - A generic “deploy anything” panel
 - A hosted cloud (you bring the host)
-- A Kubernetes / Swarm control plane
+- A generic Kubernetes / Swarm control plane (we are PaaS on k3s, not a cluster product)
 - A marketplace of one-click app templates
-- A replacement for Cloudflare (we integrate cloudflared as an edge)
+- A replacement for Cloudflare / Netbird / Tailscale (we integrate them as edge)
+- A Docker-agent or MicroVM runtime story
 - A place that soft-pedals security to sound friendlier than the runtime we ship
 
 ## Dictating rule
 
-If a feature, landing-page line, or docs page makes Hostrig look like “optional services + insecure default Docker,” it is wrong. Fix the surface to match this philosophy.
+If a feature, landing-page line, or docs page makes Hostrig look like “Docker host + Caddy” or “optional sandbox,” it is wrong. Fix the surface to match this philosophy.

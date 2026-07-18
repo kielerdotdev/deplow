@@ -35,8 +35,8 @@
     "test:observe": "vp test packages/observe apps/web/src/lib/observe apps/web/src/components/observe",
     "smoke:observe-ch": "bash scripts/observe-ch-smoke.sh",
     "screenshots": "node scripts/capture-marketing-screenshots.mjs",
-    "install:host": "bash scripts/install.sh",
-    "agent:build": "pnpm --filter @deplow/agent build"
+    "demo:video": "node scripts/make-marketing-demo.mjs",
+    "install:host": "bash scripts/install.sh"
   },
   "devDependencies": {
     "@voidzero-dev/vite-plus-core": "0.2.4",

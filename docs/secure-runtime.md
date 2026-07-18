@@ -1,255 +1,187 @@
-# Secure runtime — gVisor + hardened Docker
+# Secure runtime — gVisor on k3s
 
 You are implementing Hostrig’s **default secure runtime**. Follow this document exactly.
 
 - Stance / priorities: [`security.md`](./security.md)
 - Product scope: [`product.md`](./product.md) and [`sequencing.md`](./sequencing.md)
-- This doc only covers **how user apps run**.
+- This doc covers **how user apps run** on Kubernetes.
 
 ## Decision (non-negotiable)
 
-| Workload                                              | Runtime                                   | Why                                              |
-| ----------------------------------------------------- | ----------------------------------------- | ------------------------------------------------ |
-| **User apps** (Railpack / Dockerfile / image deploys) | **gVisor (`runsc`)**                      | Userspace syscall sandbox; OCI/Docker standard   |
-| **Platform** (Postgres, Redis, MinIO, Hostrig web)     | **runc** (default)                        | I/O + compatibility; trusted                     |
-| **Builds** (Railpack / `docker build` / BuildKit)     | **runc**                                  | Compilers + BuildKit break or crawl under gVisor |
-| Docker daemon                                         | **Rootful Docker**                        | Easy install; do not require rootless for v1     |
-| Host UID mapping                                      | **`userns-remap: default`** (recommended) | Container root ≠ host root                       |
-| Kata / Firecracker / Sysbox / rootless-as-default     | **Out of scope**                          | Defer                                            |
+| Workload                                              | Runtime                                      | Why                                              |
+| ----------------------------------------------------- | -------------------------------------------- | ------------------------------------------------ |
+| **User apps** (web / worker Deployments)              | **gVisor RuntimeClass `gvisor` (handler `runsc`)** | Userspace syscall sandbox; CRI/k3s standard   |
+| **Platform / data** (Postgres, Redis, Traefik, …)     | **default (runc / containerd)**              | I/O + compatibility; trusted                     |
+| **Builds** (Railpack / Docker / BuildKit on CP)       | **runc**                                     | Compilers break or crawl under gVisor            |
+| Kata / Firecracker / MicroVMs as default              | **Out of scope (v1)**                        | Optional later via another RuntimeClass          |
 
-**Priority order:** security > easy install > decent performance.  
-Do not add microVMs, Podman migration, or rootless Docker as the default path in this work.
+**Priority order:** security > easy install > decent performance.
+
+**MicroVMs are unsupported** for v1 (and not a GTM path). Keep isolation behind `runtimeClassName` so a future class could be added without rewriting deploy — do not implement Kata “just in case.”
 
 ---
 
 ## Target architecture
 
 ```
-Host (Docker Engine)
-├── dockerd
-│   ├── userns-remap: default          (daemon.json; document if skipped)
-│   ├── runtimes.runsc → /usr/local/bin/runsc
-│   │
-│   ├── runc:  postgres, redis, minio, Hostrig   (compose)
-│   ├── runc:  Railpack / BuildKit builds
-│   └── runsc: every user app container         (DockerNodeExecutor)
+k3s node
+├── containerd
+│   ├── default runtime (runc): postgres, redis, Traefik, system pods
+│   └── runsc handler: user app pods with runtimeClassName=gvisor
 │
-└── Socket /var/run/docker.sock
-    └── Only Hostrig control plane may use it
-        NEVER mount into user app containers
+├── RuntimeClass gvisor → handler runsc
+│
+└── proj-{slug} namespace
+    ├── NetworkPolicy (default-deny + same-ns + kube-system Traefik/DNS)
+    ├── LimitRange
+    ├── PSS labels (enforce baseline; warn/audit restricted)
+    └── web/worker Deployments
+        ├── runtimeClassName: gvisor
+        ├── securityContext: non-root, RuntimeDefault seccomp
+        ├── container: drop ALL caps, no priv-esc, RO rootfs, /tmp emptyDir
+        └── resources from DEPLOW_APP_MEMORY_MB / DEPLOW_APP_CPUS
 ```
 
-User apps join the platform compose network for DNS (`postgres` / `redis` / `minio`) but must not receive the Docker socket or host network mode.
+Control plane runs **outside** the cluster and never mounts credentials into user app pods beyond injected env/bindings.
 
 ---
 
 ## Explicitly IN scope
 
-1. Config: `DEPLOW_APP_RUNTIME` (default `runsc`)
-2. `DockerNodeExecutor` always sets `HostConfig.Runtime` for user deploys
-3. Hardened `HostConfig` defaults for user apps (caps, RO rootfs, no-new-privileges, limits)
-4. Runtime preflight: fail deploy clearly if `runsc` required but missing
-5. Optional `runsc-kvm` when `/dev/kvm` exists (document + config; not required for MVP)
-6. Install + docs: Docker + gVisor + compose + userns-remap (README + Starlight prerequisites)
-7. Tests for HostConfig shape / runtime selection (unit; no need for live gVisor in CI unless easy)
+1. Config: `DEPLOW_APP_RUNTIME` (default `runsc` → RuntimeClass `gvisor`)
+2. `deployWebService` sets `runtimeClassName`, securityContext, resources, volumes
+3. RuntimeClass preflight: create/ensure `gvisor`; fail clearly when required and missing
+4. NetworkPolicy + LimitRange + PSS labels on project namespaces
+5. Node bootstrap: Hetzner cloud-init installs runsc + containerd config; `scripts/install-gvisor-k3s.sh` for BYO
+6. Docs + env examples aligned with k3s (not Docker-as-runtime)
 
 ## Explicitly OUT of scope
 
-- Rootless Docker / Podman as default
-- Kata, Firecracker, Sysbox, LXD
-- Sandboxing Postgres/Redis/MinIO with gVisor
+- Kata, Firecracker, Sysbox, LXD as default
+- Sandboxing Postgres/Redis under gVisor
 - Running builds under gVisor
-- Host network passthrough / disabling gVisor netstack by default
-- Multi-node / Swarm / K8s (proxy is single-host; see [`access.md`](./access.md) for URL routing)
+- Replacing k3s with a MicroVM orchestrator
+- Enforcing PSS `restricted` at namespace level (breaks official Postgres/Redis images) — app pods are still hardened individually
 
 ---
 
-## Current code touchpoints
+## Code touchpoints
 
-| File                                                               | Change                                                                         |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `apps/web/src/lib/core/platform-config.ts`                         | Add `appRuntime`, `appMemoryBytes?`, `appNanoCpus?`, maybe `requireAppRuntime` |
-| `apps/web/src/lib/core/docker-node-executor.ts`                    | Apply `Runtime` + hardening on `createContainer` for user apps                 |
-| `apps/web/src/lib/core/index.ts`                                   | Export any new types if needed                                                 |
-| `apps/web/.env.example` / root `.env.example`                      | Document new env vars                                                          |
-| `README.md` + `apps/site` docs                                     | Install: Docker, gVisor, userns-remap, compose                                 |
-| `scripts/install.sh` (`pnpm install:host`)                         | Bootstrap: BuildKit + Railpack + runsc install/verify + compose + db           |
-| Optional: `scripts/check-runtime.sh` or oRPC `nodes.status` detail | Report whether `runsc` is installed                                            |
-
-Do **not** put gVisor/`Runtime` on:
-
-- one-shot `exec` helper containers (alpine probes) unless they are user workloads — prefer runc for tiny probes
-- platform compose services
+| File | Role |
+| --- | --- |
+| `apps/web/src/lib/k8s/user-app-pod.ts` | `buildUserAppPodHardening` / RuntimeClass name mapping |
+| `apps/web/src/lib/k8s/runtime-class.ts` | Ensure RuntimeClass + preflight errors |
+| `apps/web/src/lib/k8s/network-policy.ts` | Project isolation NetworkPolicy |
+| `apps/web/src/lib/k8s/namespace.ts` | Namespace labels, LimitRange, policy apply |
+| `apps/web/src/lib/k8s/deploy.ts` | Wire hardening into Deployments |
+| `apps/web/src/lib/core/spawners/k3s-userdata.ts` | Cloud-init installs gVisor before k3s |
+| `scripts/install-gvisor-k3s.sh` | BYO / existing node install |
 
 ---
 
-## Milestone S1 — Config
+## Config
 
-Add to `PlatformConfig` / `loadPlatformConfig()`:
+| Env | Default | Meaning |
+| --- | --- | --- |
+| `DEPLOW_APP_RUNTIME` | `runsc` | Maps to RuntimeClass `gvisor`; `runc` omits RuntimeClass (escape hatch) |
+| `DEPLOW_APP_RUNTIME_REQUIRED` | `true` | Fail deploy if RuntimeClass cannot be ensured |
+| `DEPLOW_APP_MEMORY_MB` | `512` | Memory request/limit for user apps |
+| `DEPLOW_APP_CPUS` | `1` | CPU request/limit for user apps |
+| `DEPLOW_APP_READONLY_ROOTFS` | `true` | `readOnlyRootFilesystem` on app containers |
 
-| Env                           | Default                                     | Meaning                                         |
-| ----------------------------- | ------------------------------------------- | ----------------------------------------------- |
-| `DEPLOW_APP_RUNTIME`          | `runsc`                                     | OCI runtime name passed to Docker for user apps |
-| `DEPLOW_APP_RUNTIME_REQUIRED` | `true` in production-ish; `true` by default | If true, deploy fails when runtime missing      |
-| `DEPLOW_APP_MEMORY_MB`        | `512` (or similar sensible default)         | Memory limit for user apps                      |
-| `DEPLOW_APP_CPUS`             | `1`                                         | CPU limit (map to `NanoCpus`)                   |
-
-Allow `DEPLOW_APP_RUNTIME=runc` only as escape hatch; when not `runsc`, log a clear warning from the executor or deploy path.
-
----
-
-## Milestone S2 — Hardened user deploy (`DockerNodeExecutor`)
-
-For **user app** `deployApp` (not ephemeral probe helpers), set `HostConfig` approximately:
-
-```ts
-HostConfig: {
-  Runtime: config.appRuntime, // "runsc" by default
-  NetworkMode: platformNetwork, // existing behavior
-  PortBindings: portBindings,
-  RestartPolicy: { Name: "unless-stopped" },
-
-  CapDrop: ["ALL"],
-  // CapAdd: only if you later need NET_BIND_SERVICE for binding <1024 inside sandbox
-  SecurityOpt: ["no-new-privileges:true"],
-  ReadonlyRootfs: true,
-  Tmpfs: {
-    "/tmp": "rw,noexec,nosuid,size=64m",
-  },
-  Memory: memoryBytes,
-  NanoCpus: nanoCpus,
-
-  // NEVER:
-  // Privileged: true
-  // Binds including docker.sock
-  // NetworkMode: "host"
-  // PidMode: "host"
-}
-```
-
-Notes:
-
-- Some images need write access outside `/tmp` (e.g. `/.next`, `/app/data`). Prefer documenting “app must use `/tmp` or a mounted volume” over weakening defaults. If RO rootfs breaks common Railpack images, add an **opt-in** `readOnlyRootfs: false` on deploy options — default stays `true`.
-- Keep existing labels (`deplow.managed`, `deplow.projectId`, etc.).
-- Builds stay unchanged (runc/BuildKit); only the **final** `deployApp` image runs under `runsc`.
-
-### Runtime preflight
-
-Before create (or on first deploy after process start):
-
-1. `docker.info()` → check `Runtimes` includes `config.appRuntime`
-2. If missing and `appRuntimeRequired` → throw actionable error:  
-   `gVisor runtime "runsc" is not installed. See README (runsc install).`
-3. Optionally cache the check for process lifetime
+When `DEPLOW_APP_RUNTIME=runc`, log a clear warning — apps are not sandboxed.
 
 ---
 
-## Milestone S3 — Host install documentation
+## Node install (gVisor + k3s)
 
-Update `README.md`, Starlight prerequisites, and `.env.example` with a short **Secure runtime** section (must match [`security.md`](./security.md)):
+### Managed Hetzner (cloud-init)
 
-### 1. Docker Engine
+Server and agent userdata (`buildK3sServerUserData` / `buildK3sAgentUserData`) install `runsc` + `containerd-shim-runsc-v1`, write k3s `config.toml.tmpl` with the `runsc` runtime, then install/join k3s. The server also applies RuntimeClass `gvisor`.
 
-Official Docker Engine (not only Docker Desktop sock hacks in prod).
+### BYO kubeconfig
 
-### 2. gVisor
+On **every** node:
 
 ```bash
-# Follow current https://gvisor.dev/docs/user_guide/install/
-# Then:
-sudo runsc install
-sudo systemctl restart docker
-docker run --rm --runtime=runsc hello-world
+sudo bash scripts/install-gvisor-k3s.sh
+kubectl get runtimeclass gvisor
 ```
 
-Verify `dmesg` inside the test container shows gVisor boot lines (sanity only).
+Verify a test pod (optional):
 
-### 3. userns-remap (recommended)
-
-`/etc/docker/daemon.json` (merge with existing `runtimes` from `runsc install`):
-
-```json
-{
-  "userns-remap": "default",
-  "runtimes": {
-    "runsc": {
-      "path": "/usr/local/bin/runsc"
-    }
-  }
-}
+```bash
+kubectl run gvisor-test --image=alpine --restart=Never \
+  --overrides='{"spec":{"runtimeClassName":"gvisor"}}' -- sleep 3
+kubectl get pod gvisor-test -o jsonpath='{.spec.runtimeClassName}{"\n"}'
 ```
-
-Restart Docker. Document that remap can break some volume ownership edge cases; platform compose volumes are fine for v1.
-
-### 4. Platform compose
-
-`docker compose up -d` for Postgres/Redis/MinIO — **default runtime (runc)**.
-
-### 5. Performance note
-
-- Bare metal with `/dev/kvm`: optional second runtime:
-
-```json
-"runsc-kvm": {
-  "path": "/usr/local/bin/runsc",
-  "runtimeArgs": ["--platform=kvm"]
-}
-```
-
-Set `DEPLOW_APP_RUNTIME=runsc-kvm` when available.
-
-- Inside VMs without nested virt: keep default `runsc` (systrap). Acceptable for typical web apps.
-- Do **not** document hostinet/network passthrough as default.
 
 ---
 
-## Milestone S4 — Safety checks & UX
+## Pod hardening (user apps)
 
-1. Deploy / project UI or API error surfaces the “runsc missing” message (not a generic 500).
-2. `nodes.status` or health path may report: `appRuntime`, `appRuntimeAvailable: boolean`.
-3. Destroy/stop paths unchanged; gVisor containers stop like normal Docker containers.
-4. Confirm user containers are **not** created with binds to `/var/run/docker.sock`.
+Approximate Deployment template for web/worker:
+
+```yaml
+spec:
+  template:
+    spec:
+      runtimeClassName: gvisor   # omitted when DEPLOW_APP_RUNTIME=runc
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      containers:
+        - name: app
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+          resources:
+            requests: { memory: 512Mi, cpu: "1" }
+            limits: { memory: 512Mi, cpu: "1" }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+```
+
+Images that cannot run as non-root or need a writable rootfs: prefer fixing the image; temporary escape hatches are `DEPLOW_APP_READONLY_ROOTFS=false` and `DEPLOW_APP_RUNTIME=runc` (unsandboxed).
+
+---
+
+## NetworkPolicy
+
+Per `proj-*` namespace (`hostrig-project-isolation`):
+
+- Ingress: same namespace + `kube-system` (Traefik)
+- Egress: same namespace + DNS (kube-system :53) + TCP 80/443
+- Cross-project namespaces: denied by default
+
+---
+
+## MicroVMs — out of product scope
+
+Isolation stays behind `runtimeClassName` (`gvisor` | omitted for `runc`). Nested virt / Kata / Firecracker are **not** product paths. Revisit only under a deliberate compliance requirement — never as install prerequisite or marketing claim.
+
+---
+
+## Not in product
+
+Docker-agent remotes and the hetzner-k3s CLI path are **removed**. Builds may still use Docker/BuildKit on the control plane. **Product runtime is k3s + gVisor RuntimeClass.**
 
 ---
 
 ## Acceptance criteria
 
-- [x] `DEPLOW_APP_RUNTIME` defaults to `runsc` and is applied on user `deployApp`
-- [x] User app containers get CapDrop ALL, no-new-privileges, ReadonlyRootfs (+ tmpfs), memory/CPU limits
-- [x] Missing `runsc` → clear deploy error when required
-- [x] Platform compose services still use default runc (no compose `runtime: runsc`)
-- [x] Build pipeline does not force `runsc`
-- [x] README + user docs document Docker + gVisor + userns-remap + env vars
-- [x] `docker.sock` is never mounted into user apps
-- [x] `pnpm check` / `pnpm test` pass
-- [x] No Kata/Firecracker/rootless default work landed
-
-## Manual verify (on a machine with Docker + gVisor)
-
-```bash
-# After deploy of a test image via Hostrig:
-docker inspect <container> --format '{{.HostConfig.Runtime}} {{.HostConfig.ReadonlyRootfs}} {{.HostConfig.CapDrop}}'
-# Expect: runsc true [ALL] (or equivalent)
-
-docker exec <container> dmesg 2>/dev/null | head
-# Expect gVisor banner (if dmesg allowed in sandbox)
-```
-
----
-
-## Implementation order
-
-1. S1 — config fields + env
-2. S2 — `DockerNodeExecutor` Runtime + hardening + preflight
-3. S4 — status/error surfacing
-4. S3 — README / Starlight / `.env.example`
-5. Unit tests for HostConfig construction (extract a small `buildUserAppHostConfig(config, opts)` helper if that keeps the executor clean)
-
-## Non-goals / do not bikeshed
-
-- Perfect RO-rootfs compatibility for every image — default secure; opt-out later
-- Making gVisor work for Postgres
-- Rewriting the executor to containerd/CRI
-- Changing product scope in [`product.md`](./product.md) / [`sequencing.md`](./sequencing.md) (domains, multi-server, etc.)
-
-When blocked on an image that cannot run under gVisor, document `DEPLOW_APP_RUNTIME=runc` as temporary escape hatch — do not weaken global defaults.
+- [ ] User app pods get `runtimeClassName: gvisor` when `DEPLOW_APP_RUNTIME=runsc`
+- [ ] Missing RuntimeClass → clear deploy error when required
+- [ ] Pod/container securityContext + resource limits applied
+- [ ] Project namespaces get NetworkPolicy + LimitRange + PSS labels
+- [ ] Hetzner cloud-init installs runsc; BYO script documented
+- [ ] Postgres/Redis stay on default runtime
+- [ ] No Kata/Firecracker dependency in default install

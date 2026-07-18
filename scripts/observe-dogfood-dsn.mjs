@@ -75,7 +75,7 @@ function main() {
     process.env.DEPLOW_OBSERVE_INGEST_URL ||
     process.env.BETTER_AUTH_URL ||
     process.env.DEPLOW_PUBLIC_URL ||
-    "http://localhost:3000"
+    "http://localhost:9565"
   ).replace(/\/$/, "")
   const u = new URL(base)
   const dsn = buildDsn({

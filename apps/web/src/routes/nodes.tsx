@@ -2,6 +2,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/nodes")({
   beforeLoad: () => {
-    throw redirect({ to: "/settings/nodes" })
+    throw redirect({ to: "/settings/cluster" })
   },
 })

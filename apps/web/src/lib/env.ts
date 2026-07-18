@@ -82,7 +82,7 @@ class Env {
     return (
       process.env.BETTER_AUTH_URL ??
       process.env.APP_URL ??
-      "http://localhost:3000"
+      "http://localhost:9565"
     )
   }
 
@@ -328,8 +328,40 @@ class Env {
     return (
       process.env.DEPLOW_PUBLIC_URL ??
       process.env.BETTER_AUTH_URL ??
-      "http://localhost:3000"
+      "http://localhost:9565"
     ).replace(/\/$/, "")
+  }
+
+  /* ── Hetzner Cloud (optional agent VM spawn) ───────────────── */
+
+  get hetznerApiToken(): string {
+    return (process.env.DEPLOW_HETZNER_API_TOKEN ?? "").trim()
+  }
+
+  get hetznerLocation(): string {
+    return (process.env.DEPLOW_HETZNER_LOCATION ?? "fsn1").trim() || "fsn1"
+  }
+
+  get hetznerServerType(): string {
+    return (process.env.DEPLOW_HETZNER_SERVER_TYPE ?? "cpx22").trim() || "cpx22"
+  }
+
+  get hetznerImage(): string {
+    return (
+      (process.env.DEPLOW_HETZNER_IMAGE ?? "ubuntu-24.04").trim() ||
+      "ubuntu-24.04"
+    )
+  }
+
+  /** Comma-separated SSH key names or ids registered in the Hetzner project. */
+  get hetznerSshKeys(): string[] | undefined {
+    const raw = (process.env.DEPLOW_HETZNER_SSH_KEYS ?? "").trim()
+    if (!raw) return undefined
+    const keys = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+    return keys.length > 0 ? keys : undefined
   }
 
   get githubToken(): string {
@@ -338,6 +370,55 @@ class Env {
 
   get gitlabToken(): string {
     return (process.env.DEPLOW_GITLAB_TOKEN ?? "").trim()
+  }
+
+  /* ── Build registry (git → image → k3s) ─────────────────────── */
+
+  /**
+   * OCI registry prefix for built images, e.g. `ghcr.io/myorg/hostrig` or
+   * `registry.example.com/hostrig`. Required for git-based deploys without a
+   * prebuilt image. Images are tagged as `{registry}/{project}-{service}:{id}`.
+   */
+  get buildRegistry(): string {
+    return (process.env.DEPLOW_BUILD_REGISTRY ?? "").trim().replace(/\/+$/, "")
+  }
+
+  /** Registry username for docker login / image pull secret (optional if public). */
+  get buildRegistryUsername(): string {
+    return (
+      process.env.DEPLOW_BUILD_REGISTRY_USERNAME ??
+      process.env.DEPLOW_BUILD_REGISTRY_USER ??
+      ""
+    ).trim()
+  }
+
+  /** Registry password or token for push + pull. */
+  get buildRegistryPassword(): string {
+    return (
+      process.env.DEPLOW_BUILD_REGISTRY_PASSWORD ??
+      process.env.DEPLOW_BUILD_REGISTRY_TOKEN ??
+      ""
+    ).trim()
+  }
+
+  /**
+   * Hostname for docker login (defaults to first path segment of registry).
+   * e.g. registry `ghcr.io/myorg/hostrig` → server `ghcr.io`.
+   */
+  get buildRegistryServer(): string {
+    const explicit = (
+      process.env.DEPLOW_BUILD_REGISTRY_SERVER ?? ""
+    ).trim()
+    if (explicit) return explicit
+    const reg = this.buildRegistry
+    if (!reg) return ""
+    // Strip scheme if present
+    const bare = reg.replace(/^https?:\/\//, "")
+    return bare.split("/")[0] ?? bare
+  }
+
+  get dockerBin(): string {
+    return (process.env.DOCKER_BIN ?? "docker").trim() || "docker"
   }
 
   get githubAppId(): string {

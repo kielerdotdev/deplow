@@ -65,6 +65,10 @@ export const Route = createFileRoute("/api/git/oauth/github/callback")({
             login: user.login,
             avatarUrl: user.avatarUrl,
             accessToken: token.accessToken,
+            refreshToken: token.refreshToken ?? null,
+            expiresAt: token.expiresIn
+              ? new Date(Date.now() + token.expiresIn * 1000)
+              : null,
             githubInstallationId: primary?.id ?? null,
             scopes: token.scope,
           })

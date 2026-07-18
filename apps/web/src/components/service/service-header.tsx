@@ -94,7 +94,7 @@ export function ServiceHeader({
           <Link
             to="/projects/$projectId/services/$serviceId"
             params={{ projectId, serviceId: service.id }}
-            search={{ tab: "overview" }}
+            search={{ tab: crumbExtra ? "deployments" : "overview" }}
             className={cn(
               crumbExtra ? "hover:text-foreground" : "text-foreground font-medium",
             )}

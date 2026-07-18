@@ -9,8 +9,8 @@ import type { DataServiceDriver, ResourceCapabilities } from "./types"
 export class DataServiceRegistry {
   private readonly drivers: Map<ResourceKind, DataServiceDriver>
 
-  constructor(config: PlatformConfig) {
-    const list: DataServiceDriver[] = [
+  constructor(config: PlatformConfig, drivers?: DataServiceDriver[]) {
+    const list: DataServiceDriver[] = drivers ?? [
       new PostgresContainerDriver(config),
       new RedisContainerDriver(config),
       new S3SharedDriver(config),

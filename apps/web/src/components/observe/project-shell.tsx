@@ -4,6 +4,10 @@ import {
   ContextBar,
   type ObserveSurface,
 } from "@/components/observe/context-bar"
+import {
+  isMonitorPath,
+  MonitorSubNav,
+} from "@/components/observe/monitor-sub-nav"
 import { PageContent, PageHeader } from "@/components/page-layout"
 import type { ObserveContext } from "@/lib/observe/context"
 import { cn } from "@/lib/utils"
@@ -30,6 +34,8 @@ export function ObserveProjectShell({
   onSaveView,
   children,
   className,
+  /** Hide Monitor sub-tabs (Charts / Boards / Alerts) on this page. */
+  hideMonitorNav = false,
 }: {
   projectId?: string
   title: string
@@ -40,16 +46,22 @@ export function ObserveProjectShell({
   onSaveView?: (name: string) => void
   children: React.ReactNode
   className?: string
+  hideMonitorNav?: boolean
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const surface = surfaceFromPath(pathname)
+  const showMonitorNav =
+    !hideMonitorNav && Boolean(projectId) && isMonitorPath(pathname)
 
   return (
     <div
       data-testid="observe-project-shell"
-      className={cn("flex min-h-0 w-full min-w-0 flex-1 flex-col", className)}
+      className={cn("flex w-full min-w-0 flex-col", className)}
     >
       <PageHeader title={title} description={description} actions={actions} />
+      {showMonitorNav && projectId ? (
+        <MonitorSubNav projectId={projectId} />
+      ) : null}
       {context && onContextChange ? (
         <div className="shrink-0 border-b border-border px-2 py-2">
           <ContextBar
@@ -61,9 +73,8 @@ export function ObserveProjectShell({
           />
         </div>
       ) : null}
-      <PageContent width="wide" className="min-h-0 flex-1 overflow-y-auto">
-        {children}
-      </PageContent>
+      {/* Scroll is owned by .app-shell-panel-scroll — do not nest overflow-y-auto. */}
+      <PageContent width="wide">{children}</PageContent>
     </div>
   )
 }

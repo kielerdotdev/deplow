@@ -7,6 +7,8 @@ import {
 import { z } from "zod"
 
 import { AppShell } from "@/components/app-shell"
+import { PageContent } from "@/components/page-layout"
+import { ShellPending } from "@/components/route-pending"
 import {
   DeploymentDetailNav,
   DeploymentEventsPanel,
@@ -15,7 +17,6 @@ import {
   type DeploymentDetailView,
 } from "@/components/service/deployment-detail-panels"
 import { ServiceHeader } from "@/components/service/service-header"
-import { ServiceNav } from "@/components/service/service-nav"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
@@ -35,6 +36,7 @@ const searchSchema = z.object({
 export const Route = createFileRoute(
   "/projects/$projectId_/services/$serviceId_/deployments/$deploymentId",
 )({
+  pendingComponent: ShellPending,
   validateSearch: (search) => searchSchema.parse(search),
   loader: async ({ params }) => {
     const session = await getSession()
@@ -187,7 +189,7 @@ function DeploymentDetailPage() {
       activeOrganization={shell.activeOrganization}
       observeEnabled={shell.observeEnabled}
     >
-      <div className="flex w-full flex-col gap-6">
+      <PageContent width="wide" className="gap-6">
         <ServiceHeader
           projectId={project.id}
           projectName={project.name}
@@ -216,33 +218,18 @@ function DeploymentDetailPage() {
           </Alert>
         ) : null}
 
-        <ServiceNav
-          tabs={[
-            { id: "overview", label: "Overview" },
-            { id: "deployments", label: "Deployments" },
-            { id: "settings", label: "Settings" },
-          ]}
-          active="deployments"
-          onChange={(tab) =>
-            void router.navigate({
-              to: "/projects/$projectId/services/$serviceId",
-              params: { projectId: project.id, serviceId: service.id },
-              search: { tab },
-            })
-          }
-        />
-
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold tracking-[-0.02em]">
-            Deployment {sha}
-          </h2>
-          <p className="text-sm text-muted-foreground capitalize">
-            {deployment.status}
-            {deployment.gitBranch ? ` · ${deployment.gitBranch}` : ""}
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold tracking-[-0.02em]">
+              Deployment {sha}
+            </h2>
+            <p className="text-sm text-muted-foreground capitalize">
+              {deployment.status}
+              {deployment.gitBranch ? ` · ${deployment.gitBranch}` : ""}
+            </p>
+          </div>
+          <DeploymentDetailNav view={view} onChange={setView} />
         </div>
-
-        <DeploymentDetailNav view={view} onChange={setView} />
 
         {view === "summary" ? (
           <DeploymentSummaryPanel
@@ -276,7 +263,7 @@ function DeploymentDetailPage() {
         {view === "events" ? (
           <DeploymentEventsPanel operation={operation} />
         ) : null}
-      </div>
+      </PageContent>
     </AppShell>
   )
 }

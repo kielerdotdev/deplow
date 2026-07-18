@@ -69,9 +69,10 @@ export function PanelActionButton({
 type PageContentProps = {
   children: React.ReactNode
   /**
+   * Width is relative to the shell frame (max-w-7xl, owned by AppShell).
    * narrow: settings form column (~780px)
-   * wide: padded panel body
-   * flush: no padding (dense lists)
+   * wide: default detail pages — padded body
+   * flush: dense lists within the shell frame (no extra inset)
    */
   width?: "narrow" | "wide" | "flush"
   className?: string
@@ -85,9 +86,11 @@ export function PageContent({
   return (
     <div
       className={cn(
-        "flex min-h-0 w-full flex-1 flex-col",
-        width === "narrow" && "mx-auto max-w-[780px] gap-4 p-4",
-        width === "wide" && "gap-4 p-4",
+        // Natural height so AppShell's panel-scroll owns page scrolling.
+        "flex w-full flex-col",
+        // Cap width; stay start-aligned in the shell frame (never float mid-ultrawide).
+        width === "narrow" && "max-w-[780px] gap-4 p-4 sm:px-6",
+        width === "wide" && "gap-5 p-4 sm:gap-6 sm:px-6 sm:py-5",
         width === "flush" && "gap-0 p-0",
         className,
       )}
@@ -110,22 +113,23 @@ export function SettingsShell({
   return (
     <div
       className={cn(
-        "flex min-h-0 w-full flex-1 flex-col md:flex-row",
+        // min-h-full fills short settings pages; height stays content-sized
+        // so the shell panel (not this split) scrolls long pages.
+        "flex min-h-full w-full flex-col md:flex-row",
         className,
       )}
     >
-      <aside className="w-full shrink-0 border-b border-border md:w-52 md:border-r md:border-b-0 md:overflow-y-auto">
+      <aside className="w-full shrink-0 border-b border-border md:w-52 md:border-r md:border-b-0">
         {nav}
       </aside>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
-        {children}
-      </div>
+      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>
   )
 }
 
 /**
- * Standard settings page stack: panel header → padded body.
+ * Standard settings page stack: chrome title → padded body.
+ * Long copy goes under the bar (never truncated in the 48px header).
  */
 export function SettingsPage({
   title,
@@ -143,14 +147,19 @@ export function SettingsPage({
   className?: string
 }) {
   return (
-    <div className={cn("flex min-h-0 w-full flex-1 flex-col", className)}>
-      <PageHeader title={title} description={description} actions={actions} />
+    <div className={cn("flex w-full flex-col", className)}>
+      <PageHeader title={title} actions={actions} />
       <div
         className={cn(
-          "flex flex-col gap-4 p-4",
+          "flex flex-col gap-4 p-4 sm:px-6",
           width === "narrow" && "max-w-[780px]",
         )}
       >
+        {description ? (
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
         {children}
       </div>
     </div>
@@ -188,21 +197,21 @@ export function SettingsPanel({
         className,
       )}
     >
-      <div className="flex h-12 items-center justify-between gap-3 border-b border-border px-2">
-        <div className="flex min-w-0 items-center gap-2 px-2">
-          {Icon ? (
-            <Icon className="size-4 shrink-0 text-muted-foreground" />
-          ) : null}
-          <div className="min-w-0">
-            <h2 className="text-[14px] font-medium text-foreground">{title}</h2>
-            {description ? (
-              <p className="truncate text-[12px] text-muted-foreground">
-                {description}
-              </p>
+      <div className="flex flex-col gap-1 border-b border-border px-4 py-3">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            {Icon ? (
+              <Icon className="size-4 shrink-0 text-muted-foreground" />
             ) : null}
+            <h2 className="text-[14px] font-medium text-foreground">{title}</h2>
           </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {description ? (
+          <p className="max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
       </div>
       <div className={cn(flush ? "py-0" : "px-4 py-4")}>{children}</div>
       {footer ? (

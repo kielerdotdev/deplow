@@ -6,8 +6,10 @@ import {
   DataTable,
   ObserveEmptyState,
   ObserveOnboarding,
+  ObservePageLayout,
   ObserveProjectShell,
   ResultTable,
+  ServiceDot,
   TrendsChart,
   VisualizationCanvas,
 } from "@/components/observe"
@@ -182,7 +184,7 @@ function TracesExplorerPage() {
         title="Traces"
         description={project.name}
       >
-        <ObserveOnboarding projectId={projectId} />
+        <ObserveOnboarding projectId={projectId} surface="traces" />
       </ObserveProjectShell>
     )
   }
@@ -206,6 +208,7 @@ function TracesExplorerPage() {
         })
       }}
     >
+      <ObservePageLayout.Root>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <ExplorerViewTabs
           view={view}
@@ -224,6 +227,7 @@ function TracesExplorerPage() {
           }
         />
         <div className="flex flex-wrap items-center gap-2">
+          <ObservePageLayout.FilterSidebarTrigger />
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             Scope
             <select
@@ -295,14 +299,16 @@ function TracesExplorerPage() {
         className="mb-3"
       />
 
-      <div className="flex flex-col gap-4 md:flex-row">
-        <ExplorerFacetPanel
-          projectId={projectId}
-          query={query}
-          onChange={setQuery}
-        />
+      <ObservePageLayout.Body>
+        <ObservePageLayout.FilterSidebar>
+          <ExplorerFacetPanel
+            projectId={projectId}
+            query={query}
+            onChange={setQuery}
+          />
+        </ObservePageLayout.FilterSidebar>
 
-        <div className="min-w-0 flex-1 space-y-3">
+        <ObservePageLayout.Content>
           {(view === "traces" || view === "list") &&
           result?.result.kind === "traces" ? (
             <>
@@ -367,7 +373,16 @@ function TracesExplorerPage() {
                       </Link>
                     ),
                   },
-                  { id: "svc", header: "Service", cell: (r) => r.service },
+                  {
+                    id: "svc",
+                    header: "Service",
+                    cell: (r) => (
+                      <span className="inline-flex items-center gap-1.5">
+                        <ServiceDot serviceName={r.service} />
+                        {r.service}
+                      </span>
+                    ),
+                  },
                   {
                     id: "dur",
                     header: "Duration",
@@ -432,7 +447,16 @@ function TracesExplorerPage() {
                     </Link>
                   ),
                 },
-                { id: "svc", header: "Service", cell: (r) => r.service },
+                {
+                  id: "svc",
+                  header: "Service",
+                  cell: (r) => (
+                    <span className="inline-flex items-center gap-1.5">
+                      <ServiceDot serviceName={r.service} />
+                      {r.service}
+                    </span>
+                  ),
+                },
                 {
                   id: "dur",
                   header: "Duration",
@@ -496,8 +520,9 @@ function TracesExplorerPage() {
               }
             />
           ) : null}
-        </div>
-      </div>
+        </ObservePageLayout.Content>
+      </ObservePageLayout.Body>
+      </ObservePageLayout.Root>
     </ObserveProjectShell>
   )
 }

@@ -9,6 +9,14 @@ import {
   ObserveEmptyState,
   ObserveProjectShell,
 } from "@/components/observe"
+import {
+  ResourceRow,
+  ResourceTable,
+  ResourceTableBody,
+  ResourceTableHead,
+  ResourceTd,
+  ResourceTh,
+} from "@/components/observe/resource-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getSession } from "@/lib/auth.functions"
@@ -99,7 +107,7 @@ function AlertsPage() {
     <ObserveProjectShell
       projectId={projectId}
       title="Alerts"
-      description={`Threshold and relative alerts for ${project.name}`}
+      description={`Threshold rules for ${project.name}`}
       actions={
         <Button
           size="sm"
@@ -115,7 +123,7 @@ function AlertsPage() {
         <ObserveEmptyState
           icon={BellIcon}
           title="No alerts yet"
-          description="Watch error rate, latency, or volume and notify Slack, Discord, email, or a webhook when thresholds trip."
+          description="Watch error rate, latency, or volume — notify Slack, Discord, email, or a webhook when thresholds trip."
           action={
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => setCreateOpen(true)}>
@@ -132,134 +140,124 @@ function AlertsPage() {
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">
-                <th className="px-3 py-2.5 font-medium">Alert</th>
-                <th className="hidden px-3 py-2.5 font-medium sm:table-cell">
-                  Condition
-                </th>
-                <th className="hidden px-3 py-2.5 font-medium md:table-cell">
-                  Last fired
-                </th>
-                <th className="px-3 py-2.5 font-medium">Status</th>
-                <th className="px-3 py-2.5 text-right font-medium">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/70">
-              {alerts.map((alert) => (
-                <tr
-                  key={alert.id}
-                  className={cn(
-                    "group transition-colors hover:bg-muted/30",
-                    !alert.enabled && "opacity-70",
-                  )}
-                >
-                  <td className="px-3 py-3 align-top">
-                    <div className="font-medium leading-snug">{alert.name}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground sm:hidden">
-                      {conditionLabel(alert)}
-                    </div>
-                    <div className="mt-1 text-[11px] text-muted-foreground">
-                      {alert.channelIds.length > 0
-                        ? `${alert.channelIds.length} channel${alert.channelIds.length === 1 ? "" : "s"}`
-                        : alert.channelEmail || alert.channelWebhook
-                          ? "Legacy channel"
-                          : "No channels"}
-                    </div>
-                  </td>
-                  <td className="hidden px-3 py-3 align-top text-muted-foreground sm:table-cell">
-                    <span className="font-mono text-xs tabular-nums">
-                      {conditionLabel(alert)}
-                    </span>
-                  </td>
-                  <td className="hidden px-3 py-3 align-top text-muted-foreground md:table-cell">
-                    {alert.lastTriggeredAt
-                      ? formatRelative(new Date(alert.lastTriggeredAt).getTime())
-                      : "Never"}
-                  </td>
-                  <td className="px-3 py-3 align-top">
-                    <div className="flex flex-wrap gap-1">
+        <ResourceTable>
+          <ResourceTableHead>
+            <ResourceTh>Alert</ResourceTh>
+            <ResourceTh className="hidden sm:table-cell">Condition</ResourceTh>
+            <ResourceTh className="hidden md:table-cell">Last fired</ResourceTh>
+            <ResourceTh>Status</ResourceTh>
+            <ResourceTh srOnly>Actions</ResourceTh>
+          </ResourceTableHead>
+          <ResourceTableBody>
+            {alerts.map((alert) => (
+              <ResourceRow
+                key={alert.id}
+                className={cn(!alert.enabled && "opacity-70")}
+                onClick={() =>
+                  setHistoryId((id) => (id === alert.id ? null : alert.id))
+                }
+              >
+                <ResourceTd className="align-top">
+                  <div className="font-medium leading-snug">{alert.name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground sm:hidden">
+                    {conditionLabel(alert)}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {alert.channelIds.length > 0
+                      ? `${alert.channelIds.length} channel${alert.channelIds.length === 1 ? "" : "s"}`
+                      : alert.channelEmail || alert.channelWebhook
+                        ? "Legacy channel"
+                        : "No channels"}
+                  </div>
+                </ResourceTd>
+                <ResourceTd className="hidden align-top text-muted-foreground sm:table-cell">
+                  <span className="font-mono text-xs tabular-nums">
+                    {conditionLabel(alert)}
+                  </span>
+                </ResourceTd>
+                <ResourceTd className="hidden align-top tabular-nums text-muted-foreground md:table-cell">
+                  {alert.lastTriggeredAt
+                    ? formatRelative(new Date(alert.lastTriggeredAt).getTime())
+                    : "Never"}
+                </ResourceTd>
+                <ResourceTd className="align-top">
+                  <div className="flex flex-wrap gap-1">
+                    <Badge
+                      variant={alert.enabled ? "secondary" : "outline"}
+                      className="font-normal"
+                    >
+                      {alert.enabled ? "On" : "Off"}
+                    </Badge>
+                    {"state" in alert && alert.state ? (
                       <Badge
-                        variant={alert.enabled ? "secondary" : "outline"}
-                        className="font-normal"
-                      >
-                        {alert.enabled ? "On" : "Off"}
-                      </Badge>
-                      {"state" in alert && alert.state ? (
-                        <Badge
-                          variant={
-                            alert.state === "firing"
-                              ? "destructive"
-                              : alert.state === "pending"
-                                ? "secondary"
-                                : "outline"
-                          }
-                          className="font-normal capitalize"
-                        >
-                          {String(alert.state)}
-                        </Badge>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 align-top">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          setHistoryId((id) =>
-                            id === alert.id ? null : alert.id,
-                          )
+                        variant={
+                          alert.state === "firing"
+                            ? "destructive"
+                            : alert.state === "pending"
+                              ? "secondary"
+                              : "outline"
                         }
+                        className="font-normal capitalize"
                       >
-                        History
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={busyId === alert.id}
-                        onClick={() => {
-                          setBusyId(alert.id)
-                          void client.observe.alerts
-                            .evaluateNow({ projectId, alertId: alert.id })
-                            .then(() => refresh())
-                            .finally(() => setBusyId(null))
-                        }}
-                      >
-                        Eval
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={busyId === alert.id}
-                        onClick={() => void toggleEnabled(alert)}
-                      >
-                        {alert.enabled ? "Disable" : "Enable"}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive"
-                        aria-label={`Delete ${alert.name}`}
-                        onClick={() => setDeleteId(alert.id)}
-                      >
-                        <Trash2Icon className="size-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        {String(alert.state)}
+                      </Badge>
+                    ) : null}
+                  </div>
+                </ResourceTd>
+                <ResourceTd stopPropagation className="align-top text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setHistoryId((id) =>
+                          id === alert.id ? null : alert.id,
+                        )
+                      }
+                    >
+                      History
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={busyId === alert.id}
+                      onClick={() => {
+                        setBusyId(alert.id)
+                        void client.observe.alerts
+                          .evaluateNow({ projectId, alertId: alert.id })
+                          .then(() => refresh())
+                          .finally(() => setBusyId(null))
+                      }}
+                    >
+                      Eval
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={busyId === alert.id}
+                      onClick={() => void toggleEnabled(alert)}
+                    >
+                      {alert.enabled ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label={`Delete ${alert.name}`}
+                      onClick={() => setDeleteId(alert.id)}
+                    >
+                      <Trash2Icon className="size-3.5" />
+                    </Button>
+                  </div>
+                </ResourceTd>
+              </ResourceRow>
+            ))}
+          </ResourceTableBody>
+        </ResourceTable>
       )}
 
       {historyId ? (

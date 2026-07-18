@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
+import { GlobalObserveShortcuts } from "@/components/observe/global-shortcuts"
 import { RoutePending, ShellPending } from "@/components/route-pending"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
@@ -40,6 +41,7 @@ function ObserveProjectLayout() {
       uiMode="observe"
       observeEnabled={shell.observeEnabled}
     >
+      <GlobalObserveShortcuts />
       <Suspense fallback={<RoutePending />}>
         <Outlet />
       </Suspense>

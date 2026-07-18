@@ -9,98 +9,67 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as OrganizationRouteImport } from './routes/organization'
-import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as NodesRouteImport } from './routes/nodes'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as IntegrationsRouteImport } from './routes/integrations'
-import { Route as InstallAgentDotshRouteImport } from './routes/install-agent[.]sh'
-import { Route as DomainsRouteImport } from './routes/domains'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SettingsIndexRouteImport } from './routes/settings.index'
-import { Route as ObserveIndexRouteImport } from './routes/observe/index'
-import { Route as SettingsTeamRouteImport } from './routes/settings.team'
-import { Route as SettingsOperatorRouteImport } from './routes/settings.operator'
-import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
-import { Route as SettingsNodesRouteImport } from './routes/settings.nodes'
-import { Route as SettingsNetworkingRouteImport } from './routes/settings.networking'
-import { Route as SettingsMembersRouteImport } from './routes/settings.members'
-import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
-import { Route as SettingsDomainsRouteImport } from './routes/settings.domains'
-import { Route as SettingsApiRouteImport } from './routes/settings.api'
-import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
-import { Route as InvitesTokenRouteImport } from './routes/invites.$token'
+import { Route as DomainsRouteImport } from './routes/domains'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as NodesRouteImport } from './routes/nodes'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as OrganizationRouteImport } from './routes/organization'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
-import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId.index'
-import { Route as ProjectsProjectIdSettingsRouteImport } from './routes/projects/$projectId.settings'
-import { Route as ProjectsProjectIdSecretsRouteImport } from './routes/projects/$projectId.secrets'
-import { Route as ProjectsProjectIdDeploymentsRouteImport } from './routes/projects/$projectId.deployments'
-import { Route as ObserveProjectsProjectIdRouteImport } from './routes/observe/projects/$projectId'
-import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
-import { Route as ApiInternalDogfoodRouteImport } from './routes/api/internal.dogfood'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiAgentSplatRouteImport } from './routes/api/agent.$'
-import { Route as ApiSentryIdStoreRouteImport } from './routes/api/$sentryId.store'
+import { Route as InvitesTokenRouteImport } from './routes/invites.$token'
+import { Route as ObserveIndexRouteImport } from './routes/observe/index'
+import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsApiRouteImport } from './routes/settings.api'
+import { Route as SettingsClusterRouteImport } from './routes/settings.cluster'
+import { Route as SettingsDomainsRouteImport } from './routes/settings.domains'
+import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
+import { Route as SettingsMembersRouteImport } from './routes/settings.members'
+import { Route as SettingsNetworkingRouteImport } from './routes/settings.networking'
+import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
+import { Route as SettingsRegistriesRouteImport } from './routes/settings.registries'
+import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as ApiSentryIdEnvelopeRouteImport } from './routes/api/$sentryId.envelope'
-import { Route as ObserveProjectsProjectIdIndexRouteImport } from './routes/observe/projects/$projectId.index'
-import { Route as ProjectsProjectIdServicesServiceIdRouteImport } from './routes/projects/$projectId_/services/$serviceId'
-import { Route as ObserveProjectsProjectIdTrendsRouteImport } from './routes/observe/projects/$projectId.trends'
-import { Route as ObserveProjectsProjectIdTracesRouteImport } from './routes/observe/projects/$projectId.traces'
-import { Route as ObserveProjectsProjectIdSetupRouteImport } from './routes/observe/projects/$projectId.setup'
-import { Route as ObserveProjectsProjectIdServicesRouteImport } from './routes/observe/projects/$projectId.services'
-import { Route as ObserveProjectsProjectIdReleasesRouteImport } from './routes/observe/projects/$projectId.releases'
-import { Route as ObserveProjectsProjectIdMetricsRouteImport } from './routes/observe/projects/$projectId.metrics'
-import { Route as ObserveProjectsProjectIdLogsRouteImport } from './routes/observe/projects/$projectId.logs'
-import { Route as ObserveProjectsProjectIdIssuesRouteImport } from './routes/observe/projects/$projectId.issues'
-import { Route as ObserveProjectsProjectIdInsightsRouteImport } from './routes/observe/projects/$projectId.insights'
-import { Route as ObserveProjectsProjectIdExploreRouteImport } from './routes/observe/projects/$projectId.explore'
-import { Route as ObserveProjectsProjectIdDashboardsRouteImport } from './routes/observe/projects/$projectId.dashboards'
-import { Route as ObserveProjectsProjectIdAlertsRouteImport } from './routes/observe/projects/$projectId.alerts'
-import { Route as ApiWebhooksGitServiceIdRouteImport } from './routes/api/webhooks/git.$serviceId'
+import { Route as ApiSentryIdStoreRouteImport } from './routes/api/$sentryId.store'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiClusterBootstrapRouteImport } from './routes/api/cluster.bootstrap'
+import { Route as ApiInternalDogfoodRouteImport } from './routes/api/internal.dogfood'
+import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
+import { Route as ObserveProjectsProjectIdRouteImport } from './routes/observe/projects/$projectId'
+import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId.index'
+import { Route as ProjectsProjectIdDeploymentsRouteImport } from './routes/projects/$projectId.deployments'
+import { Route as ProjectsProjectIdSecretsRouteImport } from './routes/projects/$projectId.secrets'
+import { Route as ProjectsProjectIdSettingsRouteImport } from './routes/projects/$projectId.settings'
 import { Route as ApiSentryIdOtlpSplatRouteImport } from './routes/api/$sentryId.otlp.$'
-import { Route as ObserveProjectsProjectIdTracesTraceIdRouteImport } from './routes/observe/projects/$projectId.traces_.$traceId'
-import { Route as ObserveProjectsProjectIdServicesServiceNameRouteImport } from './routes/observe/projects/$projectId.services_.$serviceName'
-import { Route as ObserveProjectsProjectIdIssuesIssueIdRouteImport } from './routes/observe/projects/$projectId.issues_.$issueId'
-import { Route as ObserveProjectsProjectIdDashboardsDashboardIdRouteImport } from './routes/observe/projects/$projectId.dashboards_.$dashboardId'
-import { Route as ApiGitOauthGitlabCallbackRouteImport } from './routes/api/git/oauth/gitlab/callback'
-import { Route as ApiGitOauthGithubCallbackRouteImport } from './routes/api/git/oauth/github/callback'
+import { Route as ApiWebhooksGitServiceIdRouteImport } from './routes/api/webhooks/git.$serviceId'
+import { Route as ObserveProjectsProjectIdIndexRouteImport } from './routes/observe/projects/$projectId.index'
+import { Route as ObserveProjectsProjectIdAlertsRouteImport } from './routes/observe/projects/$projectId.alerts'
+import { Route as ObserveProjectsProjectIdDashboardsRouteImport } from './routes/observe/projects/$projectId.dashboards'
+import { Route as ObserveProjectsProjectIdExploreRouteImport } from './routes/observe/projects/$projectId.explore'
+import { Route as ObserveProjectsProjectIdInsightsRouteImport } from './routes/observe/projects/$projectId.insights'
+import { Route as ObserveProjectsProjectIdIssuesRouteImport } from './routes/observe/projects/$projectId.issues'
+import { Route as ObserveProjectsProjectIdLogsRouteImport } from './routes/observe/projects/$projectId.logs'
+import { Route as ObserveProjectsProjectIdMetricsRouteImport } from './routes/observe/projects/$projectId.metrics'
+import { Route as ObserveProjectsProjectIdReleasesRouteImport } from './routes/observe/projects/$projectId.releases'
+import { Route as ObserveProjectsProjectIdServicesRouteImport } from './routes/observe/projects/$projectId.services'
+import { Route as ObserveProjectsProjectIdSetupRouteImport } from './routes/observe/projects/$projectId.setup'
+import { Route as ObserveProjectsProjectIdTracesRouteImport } from './routes/observe/projects/$projectId.traces'
+import { Route as ObserveProjectsProjectIdTrendsRouteImport } from './routes/observe/projects/$projectId.trends'
+import { Route as ProjectsProjectIdServicesServiceIdRouteImport } from './routes/projects/$projectId_/services/$serviceId'
 import { Route as ApiGitGithubAppManifestCallbackRouteImport } from './routes/api/git/github/app-manifest/callback'
+import { Route as ApiGitOauthGithubCallbackRouteImport } from './routes/api/git/oauth/github/callback'
+import { Route as ApiGitOauthGitlabCallbackRouteImport } from './routes/api/git/oauth/gitlab/callback'
+import { Route as ObserveProjectsProjectIdDashboardsDashboardIdRouteImport } from './routes/observe/projects/$projectId.dashboards_.$dashboardId'
+import { Route as ObserveProjectsProjectIdIssuesIssueIdRouteImport } from './routes/observe/projects/$projectId.issues_.$issueId'
+import { Route as ObserveProjectsProjectIdServicesServiceNameRouteImport } from './routes/observe/projects/$projectId.services_.$serviceName'
+import { Route as ObserveProjectsProjectIdTracesTraceIdRouteImport } from './routes/observe/projects/$projectId.traces_.$traceId'
 import { Route as ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRouteImport } from './routes/projects/$projectId_/services/$serviceId_.deployments.$deploymentId'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrganizationRoute = OrganizationRouteImport.update({
-  id: '/organization',
-  path: '/organization',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotificationsRoute = NotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NodesRoute = NodesRouteImport.update({
-  id: '/nodes',
-  path: '/nodes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IntegrationsRoute = IntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InstallAgentDotshRoute = InstallAgentDotshRouteImport.update({
-  id: '/install-agent.sh',
-  path: '/install-agent.sh',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DomainsRoute = DomainsRouteImport.update({
@@ -108,74 +77,34 @@ const DomainsRoute = DomainsRouteImport.update({
   path: '/domains',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const ObserveIndexRoute = ObserveIndexRouteImport.update({
-  id: '/observe/',
-  path: '/observe/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsTeamRoute = SettingsTeamRouteImport.update({
-  id: '/team',
-  path: '/team',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsOperatorRoute = SettingsOperatorRouteImport.update({
-  id: '/operator',
-  path: '/operator',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsNodesRoute = SettingsNodesRouteImport.update({
-  id: '/nodes',
-  path: '/nodes',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsNetworkingRoute = SettingsNetworkingRouteImport.update({
-  id: '/networking',
-  path: '/networking',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsMembersRoute = SettingsMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
+const IntegrationsRoute = IntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsDomainsRoute = SettingsDomainsRouteImport.update({
-  id: '/domains',
-  path: '/domains',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsApiRoute = SettingsApiRouteImport.update({
-  id: '/api',
-  path: '/api',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
-  id: '/projects/$projectId',
-  path: '/projects/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvitesTokenRoute = InvitesTokenRouteImport.update({
-  id: '/invites/$token',
-  path: '/invites/$token',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NodesRoute = NodesRouteImport.update({
+  id: '/nodes',
+  path: '/nodes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationRoute = OrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMcpRoute = ApiMcpRouteImport.update({
@@ -183,15 +112,116 @@ const ApiMcpRoute = ApiMcpRouteImport.update({
   path: '/api/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvitesTokenRoute = InvitesTokenRouteImport.update({
+  id: '/invites/$token',
+  path: '/invites/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObserveIndexRoute = ObserveIndexRouteImport.update({
+  id: '/observe/',
+  path: '/observe/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsApiRoute = SettingsApiRouteImport.update({
+  id: '/api',
+  path: '/api',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsClusterRoute = SettingsClusterRouteImport.update({
+  id: '/cluster',
+  path: '/cluster',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsDomainsRoute = SettingsDomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsMembersRoute = SettingsMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNetworkingRoute = SettingsNetworkingRouteImport.update({
+  id: '/networking',
+  path: '/networking',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsRegistriesRoute = SettingsRegistriesRouteImport.update({
+  id: '/registries',
+  path: '/registries',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsTeamRoute = SettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const ApiSentryIdEnvelopeRoute = ApiSentryIdEnvelopeRouteImport.update({
+  id: '/api/$sentryId/envelope',
+  path: '/api/$sentryId/envelope',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSentryIdStoreRoute = ApiSentryIdStoreRouteImport.update({
+  id: '/api/$sentryId/store',
+  path: '/api/$sentryId/store',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiClusterBootstrapRoute = ApiClusterBootstrapRouteImport.update({
+  id: '/api/cluster/bootstrap',
+  path: '/api/cluster/bootstrap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInternalDogfoodRoute = ApiInternalDogfoodRouteImport.update({
+  id: '/api/internal/dogfood',
+  path: '/api/internal/dogfood',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
+  id: '/api/rpc/$',
+  path: '/api/rpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObserveProjectsProjectIdRoute =
+  ObserveProjectsProjectIdRouteImport.update({
+    id: '/observe/projects/$projectId',
+    path: '/observe/projects/$projectId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProjectsProjectIdRoute,
 } as any)
-const ProjectsProjectIdSettingsRoute =
-  ProjectsProjectIdSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
+const ProjectsProjectIdDeploymentsRoute =
+  ProjectsProjectIdDeploymentsRouteImport.update({
+    id: '/deployments',
+    path: '/deployments',
     getParentRoute: () => ProjectsProjectIdRoute,
   } as any)
 const ProjectsProjectIdSecretsRoute =
@@ -200,46 +230,20 @@ const ProjectsProjectIdSecretsRoute =
     path: '/secrets',
     getParentRoute: () => ProjectsProjectIdRoute,
   } as any)
-const ProjectsProjectIdDeploymentsRoute =
-  ProjectsProjectIdDeploymentsRouteImport.update({
-    id: '/deployments',
-    path: '/deployments',
+const ProjectsProjectIdSettingsRoute =
+  ProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => ProjectsProjectIdRoute,
   } as any)
-const ObserveProjectsProjectIdRoute =
-  ObserveProjectsProjectIdRouteImport.update({
-    id: '/observe/projects/$projectId',
-    path: '/observe/projects/$projectId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
-  id: '/api/rpc/$',
-  path: '/api/rpc/$',
+const ApiSentryIdOtlpSplatRoute = ApiSentryIdOtlpSplatRouteImport.update({
+  id: '/api/$sentryId/otlp/$',
+  path: '/api/$sentryId/otlp/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiInternalDogfoodRoute = ApiInternalDogfoodRouteImport.update({
-  id: '/api/internal/dogfood',
-  path: '/api/internal/dogfood',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAgentSplatRoute = ApiAgentSplatRouteImport.update({
-  id: '/api/agent/$',
-  path: '/api/agent/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSentryIdStoreRoute = ApiSentryIdStoreRouteImport.update({
-  id: '/api/$sentryId/store',
-  path: '/api/$sentryId/store',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSentryIdEnvelopeRoute = ApiSentryIdEnvelopeRouteImport.update({
-  id: '/api/$sentryId/envelope',
-  path: '/api/$sentryId/envelope',
+const ApiWebhooksGitServiceIdRoute = ApiWebhooksGitServiceIdRouteImport.update({
+  id: '/api/webhooks/git/$serviceId',
+  path: '/api/webhooks/git/$serviceId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ObserveProjectsProjectIdIndexRoute =
@@ -248,70 +252,10 @@ const ObserveProjectsProjectIdIndexRoute =
     path: '/',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ProjectsProjectIdServicesServiceIdRoute =
-  ProjectsProjectIdServicesServiceIdRouteImport.update({
-    id: '/projects/$projectId_/services/$serviceId',
-    path: '/projects/$projectId/services/$serviceId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ObserveProjectsProjectIdTrendsRoute =
-  ObserveProjectsProjectIdTrendsRouteImport.update({
-    id: '/trends',
-    path: '/trends',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdTracesRoute =
-  ObserveProjectsProjectIdTracesRouteImport.update({
-    id: '/traces',
-    path: '/traces',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdSetupRoute =
-  ObserveProjectsProjectIdSetupRouteImport.update({
-    id: '/setup',
-    path: '/setup',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdServicesRoute =
-  ObserveProjectsProjectIdServicesRouteImport.update({
-    id: '/services',
-    path: '/services',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdReleasesRoute =
-  ObserveProjectsProjectIdReleasesRouteImport.update({
-    id: '/releases',
-    path: '/releases',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdMetricsRoute =
-  ObserveProjectsProjectIdMetricsRouteImport.update({
-    id: '/metrics',
-    path: '/metrics',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdLogsRoute =
-  ObserveProjectsProjectIdLogsRouteImport.update({
-    id: '/logs',
-    path: '/logs',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdIssuesRoute =
-  ObserveProjectsProjectIdIssuesRouteImport.update({
-    id: '/issues',
-    path: '/issues',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdInsightsRoute =
-  ObserveProjectsProjectIdInsightsRouteImport.update({
-    id: '/insights',
-    path: '/insights',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
-const ObserveProjectsProjectIdExploreRoute =
-  ObserveProjectsProjectIdExploreRouteImport.update({
-    id: '/explore',
-    path: '/explore',
+const ObserveProjectsProjectIdAlertsRoute =
+  ObserveProjectsProjectIdAlertsRouteImport.update({
+    id: '/alerts',
+    path: '/alerts',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
 const ObserveProjectsProjectIdDashboardsRoute =
@@ -320,50 +264,76 @@ const ObserveProjectsProjectIdDashboardsRoute =
     path: '/dashboards',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ObserveProjectsProjectIdAlertsRoute =
-  ObserveProjectsProjectIdAlertsRouteImport.update({
-    id: '/alerts',
-    path: '/alerts',
+const ObserveProjectsProjectIdExploreRoute =
+  ObserveProjectsProjectIdExploreRouteImport.update({
+    id: '/explore',
+    path: '/explore',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ApiWebhooksGitServiceIdRoute = ApiWebhooksGitServiceIdRouteImport.update({
-  id: '/api/webhooks/git/$serviceId',
-  path: '/api/webhooks/git/$serviceId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSentryIdOtlpSplatRoute = ApiSentryIdOtlpSplatRouteImport.update({
-  id: '/api/$sentryId/otlp/$',
-  path: '/api/$sentryId/otlp/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ObserveProjectsProjectIdTracesTraceIdRoute =
-  ObserveProjectsProjectIdTracesTraceIdRouteImport.update({
-    id: '/traces_/$traceId',
-    path: '/traces/$traceId',
+const ObserveProjectsProjectIdInsightsRoute =
+  ObserveProjectsProjectIdInsightsRouteImport.update({
+    id: '/insights',
+    path: '/insights',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ObserveProjectsProjectIdServicesServiceNameRoute =
-  ObserveProjectsProjectIdServicesServiceNameRouteImport.update({
-    id: '/services_/$serviceName',
-    path: '/services/$serviceName',
+const ObserveProjectsProjectIdIssuesRoute =
+  ObserveProjectsProjectIdIssuesRouteImport.update({
+    id: '/issues',
+    path: '/issues',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ObserveProjectsProjectIdIssuesIssueIdRoute =
-  ObserveProjectsProjectIdIssuesIssueIdRouteImport.update({
-    id: '/issues_/$issueId',
-    path: '/issues/$issueId',
+const ObserveProjectsProjectIdLogsRoute =
+  ObserveProjectsProjectIdLogsRouteImport.update({
+    id: '/logs',
+    path: '/logs',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ObserveProjectsProjectIdDashboardsDashboardIdRoute =
-  ObserveProjectsProjectIdDashboardsDashboardIdRouteImport.update({
-    id: '/dashboards_/$dashboardId',
-    path: '/dashboards/$dashboardId',
+const ObserveProjectsProjectIdMetricsRoute =
+  ObserveProjectsProjectIdMetricsRouteImport.update({
+    id: '/metrics',
+    path: '/metrics',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ApiGitOauthGitlabCallbackRoute =
-  ApiGitOauthGitlabCallbackRouteImport.update({
-    id: '/api/git/oauth/gitlab/callback',
-    path: '/api/git/oauth/gitlab/callback',
+const ObserveProjectsProjectIdReleasesRoute =
+  ObserveProjectsProjectIdReleasesRouteImport.update({
+    id: '/releases',
+    path: '/releases',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdServicesRoute =
+  ObserveProjectsProjectIdServicesRouteImport.update({
+    id: '/services',
+    path: '/services',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdSetupRoute =
+  ObserveProjectsProjectIdSetupRouteImport.update({
+    id: '/setup',
+    path: '/setup',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdTracesRoute =
+  ObserveProjectsProjectIdTracesRouteImport.update({
+    id: '/traces',
+    path: '/traces',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdTrendsRoute =
+  ObserveProjectsProjectIdTrendsRouteImport.update({
+    id: '/trends',
+    path: '/trends',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ProjectsProjectIdServicesServiceIdRoute =
+  ProjectsProjectIdServicesServiceIdRouteImport.update({
+    id: '/projects/$projectId_/services/$serviceId',
+    path: '/projects/$projectId/services/$serviceId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGitGithubAppManifestCallbackRoute =
+  ApiGitGithubAppManifestCallbackRouteImport.update({
+    id: '/api/git/github/app-manifest/callback',
+    path: '/api/git/github/app-manifest/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiGitOauthGithubCallbackRoute =
@@ -372,11 +342,35 @@ const ApiGitOauthGithubCallbackRoute =
     path: '/api/git/oauth/github/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiGitGithubAppManifestCallbackRoute =
-  ApiGitGithubAppManifestCallbackRouteImport.update({
-    id: '/api/git/github/app-manifest/callback',
-    path: '/api/git/github/app-manifest/callback',
+const ApiGitOauthGitlabCallbackRoute =
+  ApiGitOauthGitlabCallbackRouteImport.update({
+    id: '/api/git/oauth/gitlab/callback',
+    path: '/api/git/oauth/gitlab/callback',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ObserveProjectsProjectIdDashboardsDashboardIdRoute =
+  ObserveProjectsProjectIdDashboardsDashboardIdRouteImport.update({
+    id: '/dashboards_/$dashboardId',
+    path: '/dashboards/$dashboardId',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdIssuesIssueIdRoute =
+  ObserveProjectsProjectIdIssuesIssueIdRouteImport.update({
+    id: '/issues_/$issueId',
+    path: '/issues/$issueId',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdServicesServiceNameRoute =
+  ObserveProjectsProjectIdServicesServiceNameRouteImport.update({
+    id: '/services_/$serviceName',
+    path: '/services/$serviceName',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
+  } as any)
+const ObserveProjectsProjectIdTracesTraceIdRoute =
+  ObserveProjectsProjectIdTracesTraceIdRouteImport.update({
+    id: '/traces_/$traceId',
+    path: '/traces/$traceId',
+    getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
 const ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute =
   ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRouteImport.update({
@@ -388,7 +382,6 @@ const ProjectsProjectIdServicesServiceIdDeploymentsDeploymentIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/domains': typeof DomainsRoute
-  '/install-agent.sh': typeof InstallAgentDotshRoute
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
@@ -399,20 +392,20 @@ export interface FileRoutesByFullPath {
   '/invites/$token': typeof InvitesTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/settings/api': typeof SettingsApiRoute
+  '/settings/cluster': typeof SettingsClusterRoute
   '/settings/domains': typeof SettingsDomainsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/members': typeof SettingsMembersRoute
   '/settings/networking': typeof SettingsNetworkingRoute
-  '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
-  '/settings/operator': typeof SettingsOperatorRoute
+  '/settings/registries': typeof SettingsRegistriesRoute
   '/settings/team': typeof SettingsTeamRoute
   '/observe/': typeof ObserveIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
   '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
-  '/api/agent/$': typeof ApiAgentSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cluster/bootstrap': typeof ApiClusterBootstrapRoute
   '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/observe/projects/$projectId': typeof ObserveProjectsProjectIdRouteWithChildren
@@ -448,7 +441,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/domains': typeof DomainsRoute
-  '/install-agent.sh': typeof InstallAgentDotshRoute
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
@@ -457,20 +449,20 @@ export interface FileRoutesByTo {
   '/api/mcp': typeof ApiMcpRoute
   '/invites/$token': typeof InvitesTokenRoute
   '/settings/api': typeof SettingsApiRoute
+  '/settings/cluster': typeof SettingsClusterRoute
   '/settings/domains': typeof SettingsDomainsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/members': typeof SettingsMembersRoute
   '/settings/networking': typeof SettingsNetworkingRoute
-  '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
-  '/settings/operator': typeof SettingsOperatorRoute
+  '/settings/registries': typeof SettingsRegistriesRoute
   '/settings/team': typeof SettingsTeamRoute
   '/observe': typeof ObserveIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
   '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
-  '/api/agent/$': typeof ApiAgentSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cluster/bootstrap': typeof ApiClusterBootstrapRoute
   '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/projects/$projectId/deployments': typeof ProjectsProjectIdDeploymentsRoute
@@ -506,7 +498,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/domains': typeof DomainsRoute
-  '/install-agent.sh': typeof InstallAgentDotshRoute
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/nodes': typeof NodesRoute
@@ -517,20 +508,20 @@ export interface FileRoutesById {
   '/invites/$token': typeof InvitesTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/settings/api': typeof SettingsApiRoute
+  '/settings/cluster': typeof SettingsClusterRoute
   '/settings/domains': typeof SettingsDomainsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/members': typeof SettingsMembersRoute
   '/settings/networking': typeof SettingsNetworkingRoute
-  '/settings/nodes': typeof SettingsNodesRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
-  '/settings/operator': typeof SettingsOperatorRoute
+  '/settings/registries': typeof SettingsRegistriesRoute
   '/settings/team': typeof SettingsTeamRoute
   '/observe/': typeof ObserveIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/$sentryId/envelope': typeof ApiSentryIdEnvelopeRoute
   '/api/$sentryId/store': typeof ApiSentryIdStoreRoute
-  '/api/agent/$': typeof ApiAgentSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cluster/bootstrap': typeof ApiClusterBootstrapRoute
   '/api/internal/dogfood': typeof ApiInternalDogfoodRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/observe/projects/$projectId': typeof ObserveProjectsProjectIdRouteWithChildren
@@ -568,7 +559,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/domains'
-    | '/install-agent.sh'
     | '/integrations'
     | '/login'
     | '/nodes'
@@ -579,20 +569,20 @@ export interface FileRouteTypes {
     | '/invites/$token'
     | '/projects/$projectId'
     | '/settings/api'
+    | '/settings/cluster'
     | '/settings/domains'
     | '/settings/integrations'
     | '/settings/members'
     | '/settings/networking'
-    | '/settings/nodes'
     | '/settings/notifications'
-    | '/settings/operator'
+    | '/settings/registries'
     | '/settings/team'
     | '/observe/'
     | '/settings/'
     | '/api/$sentryId/envelope'
     | '/api/$sentryId/store'
-    | '/api/agent/$'
     | '/api/auth/$'
+    | '/api/cluster/bootstrap'
     | '/api/internal/dogfood'
     | '/api/rpc/$'
     | '/observe/projects/$projectId'
@@ -628,7 +618,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/domains'
-    | '/install-agent.sh'
     | '/integrations'
     | '/login'
     | '/nodes'
@@ -637,20 +626,20 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/invites/$token'
     | '/settings/api'
+    | '/settings/cluster'
     | '/settings/domains'
     | '/settings/integrations'
     | '/settings/members'
     | '/settings/networking'
-    | '/settings/nodes'
     | '/settings/notifications'
-    | '/settings/operator'
+    | '/settings/registries'
     | '/settings/team'
     | '/observe'
     | '/settings'
     | '/api/$sentryId/envelope'
     | '/api/$sentryId/store'
-    | '/api/agent/$'
     | '/api/auth/$'
+    | '/api/cluster/bootstrap'
     | '/api/internal/dogfood'
     | '/api/rpc/$'
     | '/projects/$projectId/deployments'
@@ -685,7 +674,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/domains'
-    | '/install-agent.sh'
     | '/integrations'
     | '/login'
     | '/nodes'
@@ -696,20 +684,20 @@ export interface FileRouteTypes {
     | '/invites/$token'
     | '/projects/$projectId'
     | '/settings/api'
+    | '/settings/cluster'
     | '/settings/domains'
     | '/settings/integrations'
     | '/settings/members'
     | '/settings/networking'
-    | '/settings/nodes'
     | '/settings/notifications'
-    | '/settings/operator'
+    | '/settings/registries'
     | '/settings/team'
     | '/observe/'
     | '/settings/'
     | '/api/$sentryId/envelope'
     | '/api/$sentryId/store'
-    | '/api/agent/$'
     | '/api/auth/$'
+    | '/api/cluster/bootstrap'
     | '/api/internal/dogfood'
     | '/api/rpc/$'
     | '/observe/projects/$projectId'
@@ -746,7 +734,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DomainsRoute: typeof DomainsRoute
-  InstallAgentDotshRoute: typeof InstallAgentDotshRoute
   IntegrationsRoute: typeof IntegrationsRoute
   LoginRoute: typeof LoginRoute
   NodesRoute: typeof NodesRoute
@@ -759,8 +746,8 @@ export interface RootRouteChildren {
   ObserveIndexRoute: typeof ObserveIndexRoute
   ApiSentryIdEnvelopeRoute: typeof ApiSentryIdEnvelopeRoute
   ApiSentryIdStoreRoute: typeof ApiSentryIdStoreRoute
-  ApiAgentSplatRoute: typeof ApiAgentSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiClusterBootstrapRoute: typeof ApiClusterBootstrapRoute
   ApiInternalDogfoodRoute: typeof ApiInternalDogfoodRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
   ObserveProjectsProjectIdRoute: typeof ObserveProjectsProjectIdRouteWithChildren
@@ -775,53 +762,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/organization': {
-      id: '/organization'
-      path: '/organization'
-      fullPath: '/organization'
-      preLoaderRoute: typeof OrganizationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notifications': {
-      id: '/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof NotificationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/nodes': {
-      id: '/nodes'
-      path: '/nodes'
-      fullPath: '/nodes'
-      preLoaderRoute: typeof NodesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/integrations': {
-      id: '/integrations'
-      path: '/integrations'
-      fullPath: '/integrations'
-      preLoaderRoute: typeof IntegrationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/install-agent.sh': {
-      id: '/install-agent.sh'
-      path: '/install-agent.sh'
-      fullPath: '/install-agent.sh'
-      preLoaderRoute: typeof InstallAgentDotshRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/domains': {
@@ -831,102 +776,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DomainsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/': {
-      id: '/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/observe/': {
-      id: '/observe/'
-      path: '/observe'
-      fullPath: '/observe/'
-      preLoaderRoute: typeof ObserveIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/team': {
-      id: '/settings/team'
-      path: '/team'
-      fullPath: '/settings/team'
-      preLoaderRoute: typeof SettingsTeamRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/operator': {
-      id: '/settings/operator'
-      path: '/operator'
-      fullPath: '/settings/operator'
-      preLoaderRoute: typeof SettingsOperatorRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/notifications': {
-      id: '/settings/notifications'
-      path: '/notifications'
-      fullPath: '/settings/notifications'
-      preLoaderRoute: typeof SettingsNotificationsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/nodes': {
-      id: '/settings/nodes'
-      path: '/nodes'
-      fullPath: '/settings/nodes'
-      preLoaderRoute: typeof SettingsNodesRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/networking': {
-      id: '/settings/networking'
-      path: '/networking'
-      fullPath: '/settings/networking'
-      preLoaderRoute: typeof SettingsNetworkingRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/members': {
-      id: '/settings/members'
-      path: '/members'
-      fullPath: '/settings/members'
-      preLoaderRoute: typeof SettingsMembersRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/integrations': {
-      id: '/settings/integrations'
+    '/integrations': {
+      id: '/integrations'
       path: '/integrations'
-      fullPath: '/settings/integrations'
-      preLoaderRoute: typeof SettingsIntegrationsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/domains': {
-      id: '/settings/domains'
-      path: '/domains'
-      fullPath: '/settings/domains'
-      preLoaderRoute: typeof SettingsDomainsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/api': {
-      id: '/settings/api'
-      path: '/api'
-      fullPath: '/settings/api'
-      preLoaderRoute: typeof SettingsApiRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/projects/$projectId': {
-      id: '/projects/$projectId'
-      path: '/projects/$projectId'
-      fullPath: '/projects/$projectId'
-      preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invites/$token': {
-      id: '/invites/$token'
-      path: '/invites/$token'
-      fullPath: '/invites/$token'
-      preLoaderRoute: typeof InvitesTokenRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nodes': {
+      id: '/nodes'
+      path: '/nodes'
+      fullPath: '/nodes'
+      preLoaderRoute: typeof NodesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organization': {
+      id: '/organization'
+      path: '/organization'
+      fullPath: '/organization'
+      preLoaderRoute: typeof OrganizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/mcp': {
@@ -936,67 +825,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projects/$projectId/': {
-      id: '/projects/$projectId/'
+    '/invites/$token': {
+      id: '/invites/$token'
+      path: '/invites/$token'
+      fullPath: '/invites/$token'
+      preLoaderRoute: typeof InvitesTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/observe/': {
+      id: '/observe/'
+      path: '/observe'
+      fullPath: '/observe/'
+      preLoaderRoute: typeof ObserveIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$projectId': {
+      id: '/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
       path: '/'
-      fullPath: '/projects/$projectId/'
-      preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/projects/$projectId/settings': {
-      id: '/projects/$projectId/settings'
-      path: '/settings'
-      fullPath: '/projects/$projectId/settings'
-      preLoaderRoute: typeof ProjectsProjectIdSettingsRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
+    '/settings/api': {
+      id: '/settings/api'
+      path: '/api'
+      fullPath: '/settings/api'
+      preLoaderRoute: typeof SettingsApiRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/projects/$projectId/secrets': {
-      id: '/projects/$projectId/secrets'
-      path: '/secrets'
-      fullPath: '/projects/$projectId/secrets'
-      preLoaderRoute: typeof ProjectsProjectIdSecretsRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
+    '/settings/cluster': {
+      id: '/settings/cluster'
+      path: '/cluster'
+      fullPath: '/settings/cluster'
+      preLoaderRoute: typeof SettingsClusterRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/projects/$projectId/deployments': {
-      id: '/projects/$projectId/deployments'
-      path: '/deployments'
-      fullPath: '/projects/$projectId/deployments'
-      preLoaderRoute: typeof ProjectsProjectIdDeploymentsRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
+    '/settings/domains': {
+      id: '/settings/domains'
+      path: '/domains'
+      fullPath: '/settings/domains'
+      preLoaderRoute: typeof SettingsDomainsRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/observe/projects/$projectId': {
-      id: '/observe/projects/$projectId'
-      path: '/observe/projects/$projectId'
-      fullPath: '/observe/projects/$projectId'
-      preLoaderRoute: typeof ObserveProjectsProjectIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/settings/integrations': {
+      id: '/settings/integrations'
+      path: '/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof SettingsIntegrationsRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/api/rpc/$': {
-      id: '/api/rpc/$'
-      path: '/api/rpc/$'
-      fullPath: '/api/rpc/$'
-      preLoaderRoute: typeof ApiRpcSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/settings/members': {
+      id: '/settings/members'
+      path: '/members'
+      fullPath: '/settings/members'
+      preLoaderRoute: typeof SettingsMembersRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/api/internal/dogfood': {
-      id: '/api/internal/dogfood'
-      path: '/api/internal/dogfood'
-      fullPath: '/api/internal/dogfood'
-      preLoaderRoute: typeof ApiInternalDogfoodRouteImport
-      parentRoute: typeof rootRouteImport
+    '/settings/networking': {
+      id: '/settings/networking'
+      path: '/networking'
+      fullPath: '/settings/networking'
+      preLoaderRoute: typeof SettingsNetworkingRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof SettingsRoute
     }
-    '/api/agent/$': {
-      id: '/api/agent/$'
-      path: '/api/agent/$'
-      fullPath: '/api/agent/$'
-      preLoaderRoute: typeof ApiAgentSplatRouteImport
+    '/settings/registries': {
+      id: '/settings/registries'
+      path: '/registries'
+      fullPath: '/settings/registries'
+      preLoaderRoute: typeof SettingsRegistriesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/team': {
+      id: '/settings/team'
+      path: '/team'
+      fullPath: '/settings/team'
+      preLoaderRoute: typeof SettingsTeamRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/api/$sentryId/envelope': {
+      id: '/api/$sentryId/envelope'
+      path: '/api/$sentryId/envelope'
+      fullPath: '/api/$sentryId/envelope'
+      preLoaderRoute: typeof ApiSentryIdEnvelopeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/$sentryId/store': {
@@ -1006,11 +930,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSentryIdStoreRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/$sentryId/envelope': {
-      id: '/api/$sentryId/envelope'
-      path: '/api/$sentryId/envelope'
-      fullPath: '/api/$sentryId/envelope'
-      preLoaderRoute: typeof ApiSentryIdEnvelopeRouteImport
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cluster/bootstrap': {
+      id: '/api/cluster/bootstrap'
+      path: '/api/cluster/bootstrap'
+      fullPath: '/api/cluster/bootstrap'
+      preLoaderRoute: typeof ApiClusterBootstrapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/dogfood': {
+      id: '/api/internal/dogfood'
+      path: '/api/internal/dogfood'
+      fullPath: '/api/internal/dogfood'
+      preLoaderRoute: typeof ApiInternalDogfoodRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/rpc/$': {
+      id: '/api/rpc/$'
+      path: '/api/rpc/$'
+      fullPath: '/api/rpc/$'
+      preLoaderRoute: typeof ApiRpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/observe/projects/$projectId': {
+      id: '/observe/projects/$projectId'
+      path: '/observe/projects/$projectId'
+      fullPath: '/observe/projects/$projectId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$projectId/': {
+      id: '/projects/$projectId/'
+      path: '/'
+      fullPath: '/projects/$projectId/'
+      preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/deployments': {
+      id: '/projects/$projectId/deployments'
+      path: '/deployments'
+      fullPath: '/projects/$projectId/deployments'
+      preLoaderRoute: typeof ProjectsProjectIdDeploymentsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/secrets': {
+      id: '/projects/$projectId/secrets'
+      path: '/secrets'
+      fullPath: '/projects/$projectId/secrets'
+      preLoaderRoute: typeof ProjectsProjectIdSecretsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/settings': {
+      id: '/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/projects/$projectId/settings'
+      preLoaderRoute: typeof ProjectsProjectIdSettingsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/api/$sentryId/otlp/$': {
+      id: '/api/$sentryId/otlp/$'
+      path: '/api/$sentryId/otlp/$'
+      fullPath: '/api/$sentryId/otlp/$'
+      preLoaderRoute: typeof ApiSentryIdOtlpSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/git/$serviceId': {
+      id: '/api/webhooks/git/$serviceId'
+      path: '/api/webhooks/git/$serviceId'
+      fullPath: '/api/webhooks/git/$serviceId'
+      preLoaderRoute: typeof ApiWebhooksGitServiceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/observe/projects/$projectId/': {
@@ -1020,81 +1014,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObserveProjectsProjectIdIndexRouteImport
       parentRoute: typeof ObserveProjectsProjectIdRoute
     }
-    '/projects/$projectId_/services/$serviceId': {
-      id: '/projects/$projectId_/services/$serviceId'
-      path: '/projects/$projectId/services/$serviceId'
-      fullPath: '/projects/$projectId/services/$serviceId'
-      preLoaderRoute: typeof ProjectsProjectIdServicesServiceIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/observe/projects/$projectId/trends': {
-      id: '/observe/projects/$projectId/trends'
-      path: '/trends'
-      fullPath: '/observe/projects/$projectId/trends'
-      preLoaderRoute: typeof ObserveProjectsProjectIdTrendsRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/traces': {
-      id: '/observe/projects/$projectId/traces'
-      path: '/traces'
-      fullPath: '/observe/projects/$projectId/traces'
-      preLoaderRoute: typeof ObserveProjectsProjectIdTracesRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/setup': {
-      id: '/observe/projects/$projectId/setup'
-      path: '/setup'
-      fullPath: '/observe/projects/$projectId/setup'
-      preLoaderRoute: typeof ObserveProjectsProjectIdSetupRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/services': {
-      id: '/observe/projects/$projectId/services'
-      path: '/services'
-      fullPath: '/observe/projects/$projectId/services'
-      preLoaderRoute: typeof ObserveProjectsProjectIdServicesRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/releases': {
-      id: '/observe/projects/$projectId/releases'
-      path: '/releases'
-      fullPath: '/observe/projects/$projectId/releases'
-      preLoaderRoute: typeof ObserveProjectsProjectIdReleasesRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/metrics': {
-      id: '/observe/projects/$projectId/metrics'
-      path: '/metrics'
-      fullPath: '/observe/projects/$projectId/metrics'
-      preLoaderRoute: typeof ObserveProjectsProjectIdMetricsRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/logs': {
-      id: '/observe/projects/$projectId/logs'
-      path: '/logs'
-      fullPath: '/observe/projects/$projectId/logs'
-      preLoaderRoute: typeof ObserveProjectsProjectIdLogsRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/issues': {
-      id: '/observe/projects/$projectId/issues'
-      path: '/issues'
-      fullPath: '/observe/projects/$projectId/issues'
-      preLoaderRoute: typeof ObserveProjectsProjectIdIssuesRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/insights': {
-      id: '/observe/projects/$projectId/insights'
-      path: '/insights'
-      fullPath: '/observe/projects/$projectId/insights'
-      preLoaderRoute: typeof ObserveProjectsProjectIdInsightsRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/explore': {
-      id: '/observe/projects/$projectId/explore'
-      path: '/explore'
-      fullPath: '/observe/projects/$projectId/explore'
-      preLoaderRoute: typeof ObserveProjectsProjectIdExploreRouteImport
+    '/observe/projects/$projectId/alerts': {
+      id: '/observe/projects/$projectId/alerts'
+      path: '/alerts'
+      fullPath: '/observe/projects/$projectId/alerts'
+      preLoaderRoute: typeof ObserveProjectsProjectIdAlertsRouteImport
       parentRoute: typeof ObserveProjectsProjectIdRoute
     }
     '/observe/projects/$projectId/dashboards': {
@@ -1104,60 +1028,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObserveProjectsProjectIdDashboardsRouteImport
       parentRoute: typeof ObserveProjectsProjectIdRoute
     }
-    '/observe/projects/$projectId/alerts': {
-      id: '/observe/projects/$projectId/alerts'
-      path: '/alerts'
-      fullPath: '/observe/projects/$projectId/alerts'
-      preLoaderRoute: typeof ObserveProjectsProjectIdAlertsRouteImport
+    '/observe/projects/$projectId/explore': {
+      id: '/observe/projects/$projectId/explore'
+      path: '/explore'
+      fullPath: '/observe/projects/$projectId/explore'
+      preLoaderRoute: typeof ObserveProjectsProjectIdExploreRouteImport
       parentRoute: typeof ObserveProjectsProjectIdRoute
     }
-    '/api/webhooks/git/$serviceId': {
-      id: '/api/webhooks/git/$serviceId'
-      path: '/api/webhooks/git/$serviceId'
-      fullPath: '/api/webhooks/git/$serviceId'
-      preLoaderRoute: typeof ApiWebhooksGitServiceIdRouteImport
+    '/observe/projects/$projectId/insights': {
+      id: '/observe/projects/$projectId/insights'
+      path: '/insights'
+      fullPath: '/observe/projects/$projectId/insights'
+      preLoaderRoute: typeof ObserveProjectsProjectIdInsightsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/issues': {
+      id: '/observe/projects/$projectId/issues'
+      path: '/issues'
+      fullPath: '/observe/projects/$projectId/issues'
+      preLoaderRoute: typeof ObserveProjectsProjectIdIssuesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/logs': {
+      id: '/observe/projects/$projectId/logs'
+      path: '/logs'
+      fullPath: '/observe/projects/$projectId/logs'
+      preLoaderRoute: typeof ObserveProjectsProjectIdLogsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/metrics': {
+      id: '/observe/projects/$projectId/metrics'
+      path: '/metrics'
+      fullPath: '/observe/projects/$projectId/metrics'
+      preLoaderRoute: typeof ObserveProjectsProjectIdMetricsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/releases': {
+      id: '/observe/projects/$projectId/releases'
+      path: '/releases'
+      fullPath: '/observe/projects/$projectId/releases'
+      preLoaderRoute: typeof ObserveProjectsProjectIdReleasesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/services': {
+      id: '/observe/projects/$projectId/services'
+      path: '/services'
+      fullPath: '/observe/projects/$projectId/services'
+      preLoaderRoute: typeof ObserveProjectsProjectIdServicesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/setup': {
+      id: '/observe/projects/$projectId/setup'
+      path: '/setup'
+      fullPath: '/observe/projects/$projectId/setup'
+      preLoaderRoute: typeof ObserveProjectsProjectIdSetupRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/traces': {
+      id: '/observe/projects/$projectId/traces'
+      path: '/traces'
+      fullPath: '/observe/projects/$projectId/traces'
+      preLoaderRoute: typeof ObserveProjectsProjectIdTracesRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/trends': {
+      id: '/observe/projects/$projectId/trends'
+      path: '/trends'
+      fullPath: '/observe/projects/$projectId/trends'
+      preLoaderRoute: typeof ObserveProjectsProjectIdTrendsRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/projects/$projectId_/services/$serviceId': {
+      id: '/projects/$projectId_/services/$serviceId'
+      path: '/projects/$projectId/services/$serviceId'
+      fullPath: '/projects/$projectId/services/$serviceId'
+      preLoaderRoute: typeof ProjectsProjectIdServicesServiceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/$sentryId/otlp/$': {
-      id: '/api/$sentryId/otlp/$'
-      path: '/api/$sentryId/otlp/$'
-      fullPath: '/api/$sentryId/otlp/$'
-      preLoaderRoute: typeof ApiSentryIdOtlpSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/observe/projects/$projectId/traces_/$traceId': {
-      id: '/observe/projects/$projectId/traces_/$traceId'
-      path: '/traces/$traceId'
-      fullPath: '/observe/projects/$projectId/traces/$traceId'
-      preLoaderRoute: typeof ObserveProjectsProjectIdTracesTraceIdRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/services_/$serviceName': {
-      id: '/observe/projects/$projectId/services_/$serviceName'
-      path: '/services/$serviceName'
-      fullPath: '/observe/projects/$projectId/services/$serviceName'
-      preLoaderRoute: typeof ObserveProjectsProjectIdServicesServiceNameRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/issues_/$issueId': {
-      id: '/observe/projects/$projectId/issues_/$issueId'
-      path: '/issues/$issueId'
-      fullPath: '/observe/projects/$projectId/issues/$issueId'
-      preLoaderRoute: typeof ObserveProjectsProjectIdIssuesIssueIdRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/observe/projects/$projectId/dashboards_/$dashboardId': {
-      id: '/observe/projects/$projectId/dashboards_/$dashboardId'
-      path: '/dashboards/$dashboardId'
-      fullPath: '/observe/projects/$projectId/dashboards/$dashboardId'
-      preLoaderRoute: typeof ObserveProjectsProjectIdDashboardsDashboardIdRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
-    '/api/git/oauth/gitlab/callback': {
-      id: '/api/git/oauth/gitlab/callback'
-      path: '/api/git/oauth/gitlab/callback'
-      fullPath: '/api/git/oauth/gitlab/callback'
-      preLoaderRoute: typeof ApiGitOauthGitlabCallbackRouteImport
+    '/api/git/github/app-manifest/callback': {
+      id: '/api/git/github/app-manifest/callback'
+      path: '/api/git/github/app-manifest/callback'
+      fullPath: '/api/git/github/app-manifest/callback'
+      preLoaderRoute: typeof ApiGitGithubAppManifestCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/git/oauth/github/callback': {
@@ -1167,12 +1119,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGitOauthGithubCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/git/github/app-manifest/callback': {
-      id: '/api/git/github/app-manifest/callback'
-      path: '/api/git/github/app-manifest/callback'
-      fullPath: '/api/git/github/app-manifest/callback'
-      preLoaderRoute: typeof ApiGitGithubAppManifestCallbackRouteImport
+    '/api/git/oauth/gitlab/callback': {
+      id: '/api/git/oauth/gitlab/callback'
+      path: '/api/git/oauth/gitlab/callback'
+      fullPath: '/api/git/oauth/gitlab/callback'
+      preLoaderRoute: typeof ApiGitOauthGitlabCallbackRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/observe/projects/$projectId/dashboards_/$dashboardId': {
+      id: '/observe/projects/$projectId/dashboards_/$dashboardId'
+      path: '/dashboards/$dashboardId'
+      fullPath: '/observe/projects/$projectId/dashboards/$dashboardId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdDashboardsDashboardIdRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/issues_/$issueId': {
+      id: '/observe/projects/$projectId/issues_/$issueId'
+      path: '/issues/$issueId'
+      fullPath: '/observe/projects/$projectId/issues/$issueId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdIssuesIssueIdRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/services_/$serviceName': {
+      id: '/observe/projects/$projectId/services_/$serviceName'
+      path: '/services/$serviceName'
+      fullPath: '/observe/projects/$projectId/services/$serviceName'
+      preLoaderRoute: typeof ObserveProjectsProjectIdServicesServiceNameRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
+    }
+    '/observe/projects/$projectId/traces_/$traceId': {
+      id: '/observe/projects/$projectId/traces_/$traceId'
+      path: '/traces/$traceId'
+      fullPath: '/observe/projects/$projectId/traces/$traceId'
+      preLoaderRoute: typeof ObserveProjectsProjectIdTracesTraceIdRouteImport
+      parentRoute: typeof ObserveProjectsProjectIdRoute
     }
     '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId': {
       id: '/projects/$projectId_/services/$serviceId_/deployments/$deploymentId'
@@ -1186,26 +1166,26 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteChildren {
   SettingsApiRoute: typeof SettingsApiRoute
+  SettingsClusterRoute: typeof SettingsClusterRoute
   SettingsDomainsRoute: typeof SettingsDomainsRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsMembersRoute: typeof SettingsMembersRoute
   SettingsNetworkingRoute: typeof SettingsNetworkingRoute
-  SettingsNodesRoute: typeof SettingsNodesRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
-  SettingsOperatorRoute: typeof SettingsOperatorRoute
+  SettingsRegistriesRoute: typeof SettingsRegistriesRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsApiRoute: SettingsApiRoute,
+  SettingsClusterRoute: SettingsClusterRoute,
   SettingsDomainsRoute: SettingsDomainsRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsMembersRoute: SettingsMembersRoute,
   SettingsNetworkingRoute: SettingsNetworkingRoute,
-  SettingsNodesRoute: SettingsNodesRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
-  SettingsOperatorRoute: SettingsOperatorRoute,
+  SettingsRegistriesRoute: SettingsRegistriesRoute,
   SettingsTeamRoute: SettingsTeamRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
@@ -1288,7 +1268,6 @@ const ObserveProjectsProjectIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DomainsRoute: DomainsRoute,
-  InstallAgentDotshRoute: InstallAgentDotshRoute,
   IntegrationsRoute: IntegrationsRoute,
   LoginRoute: LoginRoute,
   NodesRoute: NodesRoute,
@@ -1301,8 +1280,8 @@ const rootRouteChildren: RootRouteChildren = {
   ObserveIndexRoute: ObserveIndexRoute,
   ApiSentryIdEnvelopeRoute: ApiSentryIdEnvelopeRoute,
   ApiSentryIdStoreRoute: ApiSentryIdStoreRoute,
-  ApiAgentSplatRoute: ApiAgentSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiClusterBootstrapRoute: ApiClusterBootstrapRoute,
   ApiInternalDogfoodRoute: ApiInternalDogfoodRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
   ObserveProjectsProjectIdRoute: ObserveProjectsProjectIdRouteWithChildren,

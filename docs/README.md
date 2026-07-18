@@ -13,8 +13,8 @@ Canonical project documentation. **These files dictate product, marketing, and i
 | [observe.md](./observe.md)               | **Optional Observe** — Sentry + OTel + ClickHouse                    |
 | [data-plane.md](./data-plane.md)         | **DB/Redis/S3 linking** — design notes                               |
 | [security.md](./security.md)             | **Security stance** — non-negotiables                                |
-| [access.md](./access.md)                 | **Proxy + cloudflared (v1)** — wildcard URLs                         |
-| [secure-runtime.md](./secure-runtime.md) | **How user apps run** — gVisor + hardened Docker                     |
+| [access.md](./access.md)                 | **Traefik + edge (v1)** — wildcard URLs                              |
+| [secure-runtime.md](./secure-runtime.md) | **How user apps run** — gVisor RuntimeClass on k3s                   |
 | [git-oauth.md](./git-oauth.md)           | GitHub App / GitLab OAuth                                            |
 | [mcp.md](./mcp.md)                       | MCP server for agents                                                |
 

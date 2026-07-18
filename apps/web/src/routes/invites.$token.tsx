@@ -24,7 +24,7 @@ export const Route = createFileRoute("/invites/$token")({
 
 function InviteShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-svh items-center justify-center overflow-hidden p-4">
+    <div className="relative flex h-svh items-center justify-center overflow-y-auto p-4">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.55_0.19_255/10%),transparent_55%)]"
