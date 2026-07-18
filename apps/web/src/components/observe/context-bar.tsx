@@ -23,14 +23,12 @@ export type ObserveSurface =
   | "default"
   | "traces"
   | "logs"
-  | "explore"
   | "issues"
 
 const PLACEHOLDERS: Record<ObserveSurface, string> = {
   default: "Search services, operations…",
   traces: "Search span names…",
   logs: "Search log messages…",
-  explore: "Search services, operations…",
   issues: "Search issues by title or culprit…",
 }
 
@@ -100,7 +98,7 @@ export function ContextBar({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const filterCount = context.filters.length
   const hasBaseline = context.baseline.mode !== "none"
-  const showFacets = surface === "traces" || surface === "explore"
+  const showFacets = surface === "traces"
   const signal = surface === "logs" ? "logs" : "spans"
 
   const setQuery = useCallback(
@@ -264,9 +262,7 @@ export function ContextBar({
           />
         ) : null}
 
-        {(surface === "traces" ||
-          surface === "logs" ||
-          surface === "explore") && (
+        {(surface === "traces" || surface === "logs") && (
           <AdvancedFilterDialog
             initialValue={whereText}
             onApply={applyWhere}
@@ -385,7 +381,7 @@ export function ContextBar({
             signal={signal}
           />
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2.5">
-            {(surface === "explore" || surface === "default") && (
+            {surface === "default" && (
               <BaselinePicker
                 value={context.baseline}
                 onChange={(baseline) => onChange({ ...context, baseline })}

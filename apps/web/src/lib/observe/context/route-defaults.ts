@@ -7,7 +7,6 @@ export type ObserveListRoute =
   | "logs"
   | "releases"
   | "services"
-  | "explore"
   | "trends"
 
 /** Cold-landing presets when URL has no time keys. Continuity overrides when present. */
@@ -18,7 +17,6 @@ export const COLD_TIME_PRESET: Record<ObserveListRoute, TimePreset> = {
   logs: "15m",
   releases: "14d",
   services: "24h",
-  explore: "1h",
   trends: "24h",
 }
 

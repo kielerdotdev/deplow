@@ -35,7 +35,7 @@ function spanScopeStorageKey(projectId?: string) {
     : "observe.spanScope"
 }
 
-/** Compact surface facets (traces/explore) — lives inside ContextBar. */
+/** Compact surface facets (traces) — lives inside ContextBar. */
 export function ObserveFacets({
   context,
   onChange,

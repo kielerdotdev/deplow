@@ -170,7 +170,7 @@ function ReleasesPage() {
               header: "Release",
               cell: (r) => (
                 <Link
-                  to="/observe/projects/$projectId/explore"
+                  to="/observe/projects/$projectId/traces"
                   params={{ projectId }}
                   search={serializeContext({
                     ...context,

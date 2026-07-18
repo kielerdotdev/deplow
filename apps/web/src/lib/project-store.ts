@@ -95,13 +95,13 @@ export function observePathForProject(
     "services",
     "dashboards",
     "insights",
-    "explore",
     "traces",
     "logs",
     "issues",
     "releases",
     "alerts",
     "trends",
+    "metrics",
   ])
   if (allowed.has(surface)) {
     return `/observe/projects/${projectId}/${surface}`

@@ -63,7 +63,7 @@ export const baselineSpecSchema = z.discriminatedUnion("mode", [
 ])
 export type BaselineSpec = z.infer<typeof baselineSpecSchema>
 
-/** Rectangular brush on Explore heatmap (time × duration/error). */
+/** Rectangular brush on a heatmap (time × duration/error). */
 export const selectionSchema = z.object({
   timeFrom: z.string().datetime({ offset: true }),
   timeTo: z.string().datetime({ offset: true }),
@@ -115,7 +115,6 @@ export const drilldownActionSchema = z.object({
   type: z.enum([
     "open_trace",
     "open_logs",
-    "open_explore",
     "open_issue",
     "apply_filter",
   ]),
@@ -130,7 +129,7 @@ export const contextSchema = z.object({
   filters: z.array(filterClauseSchema).default([]),
   query: querySpecSchema.default({}),
   selection: selectionSchema.optional(),
-  /** Explore investigation tab */
+  /** Optional investigation tab for multi-panel surfaces */
   tab: z
     .enum([
       "root_spans",

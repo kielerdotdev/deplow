@@ -117,7 +117,7 @@ export function InsightWidget({
               />
             }
           >
-            Explorer
+            Traces
           </Button>
           <Button
             variant="ghost"

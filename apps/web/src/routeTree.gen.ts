@@ -47,7 +47,6 @@ import { Route as ApiWebhooksGitServiceIdRouteImport } from './routes/api/webhoo
 import { Route as ObserveProjectsProjectIdIndexRouteImport } from './routes/observe/projects/$projectId.index'
 import { Route as ObserveProjectsProjectIdAlertsRouteImport } from './routes/observe/projects/$projectId.alerts'
 import { Route as ObserveProjectsProjectIdDashboardsRouteImport } from './routes/observe/projects/$projectId.dashboards'
-import { Route as ObserveProjectsProjectIdExploreRouteImport } from './routes/observe/projects/$projectId.explore'
 import { Route as ObserveProjectsProjectIdInsightsRouteImport } from './routes/observe/projects/$projectId.insights'
 import { Route as ObserveProjectsProjectIdIssuesRouteImport } from './routes/observe/projects/$projectId.issues'
 import { Route as ObserveProjectsProjectIdLogsRouteImport } from './routes/observe/projects/$projectId.logs'
@@ -264,12 +263,6 @@ const ObserveProjectsProjectIdDashboardsRoute =
     path: '/dashboards',
     getParentRoute: () => ObserveProjectsProjectIdRoute,
   } as any)
-const ObserveProjectsProjectIdExploreRoute =
-  ObserveProjectsProjectIdExploreRouteImport.update({
-    id: '/explore',
-    path: '/explore',
-    getParentRoute: () => ObserveProjectsProjectIdRoute,
-  } as any)
 const ObserveProjectsProjectIdInsightsRoute =
   ObserveProjectsProjectIdInsightsRouteImport.update({
     id: '/insights',
@@ -417,7 +410,6 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
   '/observe/projects/$projectId/alerts': typeof ObserveProjectsProjectIdAlertsRoute
   '/observe/projects/$projectId/dashboards': typeof ObserveProjectsProjectIdDashboardsRoute
-  '/observe/projects/$projectId/explore': typeof ObserveProjectsProjectIdExploreRoute
   '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
   '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
   '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
@@ -473,7 +465,6 @@ export interface FileRoutesByTo {
   '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
   '/observe/projects/$projectId/alerts': typeof ObserveProjectsProjectIdAlertsRoute
   '/observe/projects/$projectId/dashboards': typeof ObserveProjectsProjectIdDashboardsRoute
-  '/observe/projects/$projectId/explore': typeof ObserveProjectsProjectIdExploreRoute
   '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
   '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
   '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
@@ -533,7 +524,6 @@ export interface FileRoutesById {
   '/api/webhooks/git/$serviceId': typeof ApiWebhooksGitServiceIdRoute
   '/observe/projects/$projectId/alerts': typeof ObserveProjectsProjectIdAlertsRoute
   '/observe/projects/$projectId/dashboards': typeof ObserveProjectsProjectIdDashboardsRoute
-  '/observe/projects/$projectId/explore': typeof ObserveProjectsProjectIdExploreRoute
   '/observe/projects/$projectId/insights': typeof ObserveProjectsProjectIdInsightsRoute
   '/observe/projects/$projectId/issues': typeof ObserveProjectsProjectIdIssuesRoute
   '/observe/projects/$projectId/logs': typeof ObserveProjectsProjectIdLogsRoute
@@ -594,7 +584,6 @@ export interface FileRouteTypes {
     | '/api/webhooks/git/$serviceId'
     | '/observe/projects/$projectId/alerts'
     | '/observe/projects/$projectId/dashboards'
-    | '/observe/projects/$projectId/explore'
     | '/observe/projects/$projectId/insights'
     | '/observe/projects/$projectId/issues'
     | '/observe/projects/$projectId/logs'
@@ -650,7 +639,6 @@ export interface FileRouteTypes {
     | '/api/webhooks/git/$serviceId'
     | '/observe/projects/$projectId/alerts'
     | '/observe/projects/$projectId/dashboards'
-    | '/observe/projects/$projectId/explore'
     | '/observe/projects/$projectId/insights'
     | '/observe/projects/$projectId/issues'
     | '/observe/projects/$projectId/logs'
@@ -709,7 +697,6 @@ export interface FileRouteTypes {
     | '/api/webhooks/git/$serviceId'
     | '/observe/projects/$projectId/alerts'
     | '/observe/projects/$projectId/dashboards'
-    | '/observe/projects/$projectId/explore'
     | '/observe/projects/$projectId/insights'
     | '/observe/projects/$projectId/issues'
     | '/observe/projects/$projectId/logs'
@@ -1028,13 +1015,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObserveProjectsProjectIdDashboardsRouteImport
       parentRoute: typeof ObserveProjectsProjectIdRoute
     }
-    '/observe/projects/$projectId/explore': {
-      id: '/observe/projects/$projectId/explore'
-      path: '/explore'
-      fullPath: '/observe/projects/$projectId/explore'
-      preLoaderRoute: typeof ObserveProjectsProjectIdExploreRouteImport
-      parentRoute: typeof ObserveProjectsProjectIdRoute
-    }
     '/observe/projects/$projectId/insights': {
       id: '/observe/projects/$projectId/insights'
       path: '/insights'
@@ -1214,7 +1194,6 @@ const ProjectsProjectIdRouteWithChildren =
 interface ObserveProjectsProjectIdRouteChildren {
   ObserveProjectsProjectIdAlertsRoute: typeof ObserveProjectsProjectIdAlertsRoute
   ObserveProjectsProjectIdDashboardsRoute: typeof ObserveProjectsProjectIdDashboardsRoute
-  ObserveProjectsProjectIdExploreRoute: typeof ObserveProjectsProjectIdExploreRoute
   ObserveProjectsProjectIdInsightsRoute: typeof ObserveProjectsProjectIdInsightsRoute
   ObserveProjectsProjectIdIssuesRoute: typeof ObserveProjectsProjectIdIssuesRoute
   ObserveProjectsProjectIdLogsRoute: typeof ObserveProjectsProjectIdLogsRoute
@@ -1236,7 +1215,6 @@ const ObserveProjectsProjectIdRouteChildren: ObserveProjectsProjectIdRouteChildr
     ObserveProjectsProjectIdAlertsRoute: ObserveProjectsProjectIdAlertsRoute,
     ObserveProjectsProjectIdDashboardsRoute:
       ObserveProjectsProjectIdDashboardsRoute,
-    ObserveProjectsProjectIdExploreRoute: ObserveProjectsProjectIdExploreRoute,
     ObserveProjectsProjectIdInsightsRoute:
       ObserveProjectsProjectIdInsightsRoute,
     ObserveProjectsProjectIdIssuesRoute: ObserveProjectsProjectIdIssuesRoute,

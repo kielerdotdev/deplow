@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils"
 function surfaceFromPath(pathname: string): ObserveSurface {
   if (pathname.includes("/traces")) return "traces"
   if (pathname.includes("/logs")) return "logs"
-  if (pathname.includes("/explore")) return "explore"
   if (pathname.includes("/issues")) return "issues"
   return "default"
 }

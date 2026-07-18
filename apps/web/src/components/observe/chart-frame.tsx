@@ -1,5 +1,3 @@
-import { Link } from "@tanstack/react-router"
-
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -21,8 +19,6 @@ export function ChartFrame({
   scopeSummary,
   timezone,
   incompleteBucket,
-  openExploreTo,
-  openExploreSearch,
   onCreateAlert,
 }: {
   title: string
@@ -36,8 +32,6 @@ export function ChartFrame({
   scopeSummary?: string
   timezone?: string
   incompleteBucket?: boolean
-  openExploreTo?: string
-  openExploreSearch?: Record<string, string | undefined>
   onCreateAlert?: () => void
 }) {
   const loading = state === "loading"
@@ -71,21 +65,6 @@ export function ChartFrame({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {openExploreTo ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-[11px]"
-              render={
-                <Link
-                  to={openExploreTo as never}
-                  search={openExploreSearch as never}
-                />
-              }
-            >
-              Open in Explore
-            </Button>
-          ) : null}
           {onCreateAlert ? (
             <Button
               size="sm"

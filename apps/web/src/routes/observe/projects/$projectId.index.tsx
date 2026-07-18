@@ -199,7 +199,7 @@ function OverviewPage() {
                 warn: (overview?.error_rate ?? 0) > 0.01,
                 onClick: () =>
                   void navigate({
-                    to: "/observe/projects/$projectId/explore",
+                    to: "/observe/projects/$projectId/traces",
                     params: { projectId },
                     search: serializeContext({
                       ...context,
@@ -213,7 +213,7 @@ function OverviewPage() {
                 unit: "ms",
                 onClick: () =>
                   void navigate({
-                    to: "/observe/projects/$projectId/explore",
+                    to: "/observe/projects/$projectId/traces",
                     params: { projectId },
                     search: serializeContext(context),
                   }),

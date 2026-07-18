@@ -132,13 +132,13 @@ function ServiceDetailPage() {
           variant="outline"
           render={
             <Link
-              to="/observe/projects/$projectId/explore"
+              to="/observe/projects/$projectId/traces"
               params={{ projectId }}
               search={serializeContext(context)}
             />
           }
         >
-          Explore
+          Traces
         </Button>
       }
     >

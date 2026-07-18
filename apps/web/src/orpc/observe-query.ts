@@ -14,8 +14,6 @@ import {
   observeSavedViews,
 } from "@deplow/db"
 import {
-  attributeAnomalies,
-  durationHeatmap,
   facetCounts,
   getTrace,
   listMetrics,
@@ -36,7 +34,6 @@ import {
   telemetryToSpanFilter,
   trendsResultToCsv,
   searchLogs,
-  selectionCounts,
   type SpanFilter,
   type TelemetryQuery as ObserveTelemetryQuery,
 } from "@deplow/observe"
@@ -330,51 +327,6 @@ export const chartsSeries = authedProcedure
     return metricSeries(observeClickHouseConfig(), f, input.metric)
   })
 
-export const exploreHeatmap = authedProcedure
-  .input(contextInputSchema)
-  .handler(async ({ context, input }) => {
-    requireObserve()
-    await assertProjectAccess(input.projectId, context.session)
-    await readyOrThrow()
-    return durationHeatmap(observeClickHouseConfig(), toFilter(input))
-  })
-
-export const exploreSelection = authedProcedure
-  .input(
-    z.object({
-      selected: contextInputSchema,
-      baseline: contextInputSchema.optional(),
-    }),
-  )
-  .handler(async ({ context, input }) => {
-    requireObserve()
-    await assertProjectAccess(input.selected.projectId, context.session)
-    await readyOrThrow()
-    return selectionCounts(
-      observeClickHouseConfig(),
-      toFilter(input.selected),
-      input.baseline ? toFilter(input.baseline) : null,
-    )
-  })
-
-export const exploreAnomalies = authedProcedure
-  .input(
-    z.object({
-      selected: contextInputSchema,
-      baseline: contextInputSchema,
-    }),
-  )
-  .handler(async ({ context, input }) => {
-    requireObserve()
-    await assertProjectAccess(input.selected.projectId, context.session)
-    await readyOrThrow()
-    return attributeAnomalies(
-      observeClickHouseConfig(),
-      toFilter(input.selected),
-      toFilter(input.baseline),
-    )
-  })
-
 export const releasesList = authedProcedure
   .input(
     z.object({
@@ -420,7 +372,7 @@ export const savedViewsCreate = authedProcedure
     z.object({
       projectId: z.string().uuid(),
       name: z.string().min(1).max(120),
-      surface: z.string().default("explore"),
+      surface: z.string().default("traces"),
       contextJson: z.string().min(2),
     }),
   )

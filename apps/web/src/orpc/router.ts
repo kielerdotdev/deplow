@@ -190,11 +190,6 @@ export const router = {
     charts: {
       series: observeQuery.chartsSeries,
     },
-    explore: {
-      heatmap: observeQuery.exploreHeatmap,
-      selection: observeQuery.exploreSelection,
-      anomalies: observeQuery.exploreAnomalies,
-    },
     releases: {
       list: observeQuery.releasesList,
     },
