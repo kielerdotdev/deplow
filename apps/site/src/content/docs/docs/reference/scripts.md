@@ -43,6 +43,7 @@ Run these from the repository root.
 
 | Command           | Description                  |
 | ----------------- | ---------------------------- |
-| `pnpm build`      | Build web app                |
-| `pnpm site:build` | Build static docs site       |
-| `pnpm e2e`        | Docker-backed API smoke test |
+| `pnpm build`       | Build web app                                    |
+| `pnpm site:build`  | Build static docs site                           |
+| `pnpm site:deploy` | Build + deploy site to Cloudflare Workers        |
+| `pnpm e2e`         | Docker-backed API smoke test                     |

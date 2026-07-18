@@ -54,9 +54,9 @@ Recommended: enable `userns-remap: default` in `/etc/docker/daemon.json` (see [d
 
 ### Development
 
-- Node.js 22+ and pnpm 10
-- Docker Engine + BuildKit + gVisor (same as production)
-- Host bootstrap: `bash scripts/install.sh` (BuildKit, Railpack on PATH, gVisor, compose infra)
+- Docker Engine on the host (socket shared into the Dev Container)
+- Cursor / VS Code + Dev Containers extension
+- Open the repo in the Dev Container — Node, pnpm, kubectl, helm, and the official `hetzner-k3s` CLI are provided there
 
 ## Quick start (VPS / production)
 
@@ -103,26 +103,39 @@ Installs under `/opt/deplow` (`DEPLOW_HOME` to override). Image: `ghcr.io/kieler
 bash scripts/deploy.sh          # or: pnpm deploy
 ```
 
+## Public site (hostrig.com)
+
+Marketing + docs live in `apps/site` (Astro / Starlight) and deploy to Cloudflare Workers via Wrangler.
+
+```bash
+pnpm site:dev      # local :4321
+pnpm site:build
+pnpm site:deploy   # needs `wrangler login` (or CLOUDFLARE_* env)
+```
+
+GitHub Actions (`.github/workflows/site.yml`) builds on PRs and deploys on push to `main`. Add repo secrets:
+
+| Secret                   | Where                                      |
+| ------------------------ | ------------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`   | Cloudflare → API Tokens → Edit Cloudflare Workers |
+| `CLOUDFLARE_ACCOUNT_ID`  | Workers dashboard → Account ID             |
+
+Attach `hostrig.com` under the Worker’s **Domains** tab after the first deploy.
+
 ## Development
 
-```bash
-bash scripts/install.sh   # or: pnpm install:host
-pnpm dev                 # http://localhost:3000 — create user
-# Open Domains → set base domain → create project → Deploy
-```
+**Local development is Dev Container only.** Do not run `pnpm install` / `pnpm dev` on the host for app work.
 
-**Manual:**
+1. Host needs Docker Engine
+2. Open the repo in Cursor / VS Code → **Dev Containers: Reopen in Container**
+3. Wait for start — infra, DB, and the web app come up automatically
+4. Open **http://localhost:9565**
 
-```bash
-pnpm install
-pnpm infra:up          # platform Redis + Caddy
-pnpm db:push
-cp apps/web/.env.example apps/web/.env   # BETTER_AUTH_SECRET; Domains UI for base domain
-pnpm dev               # http://localhost:3000
-pnpm e2e               # requires pnpm infra:up && pnpm dev — service deploy + Caddy Host + backup + destroy
-```
+Details: [`.devcontainer/README.md`](./.devcontainer/README.md). The image includes the official [hetzner-k3s](https://hetzner-k3s.com/) CLI plus kubectl/helm.
 
 `DEPLOW_BASE_DOMAIN` only seeds Domains on first boot; day-to-day changes are in the **Domains** tab.
+
+Production VPS install remains `deploy/install.sh` / the curl installer above — that is not a local-dev path.
 
 ## Public URLs (Caddy + cloudflared)
 
@@ -222,8 +235,8 @@ User app containers run under **gVisor** with hardened defaults (dropped caps, n
 | ----------------------------------------------- | ------------------------------------------------ |
 | `deploy/install.sh` / `… \| bash -s update`     | VPS pull-only install / upgrade (`/opt/deplow`)  |
 | `bash scripts/deploy.sh` / `pnpm deploy`        | Same installer using in-tree `deploy/` assets    |
-| `bash scripts/install.sh` / `pnpm install:host` | Host bootstrap + infra (**dev**)                 |
-| `pnpm dev`                                      | Web app on :3000                                 |
+| `bash scripts/install.sh` / `pnpm install:host` | Optional host tooling (not the local-dev path)   |
+| `pnpm dev`                                      | Web app on :9565 (auto-started in Dev Container) |
 | `pnpm build` / `pnpm start`                     | Production build + srvx                          |
 | `pnpm check` / `pnpm test` / `pnpm typecheck`   | Quality gates                                    |
 | `pnpm infra:up` / `infra:down`                  | Platform containers (repo compose, no web)       |

@@ -10,6 +10,7 @@
     "site:dev": "pnpm --filter @deplow/site dev",
     "site:build": "pnpm --filter @deplow/site build",
     "site:preview": "pnpm --filter @deplow/site preview",
+    "site:deploy": "pnpm --filter @deplow/site run deploy",
     "check": "vp check",
     "lint": "vp lint",
     "fmt": "vp fmt",
@@ -34,7 +35,8 @@
     "test:observe": "vp test packages/observe apps/web/src/lib/observe apps/web/src/components/observe",
     "smoke:observe-ch": "bash scripts/observe-ch-smoke.sh",
     "screenshots": "node scripts/capture-marketing-screenshots.mjs",
-    "install:host": "bash scripts/install.sh"
+    "install:host": "bash scripts/install.sh",
+    "agent:build": "pnpm --filter @deplow/agent build"
   },
   "devDependencies": {
     "@voidzero-dev/vite-plus-core": "0.2.4",

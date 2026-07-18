@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hostrig",
+  "compatibility_date": "2026-07-18",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+  },
+  "routes": [
+    { "pattern": "hostrig.com", "custom_domain": true },
+    { "pattern": "www.hostrig.com", "custom_domain": true },
+  ],
+}
