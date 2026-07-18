@@ -48,9 +48,9 @@ describe("caddy reload status tracking", () => {
       "docker",
       expect.arrayContaining([
         "exec",
-        "deplow-caddy",
+        "hostrig-caddy",
         "wget",
-        "http://127.0.0.1:80/deplow-health",
+        "http://127.0.0.1:80/hostrig-health",
       ]),
     )
   })

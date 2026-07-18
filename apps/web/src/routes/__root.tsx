@@ -41,7 +41,7 @@ export const Route = createRootRoute({
     scripts: loaderData?.dogfoodDsn
       ? [
           {
-            children: `window.__DEPLOW_DOGFOOD_DSN__=${JSON.stringify(loaderData.dogfoodDsn)};`,
+            children: `window.__HOSTRIG_DOGFOOD_DSN__=${JSON.stringify(loaderData.dogfoodDsn)};`,
           },
         ]
       : [],

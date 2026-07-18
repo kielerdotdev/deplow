@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { injectProjectIdIntoOtlpJson } from "./otlp-inject"
 
 describe("injectProjectIdIntoOtlpJson", () => {
-  it("injects deplow.project_id into resourceSpans", () => {
+  it("injects hostrig.project_id into resourceSpans", () => {
     const body = Buffer.from(
       JSON.stringify({
         resourceSpans: [
@@ -29,7 +29,11 @@ describe("injectProjectIdIntoOtlpJson", () => {
       }>
     }
     const attrs = parsed.resourceSpans[0]!.resource.attributes
-    expect(attrs.some((a) => a.key === "deplow.project_id")).toBe(true)
+    expect(attrs.some((a) => a.key === "hostrig.project_id")).toBe(true)
+    expect(
+      attrs.find((a) => a.key === "hostrig.project_id")?.value.stringValue,
+    ).toBe("proj-1")
+    // Legacy attr for older ClickHouse MVs during rebrand window
     expect(
       attrs.find((a) => a.key === "deplow.project_id")?.value.stringValue,
     ).toBe("proj-1")

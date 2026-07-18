@@ -4,7 +4,7 @@ import type {
   NetbirdDomainMode,
   NetbirdEdgeStatus,
   NetbirdManagedDomain,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -138,11 +138,16 @@ export function NetbirdEdgeWizard({
   return (
     <div className="space-y-4">
       {!status.clusterReady ? (
-        <Alert>
-          <AlertTitle>Connect a cluster first</AlertTitle>
+        <Alert variant={connected ? "destructive" : "default"}>
+          <AlertTitle>
+            {connected
+              ? "Cluster offline — NetBird cannot publish"
+              : "Connect a cluster first"}
+          </AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-2">
-            NetBird installs an agent on your k3s nodes and publishes apps via
-            Reverse Proxy.
+            {connected
+              ? "NetBird is still configured, but apps need a healthy k3s cluster with Traefik. Fix or reconnect the cluster, then deploy again."
+              : "NetBird installs an agent on your k3s nodes and publishes apps via Reverse Proxy."}
             <Button
               size="sm"
               variant="outline"
@@ -315,14 +320,16 @@ export function NetbirdEdgeWizard({
         </Step>
 
         <Step
-          done={connected}
+          done={connected && status.clusterReady && status.traefikReady}
           active={!connected && status.clusterReady}
           label="Connect"
         >
           {connected ? (
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs text-muted-foreground">
-                Edge ready. Deploy a web service to publish via NetBird.
+                {status.clusterReady && status.traefikReady
+                  ? "Edge ready. Deploy a web service to publish via NetBird."
+                  : "Credentials saved. Waiting on cluster + Traefik before apps can go public."}
               </p>
               <Button
                 size="sm"

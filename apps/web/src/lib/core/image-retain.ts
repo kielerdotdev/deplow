@@ -2,10 +2,10 @@
  * Deployment history helpers for rollback + keeping one "current" running row.
  */
 
-import { and, eq, ne, db, deployments } from "@deplow/db"
+import { and, eq, ne, db, deployments } from "@hostrig/db"
 
 export function imageRetainCount(): number {
-  const raw = process.env.DEPLOW_IMAGE_RETAIN
+  const raw = process.env.HOSTRIG_IMAGE_RETAIN
   if (!raw) return 5
   const n = Number.parseInt(raw, 10)
   return Number.isFinite(n) && n >= 1 ? Math.min(n, 50) : 5

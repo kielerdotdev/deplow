@@ -15,12 +15,12 @@ describe("buildUserAppHostConfig", () => {
     })
     const hc = buildUserAppHostConfig({
       runtime: limits,
-      networkMode: "deplow_default",
+      networkMode: "hostrig_default",
       portBindings: { "80/tcp": [{ HostPort: "8080" }] },
     })
 
     expect(hc.Runtime).toBe("runsc")
-    expect(hc.NetworkMode).toBe("deplow_default")
+    expect(hc.NetworkMode).toBe("hostrig_default")
     expect(hc.CapDrop).toEqual(["ALL"])
     expect(hc.SecurityOpt).toContain("no-new-privileges:true")
     expect(hc.ReadonlyRootfs).toBe(true)
@@ -38,7 +38,7 @@ describe("buildUserAppHostConfig", () => {
     const limits = parseRuntimeLimits({ appRuntime: "runsc" })
     const hc = buildUserAppHostConfig({
       runtime: limits,
-      networkMode: "deplow_default",
+      networkMode: "hostrig_default",
       readOnlyRootfs: false,
     })
     expect(hc.ReadonlyRootfs).toBe(false)

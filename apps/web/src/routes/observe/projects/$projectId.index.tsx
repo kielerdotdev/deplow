@@ -87,10 +87,14 @@ function OverviewPage() {
       setState("loading")
       try {
         const input = contextToApiInput(projectId, context)
+        // Partial success: cold projects should not flash a red ERROR on every tile
+        // when one query fails (e.g. ClickHouse lag) while others return empty.
         const [ov, series, list, issues, alertRows] = await Promise.all([
-          client.observe.services.overview(input),
-          client.observe.charts.series({ ...input, metric: "rate" }),
-          client.observe.services.list(input),
+          client.observe.services.overview(input).catch(() => null),
+          client.observe.charts
+            .series({ ...input, metric: "rate" })
+            .catch(() => [] as Array<{ t: number; v: number }>),
+          client.observe.services.list(input).catch(() => []),
           client.observe.issues
             .list({ projectId, status: "unresolved" })
             .catch(() => []),
@@ -149,24 +153,27 @@ function OverviewPage() {
             <span
               className={cn(
                 "rounded-md px-2 py-0.5 font-medium",
-                (overview?.error_rate ?? 0) > 0.05
-                  ? "bg-destructive/15 text-destructive"
-                  : (overview?.error_rate ?? 0) > 0.01
-                    ? "bg-warning/15 text-warning"
-                    : "bg-success/15 text-success",
+                state === "empty" || !overview
+                  ? "bg-muted text-muted-foreground"
+                  : (overview.error_rate ?? 0) > 0.05
+                    ? "bg-destructive/15 text-destructive"
+                    : (overview.error_rate ?? 0) > 0.01
+                      ? "bg-warning/15 text-warning"
+                      : "bg-success/15 text-success",
               )}
             >
-              {(overview?.error_rate ?? 0) > 0.05
-                ? "Critical"
-                : (overview?.error_rate ?? 0) > 0.01
-                  ? "Degraded"
-                  : "Healthy"}
+              {state === "empty" || !overview
+                ? "No data"
+                : (overview.error_rate ?? 0) > 0.05
+                  ? "Critical"
+                  : (overview.error_rate ?? 0) > 0.01
+                    ? "Degraded"
+                    : "Healthy"}
             </span>
             <span className="text-muted-foreground">
-              Availability{" "}
-              {formatPercent(100 - (overview?.error_rate ?? 0) * 100)}
-              {" · "}
-              error rate {formatPercent((overview?.error_rate ?? 0) * 100)}
+              {state === "empty" || !overview
+                ? "Send a trace or error event to light this up"
+                : `Availability ${formatPercent(100 - (overview.error_rate ?? 0) * 100)} · error rate ${formatPercent((overview.error_rate ?? 0) * 100)}`}
             </span>
           </div>
           <StatStrip

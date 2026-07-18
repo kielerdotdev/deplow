@@ -1,4 +1,4 @@
-import { and, eq, inArray, db, operations, projects, services } from "@deplow/db"
+import { and, eq, inArray, db, operations, projects, services } from "@hostrig/db"
 
 import {
   createOperation,
@@ -56,7 +56,7 @@ export async function destroyServiceLifecycle(
   }
 
   if (!input.force) {
-    const { serviceBindings } = await import("@deplow/db")
+    const { serviceBindings } = await import("@hostrig/db")
     const bound = await db
       .select()
       .from(serviceBindings)

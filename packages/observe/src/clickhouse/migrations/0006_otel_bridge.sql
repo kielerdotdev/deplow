@@ -1,5 +1,5 @@
--- Bridge stock otelcol-contrib clickhouse exporter tables → deplow project-scoped tables.
--- Exporter schema has no project_id; we copy from ResourceAttributes['deplow.project_id'].
+-- Bridge stock otelcol-contrib clickhouse exporter tables → hostrig project-scoped tables.
+-- Exporter schema has no project_id; we copy from ResourceAttributes['hostrig.project_id'].
 
 CREATE TABLE IF NOT EXISTS otel_spans (
   Timestamp DateTime64(9) CODEC(Delta, ZSTD(1)),
@@ -61,7 +61,11 @@ SETTINGS index_granularity = 8192, ttl_only_drop_parts = 1;
 CREATE MATERIALIZED VIEW IF NOT EXISTS spans_from_otel_mv
 TO spans
 AS SELECT
-  ResourceAttributes['deplow.project_id'] AS project_id,
+  if(
+    ResourceAttributes['hostrig.project_id'] != '',
+    ResourceAttributes['hostrig.project_id'],
+    ResourceAttributes['deplow.project_id']
+  ) AS project_id,
   Timestamp,
   TraceId,
   SpanId,
@@ -76,12 +80,17 @@ AS SELECT
   StatusCode,
   StatusMessage
 FROM otel_spans
-WHERE ResourceAttributes['deplow.project_id'] != '';
+WHERE ResourceAttributes['hostrig.project_id'] != ''
+   OR ResourceAttributes['deplow.project_id'] != '';
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS logs_from_otel_mv
 TO logs
 AS SELECT
-  ResourceAttributes['deplow.project_id'] AS project_id,
+  if(
+    ResourceAttributes['hostrig.project_id'] != '',
+    ResourceAttributes['hostrig.project_id'],
+    ResourceAttributes['deplow.project_id']
+  ) AS project_id,
   Timestamp,
   SeverityText,
   Body,
@@ -91,4 +100,5 @@ AS SELECT
   ResourceAttributes,
   LogAttributes
 FROM otel_logs
-WHERE ResourceAttributes['deplow.project_id'] != '';
+WHERE ResourceAttributes['hostrig.project_id'] != ''
+   OR ResourceAttributes['deplow.project_id'] != '';

@@ -135,7 +135,7 @@ export async function fetchGitLabUser(input: {
   const res = await fetchImpl(`${apiBase(input.config.baseUrl)}/user`, {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
   })
   await assertOk(res, "GitLab /user failed")
@@ -167,7 +167,7 @@ export async function createGitLabProjectHook(input: {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
       "Content-Type": "application/json",
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
     body: JSON.stringify({
       url: input.webhookUrl,
@@ -194,7 +194,7 @@ export async function deleteGitLabProjectHook(input: {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
   })
   if (!res.ok && res.status !== 404) {

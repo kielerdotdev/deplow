@@ -8,7 +8,7 @@
  * - exclude: traces matching A but not B
  */
 import type { ObserveClickHouseConfig } from "../clickhouse/client"
-import { esc, iso, queryJson, spanWhere, type SpanFilter } from "./common"
+import { esc, iso, queryJson, spanWhere, type SpanFilter, safeAttrKey } from "./common"
 import type { TraceListItem } from "./traces"
 
 export type TraceMatchRelation =
@@ -43,7 +43,7 @@ function patternWhere(
   if (pattern.statusError)
     parts.push(`${alias}.StatusCode = 'STATUS_CODE_ERROR'`)
   for (const af of pattern.attributeFilters ?? []) {
-    const attr = `coalesce(${alias}.SpanAttributes['${esc(af.key)}'], ${alias}.ResourceAttributes['${esc(af.key)}'])`
+    const attr = `coalesce(${alias}.SpanAttributes['${esc(safeAttrKey(af.key))}'], ${alias}.ResourceAttributes['${esc(safeAttrKey(af.key))}'])`
     switch (af.op) {
       case "eq":
         parts.push(`${attr} = '${esc(af.value ?? "")}'`)

@@ -45,21 +45,10 @@ export async function deployWebService(
 
   await ensureProjectNamespace(core, networking, ns)
 
-  const appRuntime = env.appRuntime
-  if (appRuntime === "runc" || appRuntime === "default") {
-    console.warn(
-      "[hostrig] DEPLOW_APP_RUNTIME=runc — user app pods are NOT sandboxed with gVisor",
-    )
-  }
-
-  const runtimeClassName = await ensureAppRuntimeClass({
-    node,
-    appRuntime,
-    required: env.appRuntimeRequired,
-  })
+  // User apps always require gVisor — no runc escape hatch.
+  const runtimeClassName = await ensureAppRuntimeClass({ node })
 
   const hardening = buildUserAppPodHardening({
-    appRuntime,
     memoryBytes: env.appMemoryBytes,
     nanoCpus: env.appNanoCpus,
     readOnlyRootfs: env.appReadOnlyRootfs,
@@ -78,7 +67,9 @@ export async function deployWebService(
       template: {
         metadata: { labels },
         spec: {
-          runtimeClassName: runtimeClassName ?? undefined,
+          runtimeClassName,
+          // Never mount the default SA token into untrusted user apps.
+          automountServiceAccountToken: false,
           securityContext: hardening.podSecurityContext,
           imagePullSecrets: input.imagePullSecrets?.length
             ? input.imagePullSecrets.map((n) => ({ name: n }))

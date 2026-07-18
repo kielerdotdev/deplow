@@ -18,6 +18,7 @@ coverage
 
 # runtime / local data
 /data/
+infra/pgbackrest/pgbackrest.conf
 /deploy-data/
 packages/db/data/
 tmp/
@@ -47,4 +48,4 @@ apps/web/data/
 .env.demo
 
 # built agent binary (not source)
-deploy/bin/deplow-agent
+deploy/bin/hostrig-agent

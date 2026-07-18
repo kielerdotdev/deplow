@@ -1,26 +1,41 @@
-# Central platform services for local / self-hosted deplow (dev & monorepo).
+# Central platform services for local / self-hosted hostrig (dev & monorepo).
 # Production VPS: use deploy/install.sh (pull-only) — see deploy/docker-compose.yml.
 # Host ports chosen to avoid common collisions on shared machines.
 #
 # Object storage is operator-provided (MinIO or Cloudflare R2) — not bundled.
-# Set DEPLOW_S3_* in .env; buckets are created on demand.
+# Set HOSTRIG_S3_* in .env; buckets are created on demand.
 #
-# User apps join the `default` network (name: deplow_default) so they can
+# User apps join the `default` network (name: hostrig_default) so they can
 # resolve dedicated per-project Postgres/Redis containers by Docker DNS.
 # The Caddy proxy is the only public HTTP entry for apps; data services stay private.
 services:
   # Control-plane Redis for BullMQ (not per-project tenant Redis)
   platform-redis:
     image: redis:7-alpine
-    container_name: deplow-platform-redis
+    container_name: hostrig-platform-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    # Dev default password is intentional (override via HOSTRIG_REDIS_PASSWORD).
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${HOSTRIG_REDIS_PASSWORD:-hostrig-dev-redis}",
+      ]
     ports:
-      - "56380:6379"
+      - "127.0.0.1:56380:6379"
     volumes:
-      - deplow_platform_redis_data:/data
+      - hostrig_platform_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-a",
+          "${HOSTRIG_REDIS_PASSWORD:-hostrig-dev-redis}",
+          "ping",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -45,7 +60,7 @@ services:
   # Host-side origin:       http://127.0.0.1:8088
   caddy:
     image: caddy:2-alpine
-    container_name: deplow-caddy
+    container_name: hostrig-caddy
     restart: unless-stopped
     ports:
       - "8088:80"
@@ -53,7 +68,7 @@ services:
       - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./infra/caddy/routes:/etc/caddy/routes
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/deplow-health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/hostrig-health"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -69,7 +84,7 @@ services:
   # cloudflared reaches Caddy via Docker DNS on the shared default network.
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: deplow-cloudflared
+    container_name: hostrig-cloudflared
     restart: unless-stopped
     profiles: ["edge"]
     command: tunnel --no-autoupdate run
@@ -83,34 +98,35 @@ services:
   # Start with: bash scripts/deploy.sh   (or: docker compose --profile app up -d)
   web:
     profiles: ["app"]
-    image: ${DEPLOW_IMAGE:-ghcr.io/kielerdotdev/deplow:latest}
+    image: ${HOSTRIG_IMAGE:-ghcr.io/kielerdotdev/hostrig:latest}
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: deplow-web
+    container_name: hostrig-web
     restart: unless-stopped
     ports:
-      - "${DEPLOW_WEB_PORT:-3000}:3000"
+      - "${HOSTRIG_WEB_PORT:-3000}:3000"
     env_file:
       - .env
     environment:
       NODE_ENV: production
       PORT: "3000"
-      DATABASE_URL: /data/deplow.db
-      DEPLOW_GIT_CLONE_ROOT: /data/git-clones
-      DEPLOW_PROXY_ROUTES_DIR: /etc/caddy/routes
-      DEPLOW_QUEUE_REDIS_URL: redis://platform-redis:6379
-      DEPLOW_DOCKER_NETWORK: ${DEPLOW_DOCKER_NETWORK:-deplow_default}
-      DEPLOW_CADDY_CONTAINER: deplow-caddy
+      DATABASE_URL: /data/hostrig.db
+      HOSTRIG_GIT_CLONE_ROOT: /data/git-clones
+      HOSTRIG_PROXY_ROUTES_DIR: /etc/caddy/routes
+      HOSTRIG_QUEUE_REDIS_URL: redis://:${HOSTRIG_REDIS_PASSWORD:-hostrig-dev-redis}@platform-redis:6379
+      HOSTRIG_DOCKER_NETWORK: ${HOSTRIG_DOCKER_NETWORK:-hostrig_default}
+      HOSTRIG_CADDY_CONTAINER: hostrig-caddy
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      DEPLOW_PUBLIC_URL: ${DEPLOW_PUBLIC_URL:-http://localhost:3000}
-      DEPLOW_BASE_DOMAIN: ${DEPLOW_BASE_DOMAIN:-apps.localhost}
-      DEPLOW_PUBLIC_URL_PROTOCOL: ${DEPLOW_PUBLIC_URL_PROTOCOL:-http}
-      DEPLOW_APP_RUNTIME: ${DEPLOW_APP_RUNTIME:-runsc}
-      DEPLOW_APP_RUNTIME_REQUIRED: ${DEPLOW_APP_RUNTIME_REQUIRED:-true}
+      HOSTRIG_PUBLIC_URL: ${HOSTRIG_PUBLIC_URL:-http://localhost:3000}
+      HOSTRIG_BASE_DOMAIN: ${HOSTRIG_BASE_DOMAIN:-apps.localhost}
+      HOSTRIG_PUBLIC_URL_PROTOCOL: ${HOSTRIG_PUBLIC_URL_PROTOCOL:-http}
+      # User apps always require gVisor — runc is not allowed
+      HOSTRIG_APP_RUNTIME: runsc
+      HOSTRIG_APP_RUNTIME_REQUIRED: "true"
       BUILDKIT_HOST: ${BUILDKIT_HOST:-docker-container://buildkit}
       RAILPACK_BIN: /usr/local/bin/railpack
-      # S3: set DEPLOW_S3_* in .env (not bundled)
+      # S3: set HOSTRIG_S3_* in .env (not bundled)
     volumes:
       - ./data:/data
       - ./infra/caddy/routes:/etc/caddy/routes
@@ -121,23 +137,23 @@ services:
       caddy:
         condition: service_healthy
 
-  # Observe profile: ClickHouse + OTel collector (required when DEPLOW_OBSERVE_ENABLED=1)
+  # Observe profile: ClickHouse + OTel collector (required when HOSTRIG_OBSERVE_ENABLED=1)
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
-    container_name: deplow-clickhouse
+    container_name: hostrig-clickhouse
     profiles: ["observe"]
     restart: unless-stopped
     environment:
-      CLICKHOUSE_DB: deplow_observe
-      CLICKHOUSE_USER: deplow
-      CLICKHOUSE_PASSWORD: deplow
+      CLICKHOUSE_DB: hostrig_observe
+      CLICKHOUSE_USER: hostrig
+      CLICKHOUSE_PASSWORD: hostrig
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    # Loopback-only in monorepo compose (never publish Observe CH to all interfaces).
     ports:
-      - "8123:8123"
-      # Avoid clashing with host MinIO :9000 — native protocol stays internal.
-      - "19000:9000"
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:19000:9000"
     volumes:
-      - deplow_observe_ch:/var/lib/clickhouse
+      - hostrig_observe_ch:/var/lib/clickhouse
       - ./infra/clickhouse/config.d:/etc/clickhouse-server/config.d:ro
     ulimits:
       nofile:
@@ -152,13 +168,14 @@ services:
 
   otelcol:
     image: otel/opentelemetry-collector-contrib:0.114.0
-    container_name: deplow-otelcol
+    container_name: hostrig-otelcol
     profiles: ["observe"]
     restart: unless-stopped
     command: ["--config=/etc/otelcol/config.yaml"]
+    # OTLP only on loopback — apps must use the authenticated control-plane gateway.
     ports:
-      - "4317:4317"
-      - "4318:4318"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
     volumes:
       - ./infra/otelcol/config.yaml:/etc/otelcol/config.yaml:ro
     depends_on:
@@ -166,5 +183,5 @@ services:
         condition: service_healthy
 
 volumes:
-  deplow_platform_redis_data:
-  deplow_observe_ch:
+  hostrig_platform_redis_data:
+  hostrig_observe_ch:

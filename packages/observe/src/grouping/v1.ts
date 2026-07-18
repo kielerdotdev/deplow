@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 
 export type GroupingResult = {
-  mechanism: "deplow-v1"
+  mechanism: "hostrig-v1"
   groupingKey: string
   groupingKeyHash: string
   title: string
@@ -101,9 +101,9 @@ function finish(
   >,
 ): GroupingResult {
   return {
-    mechanism: "deplow-v1",
+    mechanism: "hostrig-v1",
     groupingKey,
-    groupingKeyHash: sha256(`deplow-v1\0${groupingKey}`),
+    groupingKeyHash: sha256(`hostrig-v1\0${groupingKey}`),
     title,
     culprit,
     fingerprint,

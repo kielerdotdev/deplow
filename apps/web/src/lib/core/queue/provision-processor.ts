@@ -1,4 +1,4 @@
-import { eq } from "@deplow/db"
+import { eq } from "@hostrig/db"
 
 import {
   markOperationFailed,

@@ -50,7 +50,7 @@ describe("ProxyService route files", () => {
   })
 
   it("writes a Caddy host matcher for production slug and never data-plane ports", async () => {
-    dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    dir = mkdtempSync(path.join(tmpdir(), "hostrig-proxy-"))
     const onChange = vi.fn<() => Promise<void>>(async () => undefined)
     const proxy = new ProxyService({
       routesDir: dir,
@@ -60,19 +60,19 @@ describe("ProxyService route files", () => {
     const route = await proxy.upsertProductionRoute({
       projectId: "proj-abc",
       slug: "demo",
-      upstream: "deplow-deadbeef-app:80",
+      upstream: "hostrig-deadbeef-app:80",
     })
     expect(route.hostname).toBe("demo.apps.example.com")
     expect(route.hostnames).toEqual(["demo.apps.example.com"])
     expect(route.publicUrl).toBe("https://demo.apps.example.com")
-    expect(route.upstream).toBe("http://deplow-deadbeef-app:80")
+    expect(route.upstream).toBe("http://hostrig-deadbeef-app:80")
     expect(onChange).toHaveBeenCalledTimes(1)
 
     const files = proxy.listRoutes()
     expect(files).toHaveLength(1)
     const content = readFileSync(path.join(dir, "proj-abc.caddy"), "utf8")
     expect(content).toContain("host demo.apps.example.com")
-    expect(content).toContain("reverse_proxy http://deplow-deadbeef-app:80")
+    expect(content).toContain("reverse_proxy http://hostrig-deadbeef-app:80")
     expect(content).not.toContain("5432")
     expect(content).not.toContain("6379")
     expect(content).not.toContain("postgres")
@@ -80,7 +80,7 @@ describe("ProxyService route files", () => {
   })
 
   it("removes route files on destroy and invokes onChange (caddy reload)", async () => {
-    dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    dir = mkdtempSync(path.join(tmpdir(), "hostrig-proxy-"))
     const onChange = vi.fn<() => Promise<void>>(async () => undefined)
     const proxy = new ProxyService({
       routesDir: dir,
@@ -98,7 +98,7 @@ describe("ProxyService route files", () => {
   })
 
   it("exposes primary vs named web hostnames under base domain", async () => {
-    dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    dir = mkdtempSync(path.join(tmpdir(), "hostrig-proxy-"))
     const proxy = new ProxyService({
       routesDir: dir,
       baseDomain: "apps.kilr.dk",
@@ -115,7 +115,7 @@ describe("ProxyService route files", () => {
   })
 
   it("writes multi-host Caddy matcher when hostnames provided", async () => {
-    dir = mkdtempSync(path.join(tmpdir(), "deplow-proxy-"))
+    dir = mkdtempSync(path.join(tmpdir(), "hostrig-proxy-"))
     const proxy = new ProxyService({
       routesDir: dir,
       baseDomain: "apps.example.com",

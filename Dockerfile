@@ -1,4 +1,4 @@
-# deplow control plane — multi-stage build for GHCR / compose.
+# hostrig control plane — multi-stage build for GHCR / compose.
 # Runtime still needs host Docker (socket), BuildKit, and preferably gVisor.
 FROM node:22-bookworm-slim AS base
 RUN apt-get update \
@@ -12,16 +12,18 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json apps/web/
 COPY packages/db/package.json packages/db/
+COPY packages/observe/package.json packages/observe/
 COPY packages/shared/package.json packages/shared/
 # Site is not part of the control-plane image
-RUN pnpm install --frozen-lockfile --filter @deplow/web...
+RUN pnpm install --frozen-lockfile --filter @hostrig/web...
 
 FROM deps AS build
 COPY apps/web apps/web
 COPY packages/db packages/db
+COPY packages/observe packages/observe
 COPY packages/shared packages/shared
 COPY scripts/sync-ssr-css.mjs scripts/sync-ssr-css.mjs
-RUN pnpm --filter @deplow/web build && node scripts/sync-ssr-css.mjs
+RUN pnpm --filter @hostrig/web build && node scripts/sync-ssr-css.mjs
 
 FROM base AS runner
 ARG DOCKER_CLI_VERSION=27.5.1
@@ -56,22 +58,22 @@ RUN set -eux; \
 
 ENV NODE_ENV=production \
   PORT=3000 \
-  DATABASE_URL=/data/deplow.db \
-  DEPLOW_GIT_CLONE_ROOT=/data/git-clones \
-  DEPLOW_PROXY_ROUTES_DIR=/etc/caddy/routes \
+  DATABASE_URL=/data/hostrig.db \
+  HOSTRIG_GIT_CLONE_ROOT=/data/git-clones \
+  HOSTRIG_PROXY_ROUTES_DIR=/etc/caddy/routes \
   BUILDKIT_HOST=docker-container://buildkit \
   RAILPACK_BIN=/usr/local/bin/railpack
 
 WORKDIR /app
 COPY --from=build /app /app
-COPY scripts/docker-entrypoint.sh /usr/local/bin/deplow-entrypoint
+COPY scripts/docker-entrypoint.sh /usr/local/bin/hostrig-entrypoint
 # Deploy assets for install.sh to extract (works even when the git repo is private)
-COPY deploy/docker-compose.yml deploy/Caddyfile deploy/.env.example /opt/deplow-assets/
-RUN chmod +x /usr/local/bin/deplow-entrypoint \
+COPY deploy/docker-compose.yml deploy/Caddyfile deploy/.env.example /opt/hostrig-assets/
+RUN chmod +x /usr/local/bin/hostrig-entrypoint \
   && mkdir -p /data /data/git-clones /etc/caddy/routes \
-  && cp /opt/deplow-assets/.env.example /opt/deplow-assets/env.example
+  && cp /opt/hostrig-assets/.env.example /opt/hostrig-assets/env.example
 
 EXPOSE 3000
 VOLUME ["/data"]
-ENTRYPOINT ["deplow-entrypoint"]
-CMD ["pnpm", "--filter", "@deplow/web", "start"]
+ENTRYPOINT ["hostrig-entrypoint"]
+CMD ["pnpm", "--filter", "@hostrig/web", "start"]

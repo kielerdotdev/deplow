@@ -1,201 +1,159 @@
+---
+/**
+ * Product mockup — Observe Charts / trends (dark Atlasflow).
+ * Colors match apps/web dark shell; IA matches current nav (no Explore).
+ */
+const font = "DM Sans, system-ui, sans-serif"
+const mono = "IBM Plex Mono, ui-monospace, monospace"
+---
+
 <svg
 	viewBox="0 0 1280 800"
 	fill="none"
 	xmlns="http://www.w3.org/2000/svg"
 	role="img"
-	aria-label="Hostrig Trends: multi-series query builder with chart and results table"
+	aria-label="Hostrig Observe charts: dark nested chrome with series chart and table"
 >
 	<defs>
-		<linearGradient id="tpage" x1="0" y1="0" x2="1" y2="1">
-			<stop stop-color="#f4f6f9" />
-			<stop offset="1" stop-color="#eef1f6" />
-		</linearGradient>
-		<linearGradient id="lineA" x1="0" y1="0" x2="1" y2="0">
-			<stop stop-color="#2563eb" />
-			<stop offset="1" stop-color="#3b82f6" />
-		</linearGradient>
-		<linearGradient id="lineB" x1="0" y1="0" x2="1" y2="0">
-			<stop stop-color="#0d9488" />
-			<stop offset="1" stop-color="#14b8a6" />
-		</linearGradient>
 		<linearGradient id="areaA" x1="0" y1="0" x2="0" y2="1">
-			<stop stop-color="#2563eb" stop-opacity="0.18" />
-			<stop offset="1" stop-color="#2563eb" stop-opacity="0" />
+			<stop stop-color="#60a5fa" stop-opacity="0.22" />
+			<stop offset="1" stop-color="#60a5fa" stop-opacity="0" />
 		</linearGradient>
 	</defs>
 
-	<rect width="1280" height="800" rx="16" fill="url(#tpage)" />
-	<rect x="0.5" y="0.5" width="1279" height="799" rx="15.5" stroke="#d8dee8" />
+	<rect width="1280" height="800" fill="#000000" />
 
-	<!-- sidebar -->
-	<rect x="0" y="0" width="220" height="800" fill="#fbfcfe" />
-	<rect x="220" y="0" width="1" height="800" fill="#e4e9f0" />
-	<rect x="20" y="20" width="28" height="28" rx="7" fill="#0f172a" />
-	<text x="58" y="39" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="15" font-weight="600">Hostrig</text>
-	<text x="20" y="78" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="1.2">OBSERVE</text>
+	<!-- crumb -->
+	<rect width="1280" height="48" fill="#0a0a0a" />
+	<rect y="47" width="1280" height="1" fill="#2e2e2e" />
 
-	<!-- nav items -->
-	<rect x="12" y="96" width="196" height="32" rx="8" fill="#fff" stroke="#e4e9f0" />
-	<text x="28" y="116" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Overview</text>
-	<rect x="12" y="136" width="196" height="32" rx="8" fill="#0f172a" />
-	<text x="28" y="156" fill="#f8fafc" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600">Trends</text>
-	<text x="28" y="196" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Insights</text>
-	<text x="28" y="228" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Explore</text>
-	<text x="28" y="260" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Traces</text>
-	<text x="28" y="292" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Logs</text>
-	<text x="28" y="324" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Issues</text>
+	<g transform="translate(14 10)">
+		<rect x="0.5" y="1.5" width="23" height="19" rx="4" stroke="#f2f2f2" stroke-width="1.6" fill="none" />
+		<path
+			d="M6 12h8.5M14.5 12l-3.5-3.2M14.5 12l-3.5 3.2"
+			stroke="#f2f2f2"
+			stroke-width="1.7"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
+		<rect x="17.5" y="7.5" width="3.5" height="7.5" rx="0.9" fill="#f2f2f2" opacity="0.9" />
+	</g>
 
-	<!-- main -->
-	<text x="248" y="42" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="18" font-weight="600">Trends · acme-shop</text>
-	<text x="248" y="62" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="12">Multi-series · formulas · nested filters</text>
+	<circle cx="62" cy="24" r="10" fill="#242424" />
+	<text x="62" y="27.5" fill="#b0b0b0" font-family={font} font-size="8" font-weight="700" text-anchor="middle">MA</text>
+	<text x="78" y="28" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">Marketing</text>
+	<text x="150" y="28" fill="#525252" font-family={font} font-size="13">/</text>
+	<circle cx="174" cy="24" r="10" fill="#242424" />
+	<text x="174" y="27.5" fill="#b0b0b0" font-family={font} font-size="8" font-weight="700" text-anchor="middle">SH</text>
+	<text x="190" y="28" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">showcase</text>
 
-	<!-- analysis tabs -->
-	<rect x="248" y="78" width="64" height="26" rx="6" fill="#e2e8f0" />
-	<text x="260" y="95" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600">Trends</text>
-	<text x="328" y="95" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="11">Compare</text>
-	<text x="400" y="95" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="11">Distributions</text>
-	<text x="508" y="95" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11">Explore</text>
-	<text x="572" y="95" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11">Traces</text>
+	<!-- Deploy | Observe mode hint -->
+	<rect x="560" y="11" width="72" height="26" rx="4" fill="#0a0a0a" stroke="#333" />
+	<text x="596" y="28" fill="#8a8a8a" font-family={font} font-size="11" text-anchor="middle">Deploy</text>
+	<rect x="636" y="11" width="80" height="26" rx="4" fill="#2a2a2a" />
+	<text x="676" y="28" fill="#f2f2f2" font-family={font} font-size="11" font-weight="500" text-anchor="middle">Observe</text>
 
-	<!-- left builder panel -->
-	<rect x="248" y="116" width="260" height="660" rx="12" fill="#fff" stroke="#e4e9f0" />
-	<text x="264" y="142" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="0.8">SERIES</text>
+	<rect x="1000" y="10" width="188" height="28" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="1014" y="28" fill="#8a8a8a" font-family={font} font-size="11">Search…</text>
+	<circle cx="1236" cy="24" r="12" fill="#242424" />
+	<text x="1236" y="27.5" fill="#b0b0b0" font-family={font} font-size="8" font-weight="700" text-anchor="middle">MA</text>
 
-	<!-- series A -->
-	<rect x="264" y="156" width="228" height="88" rx="8" fill="#f8fafc" stroke="#e2e8f0" />
-	<rect x="276" y="168" width="22" height="22" rx="5" fill="#e2e8f0" />
-	<text x="282" y="183" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">A</text>
-	<text x="306" y="183" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600">Request rate</text>
-	<rect x="276" y="200" width="72" height="22" rx="5" fill="#fff" stroke="#e2e8f0" />
-	<text x="286" y="214" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="10">Spans</text>
-	<rect x="356" y="200" width="72" height="22" rx="5" fill="#fff" stroke="#e2e8f0" />
-	<text x="368" y="214" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="10">Rate</text>
+	<!-- observe tabs -->
+	<rect y="48" width="1280" height="44" fill="#0a0a0a" />
+	<rect y="91" width="1280" height="1" fill="#2e2e2e" />
+	<text x="48" y="74" fill="#8a8a8a" font-family={font} font-size="12" text-anchor="middle">Overview</text>
+	<text x="128" y="74" fill="#8a8a8a" font-family={font} font-size="12" text-anchor="middle">Services</text>
+	<rect x="168" y="56" width="64" height="28" rx="4" fill="#2a2a2a" />
+	<text x="200" y="74" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500" text-anchor="middle">Charts</text>
+	<text x="280" y="74" fill="#8a8a8a" font-family={font} font-size="12" text-anchor="middle">Traces</text>
+	<text x="348" y="74" fill="#8a8a8a" font-family={font} font-size="12" text-anchor="middle">Logs</text>
+	<text x="410" y="74" fill="#8a8a8a" font-family={font} font-size="12" text-anchor="middle">Issues</text>
 
-	<!-- series B -->
-	<rect x="264" y="256" width="228" height="88" rx="8" fill="#f8fafc" stroke="#e2e8f0" />
-	<rect x="276" y="268" width="22" height="22" rx="5" fill="#ccfbf1" />
-	<text x="282" y="283" fill="#0f766e" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">B</text>
-	<text x="306" y="283" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="12" font-weight="600">Error rate</text>
-	<rect x="276" y="300" width="72" height="22" rx="5" fill="#fff" stroke="#e2e8f0" />
-	<text x="286" y="314" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="10">Spans</text>
-	<rect x="356" y="300" width="88" height="22" rx="5" fill="#fff" stroke="#e2e8f0" />
-	<text x="364" y="314" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="10">Error rate</text>
+	<!-- nested panel -->
+	<rect x="10" y="100" width="1260" height="690" rx="6" fill="#121212" stroke="#2e2e2e" />
 
-	<!-- formula -->
-	<text x="264" y="372" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="0.8">FORMULA</text>
-	<rect x="264" y="384" width="228" height="52" rx="8" fill="#f8fafc" stroke="#e2e8f0" />
-	<rect x="276" y="398" width="22" height="22" rx="5" fill="#fef3c7" />
-	<text x="282" y="413" fill="#92400e" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">C</text>
-	<text x="306" y="413" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="12">B/A*100</text>
+	<!-- context bar -->
+	<rect x="22" y="114" width="1236" height="40" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="40" y="138" fill="#8a8a8a" font-family={mono} font-size="11">Last 1h</text>
+	<rect x="120" y="122" width="1" height="24" fill="#333" />
+	<text x="136" y="138" fill="#b0b0b0" font-family={font} font-size="12">service:web · env:production</text>
+	<rect x="1120" y="122" width="120" height="24" rx="4" fill="#242424" />
+	<text x="1180" y="138" fill="#f2f2f2" font-family={font} font-size="11" text-anchor="middle">Run query</text>
 
-	<!-- filters -->
-	<text x="264" y="466" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="0.8">FILTERS</text>
-	<rect x="264" y="478" width="228" height="36" rx="8" fill="#f8fafc" stroke="#e2e8f0" />
-	<text x="276" y="500" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="11">service = api · All (AND)</text>
+	<!-- chart card -->
+	<rect x="22" y="170" width="1236" height="320" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="40" y="198" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500">Request rate</text>
+	<text x="140" y="198" fill="#8a8a8a" font-family={font} font-size="11">p95 latency overlay · 1m buckets</text>
+	<circle cx="1180" cy="194" r="4" fill="#60a5fa" />
+	<text x="1192" y="198" fill="#8a8a8a" font-family={font} font-size="11">rate</text>
+	<circle cx="1236" cy="194" r="4" fill="#22c55e" />
+	<text x="1248" y="198" fill="#8a8a8a" font-family={font} font-size="11">p95</text>
 
-	<!-- breakdown -->
-	<text x="264" y="542" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="0.8">BREAKDOWN</text>
-	<rect x="264" y="554" width="228" height="36" rx="8" fill="#f8fafc" stroke="#e2e8f0" />
-	<text x="276" y="576" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="11">by operation · top 8</text>
+	<!-- grid -->
+	{[230, 290, 350, 410, 450].map((y) => (
+		<line x1="40" y1={y} x2="1230" y2={y} stroke="#333" stroke-opacity="0.55" />
+	))}
 
-	<!-- time -->
-	<text x="264" y="618" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="0.8">TIME</text>
-	<rect x="264" y="630" width="100" height="28" rx="6" fill="#fff" stroke="#e2e8f0" />
-	<text x="276" y="648" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="11">Last 1h</text>
-	<rect x="372" y="630" width="56" height="28" rx="6" fill="#fff" stroke="#e2e8f0" />
-	<text x="384" y="648" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="11">Auto</text>
-	<rect x="264" y="670" width="148" height="28" rx="6" fill="#fff" stroke="#e2e8f0" />
-	<text x="276" y="688" fill="#64748b" font-family="DM Sans, system-ui, sans-serif" font-size="11">Previous period</text>
-
-	<!-- chart panel -->
-	<rect x="524" y="116" width="732" height="400" rx="12" fill="#fff" stroke="#e4e9f0" />
-	<text x="544" y="146" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="14" font-weight="600">Error % of requests</text>
-	<text x="544" y="166" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11">Interval 60s · 60 buckets · baseline dashed</text>
-	<rect x="1100" y="128" width="64" height="26" rx="6" fill="#f1f5f9" stroke="#e2e8f0" />
-	<text x="1114" y="145" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="11">Export</text>
-	<rect x="1174" y="128" width="60" height="26" rx="6" fill="#0f172a" />
-	<text x="1188" y="145" fill="#f8fafc" font-family="DM Sans, system-ui, sans-serif" font-size="11" font-weight="600">Save</text>
-
-	<!-- chart axes -->
-	<line x1="560" y1="200" x2="560" y2="460" stroke="#e2e8f0" />
-	<line x1="560" y1="460" x2="1220" y2="460" stroke="#e2e8f0" />
-	<line x1="560" y1="330" x2="1220" y2="330" stroke="#f1f5f9" />
-	<line x1="560" y1="265" x2="1220" y2="265" stroke="#f1f5f9" />
-	<line x1="560" y1="395" x2="1220" y2="395" stroke="#f1f5f9" />
-
-	<!-- area under A -->
+	<!-- area + lines -->
 	<path
-		d="M580 380 C640 350, 700 300, 760 310 S880 280, 940 290 S1060 250, 1120 270 S1200 240, 1220 255 L1220 460 L580 460 Z"
+		d="M40 420 L140 380 L240 390 L340 340 L440 360 L540 300 L640 320 L740 280 L840 300 L940 250 L1040 270 L1140 230 L1230 240 L1230 450 L40 450 Z"
 		fill="url(#areaA)"
 	/>
-	<!-- series A line -->
 	<path
-		d="M580 380 C640 350, 700 300, 760 310 S880 280, 940 290 S1060 250, 1120 270 S1200 240, 1220 255"
-		stroke="url(#lineA)"
-		stroke-width="2.5"
+		d="M40 420 L140 380 L240 390 L340 340 L440 360 L540 300 L640 320 L740 280 L840 300 L940 250 L1040 270 L1140 230 L1230 240"
+		stroke="#60a5fa"
+		stroke-width="2"
 		fill="none"
 		stroke-linecap="round"
+		stroke-linejoin="round"
 	/>
-	<!-- series B -->
 	<path
-		d="M580 420 C650 400, 720 390, 780 400 S900 370, 960 385 S1080 360, 1140 370 S1200 350, 1220 355"
-		stroke="url(#lineB)"
-		stroke-width="2.25"
+		d="M40 400 L140 390 L240 400 L340 370 L440 380 L540 350 L640 360 L740 340 L840 350 L940 320 L1040 330 L1140 300 L1230 310"
+		stroke="#22c55e"
+		stroke-width="1.6"
 		fill="none"
 		stroke-linecap="round"
+		stroke-linejoin="round"
+		opacity="0.9"
 	/>
-	<!-- baseline dashed -->
-	<path
-		d="M580 400 C660 390, 740 385, 820 390 S980 375, 1060 380 S1160 370, 1220 375"
-		stroke="#94a3b8"
-		stroke-width="1.5"
-		fill="none"
-		stroke-dasharray="5 4"
-		opacity="0.85"
-	/>
-	<!-- incomplete last point hint -->
-	<circle cx="1220" cy="255" r="4" fill="#2563eb" opacity="0.55" />
-	<circle cx="1220" cy="255" r="7" stroke="#2563eb" stroke-width="1" fill="none" opacity="0.35" />
 
-	<!-- legend -->
-	<circle cx="580" cy="488" r="4" fill="#2563eb" />
-	<text x="592" y="492" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="11">A Request rate</text>
-	<circle cx="710" cy="488" r="4" fill="#0d9488" />
-	<text x="722" y="492" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="11">B Error rate</text>
-	<circle cx="830" cy="488" r="4" fill="#d97706" />
-	<text x="842" y="492" fill="#475569" font-family="DM Sans, system-ui, sans-serif" font-size="11">C B/A×100</text>
-	<line x1="950" y1="488" x2="970" y2="488" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" />
-	<text x="978" y="492" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11">Baseline</text>
+	<!-- table card -->
+	<rect x="22" y="508" width="1236" height="260" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="40" y="536" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500">Results</text>
+	<text x="100" y="536" fill="#8a8a8a" font-family={font} font-size="11">12 series · sorted by rate</text>
 
-	<!-- results table -->
-	<rect x="524" y="532" width="732" height="244" rx="12" fill="#fff" stroke="#e4e9f0" />
-	<text x="544" y="562" fill="#0f172a" font-family="DM Sans, system-ui, sans-serif" font-size="13" font-weight="600">Results</text>
-	<text x="544" y="580" fill="#94a3b8" font-family="DM Sans, system-ui, sans-serif" font-size="11">Exact values per bucket · CSV / JSON export</text>
+	<!-- header -->
+	<text x="40" y="568" fill="#8a8a8a" font-family={mono} font-size="10">SERVICE</text>
+	<text x="280" y="568" fill="#8a8a8a" font-family={mono} font-size="10">OPERATION</text>
+	<text x="620" y="568" fill="#8a8a8a" font-family={mono} font-size="10">RATE</text>
+	<text x="780" y="568" fill="#8a8a8a" font-family={mono} font-size="10">ERROR %</text>
+	<text x="960" y="568" fill="#8a8a8a" font-family={mono} font-size="10">P95</text>
+	<rect x="40" y="578" width="1200" height="1" fill="#333" />
 
-	<!-- table header -->
-	<text x="544" y="612" fill="#94a3b8" font-family="IBM Plex Mono, monospace" font-size="10">TIME</text>
-	<text x="720" y="612" fill="#94a3b8" font-family="IBM Plex Mono, monospace" font-size="10">A</text>
-	<text x="820" y="612" fill="#94a3b8" font-family="IBM Plex Mono, monospace" font-size="10">B</text>
-	<text x="920" y="612" fill="#94a3b8" font-family="IBM Plex Mono, monospace" font-size="10">C</text>
-	<line x1="544" y1="622" x2="1230" y2="622" stroke="#e2e8f0" />
-
-	<text x="544" y="648" fill="#64748b" font-family="IBM Plex Mono, monospace" font-size="11">14:02:00</text>
-	<text x="720" y="648" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">42.1</text>
-	<text x="820" y="648" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">0.018</text>
-	<text x="920" y="648" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">4.3</text>
-
-	<text x="544" y="678" fill="#64748b" font-family="IBM Plex Mono, monospace" font-size="11">14:03:00</text>
-	<text x="720" y="678" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">48.6</text>
-	<text x="820" y="678" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">0.021</text>
-	<text x="920" y="678" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">4.3</text>
-
-	<text x="544" y="708" fill="#64748b" font-family="IBM Plex Mono, monospace" font-size="11">14:04:00</text>
-	<text x="720" y="708" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">51.2</text>
-	<text x="820" y="708" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">0.031</text>
-	<text x="920" y="708" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11">6.1</text>
-
-	<text x="544" y="738" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">Σ Total</text>
-	<text x="720" y="738" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">2.8k</text>
-	<text x="820" y="738" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">1.4</text>
-	<text x="920" y="738" fill="#0f172a" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">—</text>
+	{
+		[
+			{ s: "web", o: "GET /api/checkout", r: "42.1/s", e: "0.2%", p: "118ms", y: 608 },
+			{ s: "web", o: "POST /api/orders", r: "18.4/s", e: "0.8%", p: "204ms", y: 648 },
+			{ s: "worker", o: "jobs.process", r: "9.2/s", e: "0.0%", p: "86ms", y: 688 },
+			{ s: "web", o: "GET /health", r: "4.1/s", e: "0.0%", p: "12ms", y: 728 },
+		].map((row) => (
+			<>
+				<text x="40" y={row.y} fill="#f2f2f2" font-family={font} font-size="12" font-weight="500">
+					{row.s}
+				</text>
+				<text x="280" y={row.y} fill="#b0b0b0" font-family={mono} font-size="12">
+					{row.o}
+				</text>
+				<text x="620" y={row.y} fill="#f2f2f2" font-family={mono} font-size="12">
+					{row.r}
+				</text>
+				<text x="780" y={row.y} fill="#b0b0b0" font-family={mono} font-size="12">
+					{row.e}
+				</text>
+				<text x="960" y={row.y} fill="#b0b0b0" font-family={mono} font-size="12">
+					{row.p}
+				</text>
+			</>
+		))
+	}
 </svg>

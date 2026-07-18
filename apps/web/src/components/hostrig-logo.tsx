@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils"
 
-type DeplowLogoProps = {
+type HostrigLogoProps = {
   size?: number
   className?: string
 }
 
-export function DeplowLogo({ size = 24, className }: DeplowLogoProps) {
+export function HostrigLogo({ size = 24, className }: HostrigLogoProps) {
   return (
     <svg
       className={cn("shrink-0", className)}

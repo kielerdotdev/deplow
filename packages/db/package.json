@@ -1,5 +1,5 @@
 {
-  "name": "@deplow/db",
+  "name": "@hostrig/db",
   "private": true,
   "type": "module",
   "exports": {

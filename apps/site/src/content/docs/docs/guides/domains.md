@@ -26,9 +26,9 @@ Client
 
 1. **Settings → Cluster** — cluster connected, Traefik detected.
 2. **Networking & domains** — set base domain (e.g. `apps.example.com`), protocol `https`, enable auto-assign subdomains.
-3. Point an edge at Traefik on the k3s server (default origin `http://127.0.0.1:80`, override with `DEPLOW_TRAEFIK_ORIGIN` only if needed).
+3. Point an edge at Traefik on the k3s server (default origin `http://127.0.0.1:80`, override with `HOSTRIG_TRAEFIK_ORIGIN` only if needed).
 
-`DEPLOW_BASE_DOMAIN` / `DEPLOW_PUBLIC_URL_PROTOCOL` only **seed** Domains on first boot. Day-to-day changes are in the UI.
+`HOSTRIG_BASE_DOMAIN` / `HOSTRIG_PUBLIC_URL_PROTOCOL` only **seed** Domains on first boot. Day-to-day changes are in the UI.
 
 ## Edge recipes
 

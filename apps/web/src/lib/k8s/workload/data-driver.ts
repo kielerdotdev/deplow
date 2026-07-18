@@ -1,4 +1,4 @@
-import type { ResourceCredentials } from "@deplow/shared"
+import type { ResourceCredentials } from "@hostrig/shared"
 
 import {
   destroyDataOnK8s,

@@ -28,7 +28,7 @@ export function resolveConfig(args) {
     "http://localhost:3000"
   ).replace(/\/$/, "")
   const chDb =
-    args["ch-db"] || process.env.DEPLOW_CLICKHOUSE_DATABASE || "deplow_observe"
+    args["ch-db"] || process.env.HOSTRIG_CLICKHOUSE_DATABASE || "hostrig_observe"
   return {
     projectId,
     dsn,
@@ -49,14 +49,14 @@ export function resolveConfig(args) {
 
 function resolveClickHouseUrl(a) {
   if (a["ch-url"]) return a["ch-url"]
-  if (process.env.DEPLOW_CLICKHOUSE_URL) {
-    const base = process.env.DEPLOW_CLICKHOUSE_URL.replace(/\/$/, "")
-    const user = process.env.DEPLOW_CLICKHOUSE_USER || "deplow"
-    const pass = process.env.DEPLOW_CLICKHOUSE_PASSWORD || "deplow"
+  if (process.env.HOSTRIG_CLICKHOUSE_URL) {
+    const base = process.env.HOSTRIG_CLICKHOUSE_URL.replace(/\/$/, "")
+    const user = process.env.HOSTRIG_CLICKHOUSE_USER || "hostrig"
+    const pass = process.env.HOSTRIG_CLICKHOUSE_PASSWORD || "hostrig"
     if (base.includes("@")) return base
     return base.replace(/^https?:\/\//, (m) => `${m}${user}:${pass}@`)
   }
-  return "http://deplow:deplow@127.0.0.1:8123"
+  return "http://hostrig:hostrig@127.0.0.1:8123"
 }
 
 export function printBanner(cfg) {

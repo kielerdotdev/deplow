@@ -6,8 +6,8 @@ import { BACKUP_DEFAULT_INTERVAL_MS, BackupScheduler } from "./backup-scheduler"
 describe("BackupScheduler", () => {
   afterEach(() => {
     vi.useRealTimers()
-    delete process.env.DEPLOW_BACKUP_DEFAULT_INTERVAL_MS
-    delete process.env.DEPLOW_BACKUP_ALLOW_FAST
+    delete process.env.HOSTRIG_BACKUP_DEFAULT_INTERVAL_MS
+    delete process.env.HOSTRIG_BACKUP_ALLOW_FAST
   })
 
   it("registers a schedule and fires run without manual backup API", async () => {
@@ -88,12 +88,12 @@ describe("BackupScheduler", () => {
   })
 
   it("normalizeIntervalMs keeps short intervals when ALLOW_FAST=1", () => {
-    process.env.DEPLOW_BACKUP_ALLOW_FAST = "1"
+    process.env.HOSTRIG_BACKUP_ALLOW_FAST = "1"
     expect(BackupScheduler.normalizeIntervalMs(8_000)).toBe(8_000)
   })
 
   it("defaultIntervalMs ignores unsafe demo env without ALLOW_FAST", () => {
-    process.env.DEPLOW_BACKUP_DEFAULT_INTERVAL_MS = "8000"
+    process.env.HOSTRIG_BACKUP_DEFAULT_INTERVAL_MS = "8000"
     expect(BackupScheduler.defaultIntervalMs()).toBe(BACKUP_DEFAULT_INTERVAL_MS)
   })
 })

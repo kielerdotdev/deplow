@@ -447,7 +447,7 @@ function IssueDetailPage() {
           }
         />
         <div className="mt-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">
-          Grouping: <code className="text-[11px]">deplow-v1</code> · Issue{" "}
+          Grouping: <code className="text-[11px]">hostrig-v1</code> · Issue{" "}
           <code className="text-[11px]">{issue.id}</code>
         </div>
       </div>

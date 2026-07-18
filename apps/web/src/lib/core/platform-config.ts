@@ -39,11 +39,11 @@ export interface PlatformConfig {
   /** Compose network name (project_default) for app containers */
   dockerNetwork: string
   /**
-   * OCI runtime for user app containers (default runsc / gVisor).
-   * Platform services and builds stay on runc.
+   * Always runsc / gVisor for user app containers.
+   * Platform services and builds stay on the default containerd runtime.
    */
   appRuntime: string
-  /** If true, deploy fails when appRuntime is missing from the daemon */
+  /** Always true — user apps never deploy without gVisor */
   appRuntimeRequired: boolean
   appMemoryBytes: number
   appNanoCpus: number
@@ -90,17 +90,17 @@ function resolveS3Config(): S3AdapterConfig {
 
   if (provider === "r2") {
     const explicit =
-      process.env.DEPLOW_S3_ENDPOINT?.trim() ||
-      process.env.DEPLOW_MINIO_ENDPOINT?.trim() ||
+      process.env.HOSTRIG_S3_ENDPOINT?.trim() ||
+      process.env.HOSTRIG_MINIO_ENDPOINT?.trim() ||
       ""
     const endpoint = explicit || r2EndpointForAccount(env.r2AccountId)
     const publicEndpoint =
-      process.env.DEPLOW_S3_PUBLIC_ENDPOINT?.trim() ||
-      process.env.DEPLOW_MINIO_PUBLIC_ENDPOINT?.trim() ||
+      process.env.HOSTRIG_S3_PUBLIC_ENDPOINT?.trim() ||
+      process.env.HOSTRIG_MINIO_PUBLIC_ENDPOINT?.trim() ||
       endpoint
     const appEndpoint =
-      process.env.DEPLOW_S3_APP_ENDPOINT?.trim() ||
-      process.env.DEPLOW_MINIO_DOCKER_ENDPOINT?.trim() ||
+      process.env.HOSTRIG_S3_APP_ENDPOINT?.trim() ||
+      process.env.HOSTRIG_MINIO_DOCKER_ENDPOINT?.trim() ||
       endpoint
     return {
       provider: "r2",
@@ -185,9 +185,9 @@ export function loadPlatformConfig(): PlatformConfig {
 
 const INSECURE = new Set([
   "replace-me",
-  "deplow",
-  "deplowsecret",
-  "dev-only-change-me-deplow-secrets",
+  "hostrig",
+  "hostrigsecret",
+  "dev-only-change-me-hostrig-secrets",
   "changeme",
   "secret",
   "password",
@@ -206,7 +206,7 @@ export function assertProductionSecrets(
 
   const missing: string[] = []
   const auth = bag.BETTER_AUTH_SECRET ?? ""
-  const secrets = bag.DEPLOW_SECRETS_KEY ?? ""
+  const secrets = bag.HOSTRIG_SECRETS_KEY ?? ""
   if (!auth || auth.length < 32 || INSECURE.has(auth.toLowerCase())) {
     missing.push("BETTER_AUTH_SECRET")
   }
@@ -214,45 +214,45 @@ export function assertProductionSecrets(
     secrets &&
     (secrets.length < 32 || INSECURE.has(secrets.toLowerCase()))
   ) {
-    if (secrets === "dev-only-change-me-deplow-secrets") {
+    if (secrets === "dev-only-change-me-hostrig-secrets") {
       throw new Error(
-        "DEPLOW_SECRETS_KEY must not use the dev-only fallback in production",
+        "HOSTRIG_SECRETS_KEY must not use the dev-only fallback in production",
       )
     }
-    missing.push("DEPLOW_SECRETS_KEY")
+    missing.push("HOSTRIG_SECRETS_KEY")
   }
 
   const access =
-    bag.DEPLOW_S3_ACCESS_KEY ?? bag.DEPLOW_MINIO_ACCESS_KEY ?? ""
+    bag.HOSTRIG_S3_ACCESS_KEY ?? bag.HOSTRIG_MINIO_ACCESS_KEY ?? ""
   const secret =
-    bag.DEPLOW_S3_SECRET_KEY ?? bag.DEPLOW_MINIO_SECRET_KEY ?? ""
+    bag.HOSTRIG_S3_SECRET_KEY ?? bag.HOSTRIG_MINIO_SECRET_KEY ?? ""
   if (!access || INSECURE.has(access.toLowerCase())) {
-    missing.push("DEPLOW_S3_ACCESS_KEY")
+    missing.push("HOSTRIG_S3_ACCESS_KEY")
   }
   if (!secret || INSECURE.has(secret.toLowerCase())) {
-    missing.push("DEPLOW_S3_SECRET_KEY")
+    missing.push("HOSTRIG_S3_SECRET_KEY")
   }
 
   const provider = (
-    bag.DEPLOW_S3_PROVIDER ??
-    bag.DEPLOW_OBJECT_STORAGE_PROVIDER ??
+    bag.HOSTRIG_S3_PROVIDER ??
+    bag.HOSTRIG_OBJECT_STORAGE_PROVIDER ??
     "minio"
   )
     .trim()
     .toLowerCase()
   if (provider === "r2" || provider === "cloudflare-r2") {
-    const endpoint = bag.DEPLOW_S3_ENDPOINT?.trim() ?? ""
-    const account = bag.DEPLOW_R2_ACCOUNT_ID?.trim() ?? ""
+    const endpoint = bag.HOSTRIG_S3_ENDPOINT?.trim() ?? ""
+    const account = bag.HOSTRIG_R2_ACCOUNT_ID?.trim() ?? ""
     if (!endpoint && !account) {
-      missing.push("DEPLOW_R2_ACCOUNT_ID (or DEPLOW_S3_ENDPOINT)")
+      missing.push("HOSTRIG_R2_ACCOUNT_ID (or HOSTRIG_S3_ENDPOINT)")
     }
   } else {
     const endpoint =
-      bag.DEPLOW_S3_ENDPOINT?.trim() ??
-      bag.DEPLOW_MINIO_ENDPOINT?.trim() ??
+      bag.HOSTRIG_S3_ENDPOINT?.trim() ??
+      bag.HOSTRIG_MINIO_ENDPOINT?.trim() ??
       ""
     if (!endpoint) {
-      missing.push("DEPLOW_S3_ENDPOINT")
+      missing.push("HOSTRIG_S3_ENDPOINT")
     }
   }
 

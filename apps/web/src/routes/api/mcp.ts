@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { toFetchResponse, toReqRes } from "fetch-to-node"
 
 import { resolveMcpAuthInfo } from "@/mcp/auth"
-import { deplowMcpServer } from "@/mcp/server"
+import { hostrigMcpServer } from "@/mcp/server"
 import { env } from "@/lib/env"
 
 export const Route = createFileRoute("/api/mcp")({
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/mcp")({
         const publicBase = env.publicControlPlaneUrl.replace(/\/$/, "")
         const requestUrl = new URL(request.url, publicBase)
 
-        await deplowMcpServer.startHTTP({
+        await hostrigMcpServer.startHTTP({
           url: requestUrl,
           httpPath: "/api/mcp",
           req,

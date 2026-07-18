@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import pg from "pg"
 
-import type { DatabaseCredentials } from "@deplow/shared"
+import type { DatabaseCredentials } from "@hostrig/shared"
 
 import { randomPassword, sanitizeIdentifier } from "../crypto"
 
@@ -32,7 +32,7 @@ export class PostgresInstance {
 
   /** Real pg_dump custom format (-Fc). */
   async dumpDatabase(): Promise<Buffer> {
-    const dir = mkdtempSync(path.join(tmpdir(), "deplow-pgdump-"))
+    const dir = mkdtempSync(path.join(tmpdir(), "hostrig-pgdump-"))
     const outFile = path.join(dir, "backup.dump")
     try {
       await runPgTool("pg_dump", [
@@ -50,7 +50,7 @@ export class PostgresInstance {
   }
 
   async restoreDatabase(dump: Buffer): Promise<void> {
-    const dir = mkdtempSync(path.join(tmpdir(), "deplow-pgrestore-"))
+    const dir = mkdtempSync(path.join(tmpdir(), "hostrig-pgrestore-"))
     const dumpFile = path.join(dir, "backup.dump")
     try {
       writeFileSync(dumpFile, dump)
@@ -318,13 +318,13 @@ function spawnPgTool(bin: string, args: string[]): Promise<void> {
  * --network host so operator URLs on 127.0.0.1:publishedPort work.
  */
 function spawnPgToolViaDocker(bin: string, args: string[]): Promise<void> {
-  const dockerBin = process.env.DEPLOW_DOCKER_BIN ?? "docker"
-  const image = process.env.DEPLOW_POSTGRES_IMAGE ?? "postgres:16-alpine"
+  const dockerBin = process.env.HOSTRIG_DOCKER_BIN ?? "docker"
+  const image = process.env.HOSTRIG_POSTGRES_IMAGE ?? "postgres:16-alpine"
   const volumes = new Set<string>()
   for (const arg of args) {
     if (
       arg.startsWith("/") &&
-      (arg.includes("deplow-pgdump-") || arg.includes("deplow-pgrestore-"))
+      (arg.includes("hostrig-pgdump-") || arg.includes("hostrig-pgrestore-"))
     ) {
       volumes.add(path.dirname(arg))
     }

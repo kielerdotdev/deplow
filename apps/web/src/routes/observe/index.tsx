@@ -53,7 +53,7 @@ function ObserveHome() {
         {!observeEnabled ? (
           <p className="text-sm text-muted-foreground">
             Observe is off. Set{" "}
-            <code className="text-xs">DEPLOW_OBSERVE_ENABLED=1</code> and start{" "}
+            <code className="text-xs">HOSTRIG_OBSERVE_ENABLED=1</code> and start{" "}
             <code className="text-xs">
               docker compose --profile observe up -d
             </code>

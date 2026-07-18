@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { desc, eq } from "@deplow/db"
+import { desc, eq } from "@hostrig/db"
 
 import { assertProjectAccess } from "@/lib/access"
 import { toOperationSummary } from "@/lib/core"

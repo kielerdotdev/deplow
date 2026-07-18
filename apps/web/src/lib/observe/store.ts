@@ -1,7 +1,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 
-import { and, desc, eq, inArray, isNull, sql } from "@deplow/db"
+import { and, desc, eq, inArray, isNull, sql } from "@hostrig/db"
 import {
   observeEventCountsHourly,
   observeGroupings,
@@ -10,7 +10,7 @@ import {
   observeMembers,
   observeProjects,
   projects,
-} from "@deplow/db"
+} from "@hostrig/db"
 import {
   buildDsn,
   deleteOldestEvents as chDeleteOldest,
@@ -21,7 +21,7 @@ import {
   migrateClickHouse,
   pingClickHouse,
   type ObserveClickHouseConfig,
-} from "@deplow/observe"
+} from "@hostrig/observe"
 
 import { env } from "@/lib/env"
 import { db } from "@/lib/services"
@@ -491,7 +491,7 @@ export function buildObserveDeployEnv(input: {
     SENTRY_ENVIRONMENT: "production",
     ...(input.release ? { SENTRY_RELEASE: input.release } : {}),
     OTEL_SERVICE_NAME: input.serviceName,
-    OTEL_RESOURCE_ATTRIBUTES: `deplow.project_id=${input.projectId},deplow.service_id=${input.serviceId},service.name=${input.serviceName}`,
+    OTEL_RESOURCE_ATTRIBUTES: `hostrig.project_id=${input.projectId},hostrig.service_id=${input.serviceId},deplow.project_id=${input.projectId},service.name=${input.serviceName}`,
     OTEL_EXPORTER_OTLP_ENDPOINT: buildProjectOtelEndpoint(input.sentryId),
     OTEL_EXPORTER_OTLP_HEADERS: `x-sentry-auth=sentry sentry_key=${input.publicKey}`,
     OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf",

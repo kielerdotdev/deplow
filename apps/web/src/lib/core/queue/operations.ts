@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt, operations, deployments, db } from "@deplow/db"
+import { and, eq, inArray, lt, operations, deployments, db } from "@hostrig/db"
 
 const STALE_RUNNING_MS = 2 * 60 * 60 * 1000
 

@@ -1,10 +1,10 @@
-import { and, asc, eq, db, containerRegistries } from "@deplow/db"
+import { and, asc, eq, db, containerRegistries } from "@hostrig/db"
 import type {
   ContainerRegistry,
   CreateRegistryInput,
   RegistryKind,
   UpdateRegistryInput,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import { decryptString, encryptString } from "@/lib/core/crypto"
 import { env } from "@/lib/env"
@@ -68,7 +68,7 @@ function resolveRow(row: RegistryRow): ResolvedRegistry {
   }
 }
 
-/** Seed from DEPLOW_BUILD_REGISTRY* when the table is empty. */
+/** Seed from HOSTRIG_BUILD_REGISTRY* when the table is empty. */
 export async function seedRegistriesFromEnvIfEmpty(): Promise<void> {
   const existing = await db.select({ id: containerRegistries.id }).from(containerRegistries).limit(1)
   if (existing.length > 0) return

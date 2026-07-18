@@ -162,7 +162,7 @@ function FilterSidebar({
       data-slot="observe-filter-sidebar"
       data-testid="observe-filter-sidebar"
       className={cn(
-        "flex w-48 shrink-0 flex-col border-r border-border pr-3 lg:w-52",
+        "flex w-48 shrink-0 flex-col border-r border-border/70 pr-4 lg:w-52",
         className,
       )}
     >

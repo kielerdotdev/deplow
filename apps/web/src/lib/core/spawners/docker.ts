@@ -22,7 +22,7 @@ export class DockerSpawner implements ServerSpawner {
 
   async spawn(options: SpawnOptions): Promise<SpawnedServer> {
     const id = crypto.randomUUID()
-    const name = `deplow-spawn-${options.name}`
+    const name = `hostrig-spawn-${options.name}`
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-")
 
@@ -39,8 +39,8 @@ export class DockerSpawner implements ServerSpawner {
       Image: "alpine:3.20",
       Cmd: ["sleep", String((options.ttlMinutes ?? 60) * 60)],
       Labels: {
-        "deplow.spawned": "true",
-        "deplow.spawnId": id,
+        "hostrig.spawned": "true",
+        "hostrig.spawnId": id,
         ...(options.labels ?? {}),
       },
       HostConfig: { AutoRemove: false },
@@ -71,7 +71,7 @@ export class DockerSpawner implements ServerSpawner {
     const containers = await this.docker.listContainers({
       all: true,
       filters: {
-        label: [`deplow.spawnId=${serverId}`],
+        label: [`hostrig.spawnId=${serverId}`],
       },
     })
     for (const c of containers) {
@@ -87,7 +87,7 @@ export class DockerSpawner implements ServerSpawner {
     const containers = await this.docker.listContainers({
       all: true,
       filters: {
-        label: [`deplow.spawnId=${serverId}`],
+        label: [`hostrig.spawnId=${serverId}`],
       },
     })
     if (containers.length === 0) return "stopped"

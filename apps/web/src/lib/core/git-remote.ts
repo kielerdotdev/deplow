@@ -3,6 +3,8 @@
  * Framework-agnostic; token is never logged.
  */
 
+import { assertSafeGitRemoteUrl } from "./safe-url"
+
 export type GitProvider = "github" | "gitlab"
 
 export interface RemoteRepo {
@@ -29,7 +31,7 @@ function authHeaders(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
     Accept: "application/json",
-    "User-Agent": "deplow",
+    "User-Agent": "hostrig",
   }
 }
 
@@ -83,7 +85,13 @@ export function normalizeRepoUrl(provider: GitProvider, input: string): string {
   const raw = input.trim()
   if (!raw) throw new Error("Repository is required")
   if (/^https?:\/\//i.test(raw) || raw.startsWith("git@")) {
-    return raw.endsWith(".git") ? raw : `${raw.replace(/\/$/, "")}.git`
+    return assertSafeGitRemoteUrl(raw, {
+      allowPrivateHosts: process.env.HOSTRIG_GIT_ALLOW_PRIVATE_HOSTS === "1",
+      allowHosts: (process.env.HOSTRIG_GIT_ALLOW_HOSTS ?? "")
+        .split(",")
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean),
+    })
   }
   // owner/repo
   const m = raw.match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/)
@@ -193,7 +201,7 @@ async function listGitlabRepos(
 ): Promise<ListReposResult> {
   const repos: RemoteRepo[] = []
   let truncated = false
-  const base = process.env.DEPLOW_GITLAB_API_URL ?? "https://gitlab.com/api/v4"
+  const base = process.env.HOSTRIG_GITLAB_API_URL ?? "https://gitlab.com/api/v4"
 
   for (let page = 1; page <= maxPages; page++) {
     const url = new URL(`${base.replace(/\/$/, "")}/projects`)
@@ -209,7 +217,7 @@ async function listGitlabRepos(
       headers: {
         "PRIVATE-TOKEN": token,
         Accept: "application/json",
-        "User-Agent": "deplow",
+        "User-Agent": "hostrig",
       },
     })
     if (!res.ok) throw await apiError("GitLab", res)
@@ -247,7 +255,7 @@ async function listGitlabBranches(
   fullName: string,
   fetchFn: typeof fetch,
 ): Promise<string[]> {
-  const base = process.env.DEPLOW_GITLAB_API_URL ?? "https://gitlab.com/api/v4"
+  const base = process.env.HOSTRIG_GITLAB_API_URL ?? "https://gitlab.com/api/v4"
   const project = encodeURIComponent(fullName)
   const branches: string[] = []
   for (let page = 1; page <= 3; page++) {
@@ -260,7 +268,7 @@ async function listGitlabBranches(
       headers: {
         "PRIVATE-TOKEN": token,
         Accept: "application/json",
-        "User-Agent": "deplow",
+        "User-Agent": "hostrig",
       },
     })
     if (!res.ok) throw await apiError("GitLab", res)

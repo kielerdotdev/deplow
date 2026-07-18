@@ -35,7 +35,7 @@ describe("Observe UI structure", () => {
     expect(src).toContain("shell.observeEnabled")
     expect(src).toContain('uiMode="observe"')
     expect(src).toContain("/observe/projects/$projectId")
-    expect(src).toContain("DEPLOW_OBSERVE_ENABLED")
+    expect(src).toContain("HOSTRIG_OBSERVE_ENABLED")
   })
 
   it("observe project layout owns AppShell so tabs do not remount chrome", () => {

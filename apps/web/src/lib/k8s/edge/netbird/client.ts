@@ -73,6 +73,9 @@ export function createNetbirdClient(managementUrl: string, pat: string) {
     path: string,
     body?: unknown,
   ): Promise<T> {
+    // Block private/link-local management URLs (admin SSRF hygiene).
+    const { assertSafeOutboundUrl } = await import("@/lib/core/safe-url")
+    assertSafeOutboundUrl(base, { allowHttp: true, blockPrivate: true })
     const url = joinApiUrl(base, path)
     const res = await fetch(url, {
       method,

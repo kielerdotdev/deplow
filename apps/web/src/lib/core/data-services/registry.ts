@@ -1,4 +1,4 @@
-import type { ResourceKind } from "@deplow/shared"
+import type { ResourceKind } from "@hostrig/shared"
 
 import type { PlatformConfig } from "../platform-config"
 import { PostgresContainerDriver } from "./postgres-driver"

@@ -85,7 +85,7 @@ function IntegrationsPage() {
         warning?: string | null
       }
       if (warning) {
-        console.info("[deplow]", warning)
+        console.info("[hostrig]", warning)
       }
       const form = document.createElement("form")
       form.method = "POST"
@@ -293,7 +293,7 @@ function IntegrationsPage() {
           title="GitHub"
           icon={PlugIcon}
           detail={githubDetail}
-          connected={Boolean(githubLink)}
+          connected={Boolean(status.githubAppConfigured && githubLink)}
           actions={
             !status.githubAppConfigured ? (
               <Button
@@ -428,9 +428,9 @@ function IntegrationsPage() {
               ? gitlabDetail
               : showGitlabSetup
                 ? "Set up OAuth application"
-                : "Not connected"
+                : "Not set up"
           }
-          connected={Boolean(gitlabLink)}
+          connected={Boolean(status.gitlabOAuthConfigured && gitlabLink)}
           actions={
             status.gitlabOAuthConfigured ? (
               <>

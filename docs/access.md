@@ -26,7 +26,7 @@ Client
 | Path | When | Cost risk |
 | ---- | ---- | --------- |
 | **BYO kubeconfig** | Paste kubeconfig | None from Hostrig |
-| **Create on Hetzner** | `DEPLOW_HETZNER_API_TOKEN` | One VM (cloud-init k3s + gVisor) |
+| **Create on Hetzner** | `HOSTRIG_HETZNER_API_TOKEN` | One VM (cloud-init k3s + gVisor) |
 | **Add Hetzner worker** | Connected cluster + token | Extra CPX-class VM |
 | **Add self-hosted worker** | Connected cluster + stored node token | Your hardware; join script from UI |
 
@@ -35,7 +35,7 @@ Client
 1. Connect or create a cluster (Settings → Cluster) with Traefik detected.
 2. Grow capacity with **Add Hetzner worker** or **Add self-hosted worker** (copyable k3s agent + gVisor install script).
 3. Prefer **NetBird guided setup** (Settings → Networking) or set a real base domain + Cloudflare / Tailscale (recipes below).
-4. Traefik origin on the node is normally `http://127.0.0.1:80` (override with `DEPLOW_TRAEFIK_ORIGIN` only if you host Traefik elsewhere).
+4. Traefik origin on the node is normally `http://127.0.0.1:80` (override with `HOSTRIG_TRAEFIK_ORIGIN` only if you host Traefik elsewhere).
 
 ### NetBird guided (happy path)
 

@@ -1,4 +1,4 @@
-import type { RegistryKind } from "@deplow/shared"
+import type { RegistryKind } from "@hostrig/shared"
 
 export type KindDefaults = {
   server: string

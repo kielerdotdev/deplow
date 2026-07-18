@@ -1,4 +1,4 @@
-import type { V1LimitRange, V1Namespace } from "@kubernetes/client-node"
+import type { V1LimitRange, V1Namespace, V1ResourceQuota } from "@kubernetes/client-node"
 
 import type { apiClients } from "./client"
 import { ensureProjectNetworkPolicy } from "./network-policy"
@@ -15,6 +15,26 @@ const NAMESPACE_LABELS: Record<string, string> = {
 }
 
 const LIMIT_RANGE_NAME = "hostrig-defaults"
+const RESOURCE_QUOTA_NAME = "hostrig-quota"
+
+/** Soft multi-tenant caps per project namespace (overridable via env). */
+function projectQuotaHardLimits(): {
+  pods: string
+  requestsCpu: string
+  requestsMemory: string
+  limitsCpu: string
+  limitsMemory: string
+  pvcs: string
+} {
+  return {
+    pods: process.env.HOSTRIG_NS_QUOTA_PODS?.trim() || "20",
+    requestsCpu: process.env.HOSTRIG_NS_QUOTA_REQUESTS_CPU?.trim() || "8",
+    requestsMemory: process.env.HOSTRIG_NS_QUOTA_REQUESTS_MEMORY?.trim() || "8Gi",
+    limitsCpu: process.env.HOSTRIG_NS_QUOTA_LIMITS_CPU?.trim() || "16",
+    limitsMemory: process.env.HOSTRIG_NS_QUOTA_LIMITS_MEMORY?.trim() || "16Gi",
+    pvcs: process.env.HOSTRIG_NS_QUOTA_PVCS?.trim() || "8",
+  }
+}
 
 function buildLimitRange(namespace: string): V1LimitRange {
   return {
@@ -60,6 +80,47 @@ async function ensureLimitRange(core: CoreApi, namespace: string): Promise<void>
   }
 }
 
+function buildResourceQuota(namespace: string): V1ResourceQuota {
+  const q = projectQuotaHardLimits()
+  return {
+    metadata: {
+      name: RESOURCE_QUOTA_NAME,
+      namespace,
+      labels: { "app.kubernetes.io/managed-by": "hostrig" },
+    },
+    spec: {
+      hard: {
+        pods: q.pods,
+        "requests.cpu": q.requestsCpu,
+        "requests.memory": q.requestsMemory,
+        "limits.cpu": q.limitsCpu,
+        "limits.memory": q.limitsMemory,
+        persistentvolumeclaims: q.pvcs,
+      },
+    },
+  }
+}
+
+async function ensureResourceQuota(
+  core: CoreApi,
+  namespace: string,
+): Promise<void> {
+  const body = buildResourceQuota(namespace)
+  try {
+    await core.readNamespacedResourceQuota({
+      name: RESOURCE_QUOTA_NAME,
+      namespace,
+    })
+    await core.replaceNamespacedResourceQuota({
+      name: RESOURCE_QUOTA_NAME,
+      namespace,
+      body,
+    })
+  } catch {
+    await core.createNamespacedResourceQuota({ namespace, body })
+  }
+}
+
 async function patchNamespaceLabels(
   core: CoreApi,
   ns: string,
@@ -84,7 +145,7 @@ async function patchNamespaceLabels(
 }
 
 /**
- * Ensure project namespace exists with PSS labels, LimitRange, and NetworkPolicy.
+ * Ensure project namespace exists with PSS labels, LimitRange, ResourceQuota, and NetworkPolicy.
  */
 export async function ensureProjectNamespace(
   core: CoreApi,
@@ -106,5 +167,6 @@ export async function ensureProjectNamespace(
   }
 
   await ensureLimitRange(core, ns)
+  await ensureResourceQuota(core, ns)
   await ensureProjectNetworkPolicy(networking, ns)
 }

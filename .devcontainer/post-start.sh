@@ -29,7 +29,7 @@ fi
 ensure_native_addons() {
   local mod
   mod="$(node -p 'process.versions.modules')"
-  if pnpm --filter @deplow/db exec node -e "require('better-sqlite3')" >/dev/null 2>&1; then
+  if pnpm --filter @hostrig/db exec node -e "require('better-sqlite3')" >/dev/null 2>&1; then
     return 0
   fi
   echo "==> rebuild better-sqlite3 for NODE_MODULE_VERSION $mod"
@@ -48,7 +48,7 @@ if ! pnpm db:push; then
   echo "WARN: db:push failed (schema drift or non-interactive). Fix with an interactive shell if needed."
 fi
 
-export DEPLOW_HETZNER_K3S_BIN="${DEPLOW_HETZNER_K3S_BIN:-/usr/local/bin/hetzner-k3s}"
+export HOSTRIG_HETZNER_K3S_BIN="${HOSTRIG_HETZNER_K3S_BIN:-/usr/local/bin/hetzner-k3s}"
 
 # Make sure railpack exists before web starts (no rebuild required if image is old).
 if ! command -v railpack >/dev/null 2>&1 && [ ! -x /usr/local/bin/railpack ]; then
@@ -128,7 +128,7 @@ cat <<EOF
 
 Hostrig Dev Container is up.
   UI:     http://localhost:9565
-  Public: https://deplow.waitforit.cc
+  Public: https://hostrig.waitforit.cc
   Logs:   $LOG_DIR/web.log
   CLI:    hetzner-k3s ($(command -v hetzner-k3s))
   Railpack: $(railpack --version 2>/dev/null || echo missing — rebuild container)

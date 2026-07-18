@@ -1,38 +1,31 @@
+---
+const mono = "IBM Plex Mono, ui-monospace, monospace"
+const font = "DM Sans, system-ui, sans-serif"
+---
+
 <svg viewBox="0 0 480 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four layers: control plane, data plane, build, runtime">
-	<defs>
-		<linearGradient id="sd-sage" x1="0" y1="0" x2="0" y2="1">
-			<stop stop-color="#5eead4" />
-			<stop offset="1" stop-color="#2dd4bf" />
-		</linearGradient>
-	</defs>
+	<rect width="480" height="300" fill="#000000" />
 
-	<rect width="480" height="300" fill="#07091a" />
-
-	<!-- control -->
-	<rect x="32" y="28" width="416" height="56" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
-	<rect x="32" y="28" width="6" height="56" rx="2" fill="url(#sd-sage)" />
-	<text x="56" y="54" fill="#eef1fb" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600">control plane</text>
-	<text x="172" y="54" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="12">tanstack · oRPC · sqlite</text>
-	<text x="56" y="72" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">project metadata</text>
-
-	<!-- data -->
-	<rect x="32" y="94" width="416" height="56" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
-	<rect x="32" y="94" width="6" height="56" rx="2" fill="url(#sd-sage)" />
-	<text x="56" y="120" fill="#eef1fb" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600">data plane</text>
-	<text x="148" y="120" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="12">postgres · redis · minio</text>
-	<text x="56" y="138" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">per-project isolation</text>
-
-	<!-- build -->
-	<rect x="32" y="160" width="416" height="56" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
-	<rect x="32" y="160" width="6" height="56" rx="2" fill="url(#sd-sage)" />
-	<text x="56" y="186" fill="#eef1fb" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600">build</text>
-	<text x="108" y="186" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="12">railpack · dockerfile · buildkit</text>
-	<text x="56" y="204" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11">source → image</text>
-
-	<!-- runtime — the gVisor layer, the only one that breaks pattern -->
-	<rect x="32" y="226" width="416" height="56" rx="8" fill="rgba(251,113,133,0.06)" stroke="rgba(251,113,133,0.22)" stroke-width="1.5" />
-	<rect x="32" y="226" width="6" height="56" rx="2" fill="#fb7185" />
-	<text x="56" y="252" fill="#eef1fb" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600">runtime</text>
-	<text x="128" y="252" fill="#fb7185" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500">gVisor · RuntimeClass · k3s</text>
-	<text x="56" y="270" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="11">user apps sandboxed (not plain runc)</text>
+	{
+		[
+			{ y: 28, t: "control plane", d: "tanstack · oRPC · sqlite", n: "project metadata" },
+			{ y: 94, t: "data plane", d: "postgres · redis · s3", n: "project namespace on k3s" },
+			{ y: 160, t: "build", d: "railpack · dockerfile · registry", n: "BuildKit on control plane" },
+			{ y: 226, t: "runtime", d: "k3s · gVisor · traefik", n: "user apps sandboxed" },
+		].map((row) => (
+			<>
+				<rect x="32" y={row.y} width="416" height="56" rx="4" fill="#121212" stroke="#333" />
+				<rect x="32" y={row.y} width="4" height="56" rx="1" fill="#f2f2f2" opacity="0.85" />
+				<text x="56" y={row.y + 26} fill="#f2f2f2" font-family={font} font-size="14" font-weight="500">
+					{row.t}
+				</text>
+				<text x="190" y={row.y + 26} fill="#8a8a8a" font-family={mono} font-size="12">
+					{row.d}
+				</text>
+				<text x="56" y={row.y + 44} fill="#525252" font-family={mono} font-size="11">
+					{row.n}
+				</text>
+			</>
+		))
+	}
 </svg>

@@ -10,10 +10,17 @@ describe("mcp server structure", () => {
     const src = readFileSync(path.join(root, "mcp/server.ts"), "utf8")
     expect(src).toContain("deploy_from_git")
     expect(src).toContain("project_create")
+    expect(src).toContain("project_list")
+    expect(src).toContain("project_destroy")
     expect(src).toContain("source_analyze")
     expect(src).toContain("service_create_and_deploy")
+    expect(src).toContain("service_list")
+    expect(src).toContain("service_add_postgres")
+    expect(src).toContain("service_add_redis")
+    expect(src).toContain("binding_create")
     expect(src).toContain("deployment_get")
     expect(src).toContain("deployment_logs")
+    expect(src).toContain("deployment_rollback")
   })
 
   it("mounts Streamable HTTP at /api/mcp with Bearer gate", () => {

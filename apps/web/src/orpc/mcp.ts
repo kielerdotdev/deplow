@@ -7,13 +7,13 @@ import {
   revokeMcpToken,
 } from "@/lib/mcp-tokens"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 export const listTokens = authedProcedure.handler(async ({ context }) => {
   return listMcpTokens(context.session!.user.id)
 })
 
-export const createToken = authedProcedure
+export const createToken = writeProcedure
   .input(
     z.object({
       name: z.string().min(1).max(64),
@@ -37,7 +37,7 @@ export const createToken = authedProcedure
     }
   })
 
-export const revokeToken = authedProcedure
+export const revokeToken = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     const ok = await revokeMcpToken(context.session!.user.id, input.id)

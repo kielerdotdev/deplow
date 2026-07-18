@@ -43,7 +43,7 @@ export class DataContainerRuntime {
 
   containerName(kind: DataContainerKind, slug: string): string {
     const safe = slug.toLowerCase().replace(/[^a-z0-9-]/g, "-")
-    return kind === "postgres" ? `deplow-pg-${safe}` : `deplow-redis-${safe}`
+    return kind === "postgres" ? `hostrig-pg-${safe}` : `hostrig-redis-${safe}`
   }
 
   volumeName(kind: DataContainerKind, slug: string): string {
@@ -86,11 +86,11 @@ export class DataContainerRuntime {
     }
 
     const labels = {
-      "deplow.managed": "true",
-      "deplow.projectId": spec.projectId,
-      "deplow.kind": spec.kind,
-      "deplow.source": "dedicated-container",
-      "deplow.slug": spec.projectSlug,
+      "hostrig.managed": "true",
+      "hostrig.projectId": spec.projectId,
+      "hostrig.kind": spec.kind,
+      "hostrig.source": "dedicated-container",
+      "hostrig.slug": spec.projectSlug,
     }
 
     const container = await this.docker.createContainer({
@@ -155,9 +155,9 @@ export class DataContainerRuntime {
         all: true,
         filters: {
           label: [
-            `deplow.projectId=${projectId}`,
-            `deplow.kind=${kind}`,
-            "deplow.source=dedicated-container",
+            `hostrig.projectId=${projectId}`,
+            `hostrig.kind=${kind}`,
+            "hostrig.source=dedicated-container",
           ],
         },
       })
@@ -196,8 +196,8 @@ export class DataContainerRuntime {
       all: true,
       filters: {
         label: [
-          `deplow.projectId=${projectId}`,
-          "deplow.source=dedicated-container",
+          `hostrig.projectId=${projectId}`,
+          "hostrig.source=dedicated-container",
         ],
       },
     })
@@ -245,7 +245,7 @@ export class DataContainerRuntime {
       env.find((e) => e.startsWith("POSTGRES_USER="))?.split("=")[1] ??
       "postgres"
     const redisPassword =
-      env.find((e) => e.startsWith("DEPLOW_REDIS_PASSWORD="))?.split("=")[1] ??
+      env.find((e) => e.startsWith("HOSTRIG_REDIS_PASSWORD="))?.split("=")[1] ??
       ""
 
     while (Date.now() < deadline) {

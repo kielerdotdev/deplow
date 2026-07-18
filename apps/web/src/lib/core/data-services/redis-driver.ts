@@ -1,4 +1,4 @@
-import type { RedisCredentials } from "@deplow/shared"
+import type { RedisCredentials } from "@hostrig/shared"
 
 import { randomPassword, sanitizeIdentifier } from "../crypto"
 import { RedisInstance } from "../infra/redis"
@@ -70,7 +70,7 @@ export class RedisContainerDriver implements DataServiceDriver {
       projectId: ctx.projectId,
       projectSlug: ctx.projectSlug,
       image: this.config.redisImage,
-      env: [`DEPLOW_REDIS_PASSWORD=${password}`],
+      env: [`HOSTRIG_REDIS_PASSWORD=${password}`],
       cmd: ["redis-server", "--requirepass", password, "--appendonly", "yes"],
       containerPort: 6379,
       dataPath: "/data",

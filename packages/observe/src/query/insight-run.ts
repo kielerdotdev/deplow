@@ -232,103 +232,15 @@ function chartKind(kind: InsightKind): "line" | "bar" | "area" {
   return "line"
 }
 
-function assertSafeRawSql(sql: string): void {
-  const stripped = sql
-    .replace(/--[^\n]*/g, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .trim()
-  if (!/^(with|select)\b/i.test(stripped)) {
-    throw new Error("Raw SQL must be a SELECT (or WITH … SELECT)")
-  }
-  if (/;/.test(stripped)) {
-    throw new Error("Raw SQL must be a single statement")
-  }
-  const banned =
-    /\b(insert|update|delete|drop|alter|create|truncate|attach|detach|rename|grant|revoke|system|kill|optimize|exchange)\b/i
-  if (banned.test(stripped)) {
-    throw new Error("Raw SQL contains a forbidden keyword")
-  }
-}
-
 async function runRawSql(
-  config: ObserveClickHouseConfig,
-  spec: InsightSpecRun,
-  bounds: { projectId: string; from: Date; to: Date },
+  _config: ObserveClickHouseConfig,
+  _spec: InsightSpecRun,
+  _bounds: { projectId: string; from: Date; to: Date },
 ): Promise<InsightRunResult> {
-  assertSafeRawSql(spec.rawSql!)
-  const sql = spec.rawSql!
-    .replaceAll("{{project_id}}", esc(bounds.projectId))
-    .replaceAll("{{from}}", iso(bounds.from))
-    .replaceAll("{{to}}", iso(bounds.to))
-
-  const rows = await queryJson<Record<string, unknown>>(config, sql)
-  const unit = spec.display?.unit
-
-  if (spec.kind === "number") {
-    const v = rows[0]?.v ?? rows[0]?.value ?? 0
-    return { kind: "number", value: Number(v), unit }
-  }
-
-  const hasKey = rows.some((r) => r.key != null && String(r.key) !== "")
-  if (hasKey || spec.kind === "table") {
-    if (spec.kind === "table") {
-      return {
-        kind: "table",
-        groupBy: spec.breakdown?.field ?? "key",
-        unit,
-        rows: rows.map((r) => ({
-          key: String(r.key ?? r.t ?? ""),
-          value: Number(r.v ?? 0),
-        })),
-      }
-    }
-    const keys = [...new Set(rows.map((r) => String(r.key ?? "series")))]
-    const byT = new Map<number, Record<string, number>>()
-    for (const r of rows) {
-      const t =
-        typeof r.t === "number"
-          ? r.t
-          : Date.parse(String(r.t ?? "")) || Number(r.t) || 0
-      const key = String(r.key ?? "series")
-      const cur = byT.get(t) ?? {}
-      cur[key] = Number(r.v ?? 0)
-      byT.set(t, cur)
-    }
-    const sorted = [...byT.keys()].sort((a, b) => a - b)
-    return {
-      kind: "multi",
-      chartKind: chartKind(spec.kind),
-      keys,
-      stacked: spec.display?.stacked,
-      unit,
-      rows: sorted.map((t) => {
-        const vals = byT.get(t) ?? {}
-        return {
-          t,
-          label: new Date(t).toLocaleString(undefined, {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          ...Object.fromEntries(keys.map((k) => [k, vals[k] ?? 0])),
-        } as { t: number; label: string } & Record<string, number>
-      }),
-    }
-  }
-
-  return {
-    kind: "series",
-    chartKind: chartKind(spec.kind),
-    unit,
-    series: rows.map((r) => {
-      const t =
-        typeof r.t === "number"
-          ? r.t
-          : Date.parse(String(r.t ?? "")) || Number(r.t) || 0
-      return { t, v: Number(r.v ?? 0) }
-    }),
-  }
+  // Disabled: keyword bans are not a SQL sandbox (table functions, system.*, etc.).
+  throw new Error(
+    "Raw SQL insights are disabled. Use structured Trends / filter queries instead.",
+  )
 }
 
 export async function runInsight(

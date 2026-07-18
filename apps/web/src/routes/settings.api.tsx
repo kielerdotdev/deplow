@@ -115,7 +115,7 @@ function ApiAccessPage() {
     "hostrig": {
       "url": "${mcpUrl}",
       "headers": {
-        "Authorization": "Bearer \${env:DEPLOW_MCP_TOKEN}"
+        "Authorization": "Bearer \${env:HOSTRIG_MCP_TOKEN}"
       }
     }
   }
@@ -127,7 +127,7 @@ function ApiAccessPage() {
       "type": "http",
       "url": "${mcpUrl}",
       "headers": {
-        "Authorization": "Bearer \${DEPLOW_MCP_TOKEN}"
+        "Authorization": "Bearer \${HOSTRIG_MCP_TOKEN}"
       }
     }
   }
@@ -137,7 +137,7 @@ function ApiAccessPage() {
     <>
       <SettingsPage
         title="API & MCP access"
-        description="Connect development tools and manage organization access tokens."
+        description="Operator PATs for MCP agents and the thin hostrig CLI — same tokens, same control plane. No desktop app."
       >
         <CommandAction
           id="settings.focus-mcp"
@@ -162,7 +162,7 @@ function ApiAccessPage() {
             <AlertDescription className="space-y-3">
               <p>
                 This value is shown once. Store it as{" "}
-                <code className="text-xs">DEPLOW_MCP_TOKEN</code> — do not paste
+                <code className="text-xs">HOSTRIG_MCP_TOKEN</code> — do not paste
                 it into config files.
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -357,7 +357,7 @@ function ApiAccessPage() {
               <ol className="list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
                 <li>Create a token above</li>
                 <li>
-                  Set <code className="text-xs">DEPLOW_MCP_TOKEN</code> in your
+                  Set <code className="text-xs">HOSTRIG_MCP_TOKEN</code> in your
                   environment
                 </li>
                 <li>Add this configuration to ~/.cursor/mcp.json</li>
@@ -386,7 +386,7 @@ function ApiAccessPage() {
               <ol className="list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
                 <li>Create a token above</li>
                 <li>
-                  Export <code className="text-xs">DEPLOW_MCP_TOKEN</code>
+                  Export <code className="text-xs">HOSTRIG_MCP_TOKEN</code>
                 </li>
                 <li>Add this to your Claude Code MCP config</li>
               </ol>
@@ -421,7 +421,7 @@ function ApiAccessPage() {
                 <li>
                   Header:{" "}
                   <code className="text-xs">
-                    Authorization: Bearer $DEPLOW_MCP_TOKEN
+                    Authorization: Bearer $HOSTRIG_MCP_TOKEN
                   </code>
                 </li>
               </ul>

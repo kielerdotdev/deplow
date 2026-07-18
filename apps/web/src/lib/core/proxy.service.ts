@@ -20,11 +20,22 @@ import {
   PREVIEW_HOSTNAME_PREFIX,
 } from "./proxy-hostname"
 
+/** Hostnames safe for Caddy `host` matchers (no spaces/newlines/metacharacters). */
+export function isSafeCaddyHostname(host: string): boolean {
+  const h = host.trim().toLowerCase()
+  if (!h || h.length > 253) return false
+  if (/[\s\r\n\t{}"'\\]/.test(h)) return false
+  return (
+    h === "localhost" ||
+    /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(h)
+  )
+}
+
 export interface ProxyRoute {
   /** Service id (route file key) */
   projectId: string
   slug: string
-  /** Upstream target, e.g. http://deplow-abc12345-app:80 */
+  /** Upstream target, e.g. http://hostrig-abc12345-app:80 */
   upstream: string
   /** Full public URL for the primary hostname when configured */
   publicUrl: string | null
@@ -155,7 +166,7 @@ export class ProxyService {
   async upsertProductionRoute(input: {
     projectId: string
     slug: string
-    /** e.g. deplow-abc12345-app:8080 or full http://... */
+    /** e.g. hostrig-abc12345-app:8080 or full http://... */
     upstream: string
     /** All active hostnames (multi-host Caddy matcher) */
     hostnames?: string[]
@@ -211,7 +222,7 @@ export class ProxyService {
 	admin off
 }
 :80 {
-	handle /deplow-health {
+	handle /hostrig-health {
 		respond "ok" 200
 	}
 	import /etc/caddy/routes/*.caddy
@@ -235,8 +246,17 @@ export class ProxyService {
       )
       return
     }
+    const safeHosts = route.hostnames.filter((h) => isSafeCaddyHostname(h))
+    if (safeHosts.length === 0) {
+      writeFileSync(
+        file,
+        `# service ${route.projectId} — no safe hostnames\n`,
+        "utf8",
+      )
+      return
+    }
     const matcher = `svc_${route.projectId.replace(/[^a-zA-Z0-9]/g, "")}`
-    const hosts = route.hostnames.join(" ")
+    const hosts = safeHosts.join(" ")
     const content = `@${matcher} host ${hosts}
 handle @${matcher} {
 	reverse_proxy ${route.upstream}

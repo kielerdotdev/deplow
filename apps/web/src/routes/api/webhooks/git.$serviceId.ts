@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { eq } from "@deplow/db"
+import { eq } from "@hostrig/db"
 
 import {
   decryptString,
@@ -9,8 +9,19 @@ import {
   MAX_WEBHOOK_BODY_BYTES,
   type GitWebhookService,
 } from "@/lib/core"
+import {
+  clientIpFromRequest,
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/rate-limit"
 import { db, platformConfig, projects, services } from "@/lib/services"
 import { runServiceDeploy } from "@/orpc/deployments"
+
+/** Per-service + per-IP caps to limit deploy storms / signature brute force. */
+const WEBHOOK_IP_LIMIT = 60
+const WEBHOOK_IP_WINDOW_MS = 60_000
+const WEBHOOK_SERVICE_LIMIT = 30
+const WEBHOOK_SERVICE_WINDOW_MS = 60_000
 
 /**
  * GitHub / GitLab push webhook → production deploy for a service.
@@ -22,6 +33,20 @@ export const Route = createFileRoute("/api/webhooks/git/$serviceId")({
     handlers: {
       POST: async ({ request, params }) => {
         const serviceId = params.serviceId
+        const ip = clientIpFromRequest(request)
+        const ipLimit = consumeRateLimit(
+          `git-webhook:ip:${ip}`,
+          WEBHOOK_IP_LIMIT,
+          WEBHOOK_IP_WINDOW_MS,
+        )
+        if (!ipLimit.ok) return rateLimitResponse(ipLimit.retryAfterSec)
+        const svcLimit = consumeRateLimit(
+          `git-webhook:svc:${serviceId}`,
+          WEBHOOK_SERVICE_LIMIT,
+          WEBHOOK_SERVICE_WINDOW_MS,
+        )
+        if (!svcLimit.ok) return rateLimitResponse(svcLimit.retryAfterSec)
+
         const rawBody = await request.text()
 
         if (isWebhookBodyTooLarge(Buffer.byteLength(rawBody, "utf8"))) {

@@ -17,9 +17,10 @@ describe("buildGvisorRuntimeClass", () => {
 })
 
 describe("missingRuntimeClassError", () => {
-  it("points at install script and escape hatch", () => {
+  it("points at install script and forbids runc escape hatch", () => {
     const err = missingRuntimeClassError("gvisor")
     expect(err.message).toContain("install-gvisor-k3s")
-    expect(err.message).toContain("DEPLOW_APP_RUNTIME=runc")
+    expect(err.message).toContain("no runc escape hatch")
+    expect(err.message).not.toMatch(/set HOSTRIG_APP_RUNTIME=runc/)
   })
 })

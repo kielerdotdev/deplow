@@ -4,7 +4,7 @@ import { insertEvent, type ObserveEventRow } from "../clickhouse/events"
 import { groupEvent } from "../grouping/v1"
 
 export type DigestProject = {
-  /** deplow projects.id */
+  /** hostrig projects.id */
   projectId: string
   observeProjectId: string
   sentryId: number

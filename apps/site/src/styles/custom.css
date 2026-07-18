@@ -1,15 +1,16 @@
-/* Starlight docs — match Hostrig app / landing shell */
+/* Starlight docs — match apps/web dark Atlasflow shell */
 
 :root {
   --sl-font: "DM Sans", system-ui, sans-serif;
   --sl-font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --shell: #0a0a0a;
-  --shell-panel: #171717;
-  --shell-border: #262626;
-  --shell-muted: #a0a0a0;
-  --shell-faint: #707070;
-  --shell-soft: rgba(255, 255, 255, 0.04);
-  --shell-radius: 4px;
+  --shell-panel: #121212;
+  --shell-raised: #1c1c1c;
+  --shell-border: #333333;
+  --shell-muted: #b0b0b0;
+  --shell-faint: #8a8a8a;
+  --shell-soft: rgb(255 255 255 / 0.04);
+  --shell-radius: 0.25rem;
   --sl-content-width: 44rem;
   --sl-sidebar-width: 15.5rem;
   color-scheme: dark;
@@ -24,29 +25,29 @@ html[data-theme="auto"],
 :root[data-theme="dark"],
 :root[data-theme="auto"],
 ::backdrop {
-  --sl-color-white: #fafafa;
-  --sl-color-gray-1: #e4e4e7;
-  --sl-color-gray-2: #a0a0a0;
-  --sl-color-gray-3: #707070;
-  --sl-color-gray-4: #3f3f46;
-  --sl-color-gray-5: #262626;
-  --sl-color-gray-6: #171717;
-  --sl-color-gray-7: #0f0f0f;
-  --sl-color-black: #0a0a0a;
+  --sl-color-white: #f2f2f2;
+  --sl-color-gray-1: #e8e8e8;
+  --sl-color-gray-2: #b0b0b0;
+  --sl-color-gray-3: #8a8a8a;
+  --sl-color-gray-4: #525252;
+  --sl-color-gray-5: #333333;
+  --sl-color-gray-6: #1c1c1c;
+  --sl-color-gray-7: #121212;
+  --sl-color-black: #000000;
 
   --sl-color-accent-low: #1c1c1c;
   --sl-color-accent: #d4d4d4;
-  --sl-color-accent-high: #fafafa;
+  --sl-color-accent-high: #f2f2f2;
 
   --sl-color-text: var(--sl-color-gray-1);
   --sl-color-text-accent: var(--sl-color-white);
   --sl-color-text-invert: #0a0a0a;
-  --sl-color-bg-accent: #fafafa;
-  --sl-color-bg: var(--shell);
+  --sl-color-bg-accent: #f2f2f2;
+  --sl-color-bg: var(--sl-color-black);
   --sl-color-bg-nav: var(--shell);
   --sl-color-bg-sidebar: var(--shell);
   --sl-color-hairline: var(--shell-border);
-  --sl-color-hairline-light: rgba(255, 255, 255, 0.06);
+  --sl-color-hairline-light: rgb(255 255 255 / 0.08);
 }
 
 /* ── Layout ── */

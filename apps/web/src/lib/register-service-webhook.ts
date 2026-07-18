@@ -68,7 +68,7 @@ function earlyRegisterResult(
       webhookManaged: false,
       webhookUrl,
       warning:
-        "Control plane URL is not publicly reachable. Add a push webhook manually (set DEPLOW_PUBLIC_URL to a tunnel for auto-register).",
+        "Control plane URL is not publicly reachable. Add a push webhook manually (set HOSTRIG_PUBLIC_URL to a tunnel for auto-register).",
     }
   }
   const parsed = parseRepoFullName(input.repoFullName || input.repoUrl)
@@ -305,7 +305,7 @@ export async function deleteServiceWebhook(input: {
     })
   } catch (error) {
     console.warn(
-      "[deplow] failed to delete remote webhook:",
+      "[hostrig] failed to delete remote webhook:",
       error instanceof Error ? error.message : error,
     )
   }

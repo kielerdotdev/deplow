@@ -1,4 +1,4 @@
-import type { DatabaseCredentials, RedisCredentials } from "@deplow/shared"
+import type { DatabaseCredentials, RedisCredentials } from "@hostrig/shared"
 
 import { randomPassword, sanitizeIdentifier } from "@/lib/core/crypto"
 
@@ -26,8 +26,16 @@ export async function provisionPostgresOnK8s(input: {
   await ensureProjectNamespace(core, networking, ns)
 
   const secretName = `${name}-secret`
+  let effectivePassword = password
   try {
-    await core.readNamespacedSecret({ name: secretName, namespace: ns })
+    const existing = await core.readNamespacedSecret({
+      name: secretName,
+      namespace: ns,
+    })
+    const b64 = existing.data?.POSTGRES_PASSWORD
+    if (b64) {
+      effectivePassword = Buffer.from(b64, "base64").toString("utf8")
+    }
   } catch {
     await core.createNamespacedSecret({
       namespace: ns,
@@ -54,7 +62,7 @@ export async function provisionPostgresOnK8s(input: {
           containers: [
             {
               name: "postgres",
-              image: process.env.DEPLOW_POSTGRES_IMAGE || "postgres:16-alpine",
+              image: process.env.HOSTRIG_POSTGRES_IMAGE || "postgres:16-alpine",
               ports: [{ containerPort: 5432 }],
               envFrom: [{ secretRef: { name: secretName } }],
               volumeMounts: [
@@ -99,8 +107,15 @@ export async function provisionPostgresOnK8s(input: {
   }
 
   const host = `${name}.${ns}.svc.cluster.local`
-  const url = `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:5432/${database}`
-  return { host, port: 5432, database, user, password, url }
+  const url = `postgres://${encodeURIComponent(user)}:${encodeURIComponent(effectivePassword)}@${host}:5432/${database}`
+  return {
+    host,
+    port: 5432,
+    database,
+    user,
+    password: effectivePassword,
+    url,
+  }
 }
 
 export async function provisionRedisOnK8s(input: {
@@ -122,8 +137,16 @@ export async function provisionRedisOnK8s(input: {
   await ensureProjectNamespace(core, networking, ns)
 
   const secretName = `${name}-secret`
+  let effectivePassword = password
   try {
-    await core.readNamespacedSecret({ name: secretName, namespace: ns })
+    const existing = await core.readNamespacedSecret({
+      name: secretName,
+      namespace: ns,
+    })
+    const b64 = existing.data?.REDIS_PASSWORD
+    if (b64) {
+      effectivePassword = Buffer.from(b64, "base64").toString("utf8")
+    }
   } catch {
     await core.createNamespacedSecret({
       namespace: ns,
@@ -150,8 +173,12 @@ export async function provisionRedisOnK8s(input: {
               containers: [
                 {
                   name: "redis",
-                  image: process.env.DEPLOW_REDIS_IMAGE || "redis:7-alpine",
-                  args: ["redis-server", "--requirepass", "$(REDIS_PASSWORD)"],
+                  image: process.env.HOSTRIG_REDIS_IMAGE || "redis:7-alpine",
+                  // K8s does not shell-expand args; use sh -c so $REDIS_PASSWORD is applied.
+                  command: ["sh", "-c"],
+                  args: [
+                    'exec redis-server --requirepass "$REDIS_PASSWORD"',
+                  ],
                   env: [
                     {
                       name: "REDIS_PASSWORD",
@@ -186,8 +213,8 @@ export async function provisionRedisOnK8s(input: {
   }
 
   const host = `${name}.${ns}.svc.cluster.local`
-  const url = `redis://:${encodeURIComponent(password)}@${host}:6379`
-  return { host, port: 6379, password, url }
+  const url = `redis://:${encodeURIComponent(effectivePassword)}@${host}:6379`
+  return { host, port: 6379, password: effectivePassword, url }
 }
 
 export async function destroyDataOnK8s(input: {

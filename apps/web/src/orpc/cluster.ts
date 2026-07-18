@@ -6,15 +6,16 @@ import {
   removeClusterNodeInputSchema,
   storeClusterJoinTokenInputSchema,
   workerJoinScriptInputSchema,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
-import { assertInstanceAdmin } from "@/lib/access"
+import { assertInstanceAdmin, isInstanceAdmin } from "@/lib/access"
 import {
   connectByoKubeconfig,
   disconnectCluster,
   getClusterSummary,
   getStoredKubeconfigYaml,
   getWorkerJoinScript as loadWorkerJoinScript,
+  redactClusterSummaryForMember,
   storeNodeJoinToken,
 } from "@/lib/k8s/cluster-store"
 import {
@@ -23,14 +24,16 @@ import {
   removeManagedClusterNode,
 } from "@/lib/k8s/spawn-cluster"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
-/** Any signed-in user may see readiness (no kubeconfig secrets returned). */
-export const get = authedProcedure.handler(async () => {
-  return getClusterSummary()
+/** Any signed-in user may see readiness; infra recon is instance-admin only. */
+export const get = authedProcedure.handler(async ({ context }) => {
+  const summary = await getClusterSummary()
+  const admin = await isInstanceAdmin(context.session!.user.id)
+  return admin ? summary : redactClusterSummaryForMember(summary)
 })
 
-export const connect = authedProcedure
+export const connect = writeProcedure
   .input(connectClusterInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -43,7 +46,7 @@ export const connect = authedProcedure
     }
   })
 
-export const disconnect = authedProcedure.handler(async ({ context }) => {
+export const disconnect = writeProcedure.handler(async ({ context }) => {
   await assertInstanceAdmin(context.session!)
   try {
     return await disconnectCluster()
@@ -54,7 +57,7 @@ export const disconnect = authedProcedure.handler(async ({ context }) => {
   }
 })
 
-export const createHetzner = authedProcedure
+export const createHetzner = writeProcedure
   .input(createHetznerClusterInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -69,7 +72,7 @@ export const createHetzner = authedProcedure
     }
   })
 
-export const addNode = authedProcedure
+export const addNode = writeProcedure
   .input(addClusterNodeInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -84,7 +87,7 @@ export const addNode = authedProcedure
     }
   })
 
-export const removeNode = authedProcedure
+export const removeNode = writeProcedure
   .input(removeClusterNodeInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -100,7 +103,7 @@ export const removeNode = authedProcedure
   })
 
 /** Admin-only: reveal stored kubeconfig YAML. */
-export const getKubeconfig = authedProcedure.handler(async ({ context }) => {
+export const getKubeconfig = writeProcedure.handler(async ({ context }) => {
   await assertInstanceAdmin(context.session!)
   try {
     return await getStoredKubeconfigYaml()
@@ -112,7 +115,7 @@ export const getKubeconfig = authedProcedure.handler(async ({ context }) => {
 })
 
 /** Self-hosted worker: gVisor install + k3s agent join script. */
-export const getWorkerJoinScript = authedProcedure
+export const getWorkerJoinScript = writeProcedure
   .input(workerJoinScriptInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -126,7 +129,7 @@ export const getWorkerJoinScript = authedProcedure
   })
 
 /** Store k3s node-token for BYO clusters (enables self-hosted join script). */
-export const storeJoinToken = authedProcedure
+export const storeJoinToken = writeProcedure
   .input(storeClusterJoinTokenInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)

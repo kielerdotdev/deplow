@@ -88,7 +88,7 @@ describe("buildGitHubAppManifest", () => {
 })
 
 describe("redirectBaseFromRequest / sanitizeBrowserOrigin", () => {
-  it("prefers public DEPLOW_PUBLIC_URL over private request Host (reverse proxy)", async () => {
+  it("prefers public HOSTRIG_PUBLIC_URL over private request Host (reverse proxy)", async () => {
     const { redirectBaseFromRequest, sanitizeBrowserOrigin } = await import(
       "./github-app"
     )
@@ -96,8 +96,8 @@ describe("redirectBaseFromRequest / sanitizeBrowserOrigin", () => {
       "http://192.168.0.223:3001/api/git/oauth/github/callback?code=x",
     )
     expect(
-      redirectBaseFromRequest(req, "https://deplow.waitforit.cc"),
-    ).toBe("https://deplow.waitforit.cc")
+      redirectBaseFromRequest(req, "https://hostrig.waitforit.cc"),
+    ).toBe("https://hostrig.waitforit.cc")
     expect(sanitizeBrowserOrigin("http://192.168.0.223:3000/")).toBe(
       "http://192.168.0.223:3000",
     )
@@ -120,13 +120,13 @@ describe("redirectBaseFromRequest / sanitizeBrowserOrigin", () => {
       "http://127.0.0.1:9565/api/git/oauth/github/callback?code=x",
       {
         headers: {
-          "x-forwarded-host": "deplow.waitforit.cc",
+          "x-forwarded-host": "hostrig.waitforit.cc",
           "x-forwarded-proto": "https",
         },
       },
     )
     expect(redirectBaseFromRequest(req, "http://localhost:9565")).toBe(
-      "https://deplow.waitforit.cc",
+      "https://hostrig.waitforit.cc",
     )
   })
 })
@@ -157,8 +157,8 @@ describe("githubOAuthAuthorizeUrl", () => {
 
 describe("githubAppDeleteSettingsUrl", () => {
   it("points at Advanced settings for the slug", () => {
-    expect(githubAppDeleteSettingsUrl("deplow")).toBe(
-      "https://github.com/settings/apps/deplow/advanced",
+    expect(githubAppDeleteSettingsUrl("hostrig")).toBe(
+      "https://github.com/settings/apps/hostrig/advanced",
     )
     expect(githubAppDeleteSettingsUrl()).toBe(
       "https://github.com/settings/apps",

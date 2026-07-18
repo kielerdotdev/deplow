@@ -10,11 +10,11 @@ import {
   observeAlerts,
   observeProjects,
   projects,
-} from "@deplow/db"
+} from "@hostrig/db"
 import {
   runTelemetryQuery,
   type TelemetryQuery,
-} from "@deplow/observe"
+} from "@hostrig/observe"
 import { randomUUID } from "node:crypto"
 
 import { db } from "@/lib/services"
@@ -163,15 +163,22 @@ async function deliverAlertNotification(input: {
       if (!input.channelIds.includes(ch.id)) continue
       let config: ChannelConfig = {}
       try {
-        config = JSON.parse(ch.configJson) as ChannelConfig
+        const { decryptChannelConfigJson } = await import(
+          "@/lib/message-channels"
+        )
+        const { platformConfig } = await import("@/lib/services")
+        config = decryptChannelConfigJson(
+          ch.configJson,
+          platformConfig.secretsEncryptionKey,
+        )
       } catch {
         continue
       }
       try {
-        // Reuse webhook delivery with alert payload shape
         if (ch.kind === "email") continue
         const url = config.url?.trim()
         if (!url) continue
+        const { safeOutboundFetch } = await import("@/lib/core/safe-fetch")
         const body =
           ch.kind === "slack"
             ? JSON.stringify({ text: message })
@@ -185,11 +192,12 @@ async function deliverAlertNotification(input: {
                   value: input.value,
                   threshold: input.threshold,
                 })
-        await fetch(url, {
+        await safeOutboundFetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body,
-          signal: AbortSignal.timeout(8000),
+          timeoutMs: 8000,
+          policy: { allowHttp: false, blockPrivate: true },
         })
       } catch {
         /* best-effort */
@@ -199,7 +207,8 @@ async function deliverAlertNotification(input: {
 
   if (input.channelWebhook) {
     try {
-      await fetch(input.channelWebhook, {
+      const { safeOutboundFetch } = await import("@/lib/core/safe-fetch")
+      await safeOutboundFetch(input.channelWebhook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -208,7 +217,8 @@ async function deliverAlertNotification(input: {
           state: input.state,
           value: input.value,
         }),
-        signal: AbortSignal.timeout(8000),
+        timeoutMs: 8000,
+        policy: { allowHttp: false, blockPrivate: true },
       })
     } catch {
       /* best-effort */
@@ -342,7 +352,7 @@ export async function evaluateAllAlerts(): Promise<number> {
   return n
 }
 
-const EVALUATOR_KEY = "__deplowAlertEvaluator"
+const EVALUATOR_KEY = "__hostrigAlertEvaluator"
 
 /** Start a single in-process evaluator loop (idempotent). */
 export function startAlertEvaluator(intervalMs = 60_000): void {

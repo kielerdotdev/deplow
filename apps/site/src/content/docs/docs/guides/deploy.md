@@ -48,7 +48,7 @@ Your app should read these like any twelve-factor config. Nothing is auto-inject
 
 ## Runtime
 
-User app pods use **gVisor** when `DEPLOW_APP_RUNTIME=runsc` (default). If RuntimeClass is missing and `DEPLOW_APP_RUNTIME_REQUIRED=true`, the deploy fails instead of silently using runc.
+User app pods use **gVisor** when `HOSTRIG_APP_RUNTIME=runsc` (default). If RuntimeClass is missing and `HOSTRIG_APP_RUNTIME_REQUIRED=true`, the deploy fails instead of silently using runc.
 
 ## Stopping and destroying
 

@@ -448,7 +448,7 @@ export async function analyzeRemote(
   const analysisId = crypto.randomUUID()
   const cloneRoot =
     input.cloneRoot ??
-    process.env.DEPLOW_GIT_CLONE_ROOT ??
+    process.env.HOSTRIG_GIT_CLONE_ROOT ??
     path.join(process.cwd(), "data", "git-clones")
   mkdirSync(path.join(cloneRoot, "analyze"), { recursive: true })
 
@@ -534,7 +534,7 @@ async function runRailpackAnalysis(input: {
   railpackBin: string
   runCommand: NonNullable<AnalyzeDirectoryInput["runCommand"]>
 }): Promise<RailpackParsed> {
-  const tmp = mkdtempSync(path.join(tmpdir(), "deplow-rp-"))
+  const tmp = mkdtempSync(path.join(tmpdir(), "hostrig-rp-"))
   const infoOut = path.join(tmp, "info.json")
   const planOut = path.join(tmp, "plan.json")
   try {
@@ -739,8 +739,16 @@ function normalizeRoot(root?: string | null): string {
 function resolveUnder(root: string, rel: string): string {
   const normalized = normalizeRoot(rel)
   if (normalized === ".") return root
+  if (path.isAbsolute(normalized)) {
+    throw new Error(`Path must be relative to the repository: ${rel}`)
+  }
   const resolved = path.resolve(root, normalized)
-  if (!resolved.startsWith(path.resolve(root))) {
+  const relative = path.relative(path.resolve(root), resolved)
+  if (
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
     throw new Error(`Path escapes repository root: ${rel}`)
   }
   return resolved

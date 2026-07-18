@@ -1,7 +1,7 @@
 import Database from "better-sqlite3"
 import { describe, expect, it } from "vitest"
 
-import { ensureGitOAuthSchema } from "@deplow/db"
+import { ensureGitOAuthSchema } from "@hostrig/db"
 
 describe("ensureGitOAuthSchema (runtime bootstrap)", () => {
   it("is idempotent and adds git oauth schema", () => {

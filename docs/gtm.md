@@ -13,6 +13,7 @@ Related: [sequencing.md](./sequencing.md) · [product.md](./product.md) · [acce
 | Wildcard URL via Traefik + edge (Cloudflare / Netbird / Tailscale) | Custom domains kitchen sink (v2) |
 | Git push-to-deploy (GitHub/GitLab) | Enterprise SSO / fine-grained RBAC |
 | Add Hetzner or self-hosted k3s workers | Autoscaling, Docker-agent remotes |
+| Web + MCP + thin CLI (same backend) | Desktop app, public REST productization, mail server |
 
 **Sales line:** We are Railway-shaped, not Coolify-shaped. User apps are sandboxed with gVisor by default on k3s — stricter than Railway’s public plain-container deploy story, without claiming Dirty Pipe immortality. If you need Compose + templates, use Coolify. If you want sandboxed app+PG+Redis+S3 on k3s with git push, use us.
 
@@ -35,7 +36,7 @@ bash scripts/install.sh
 ### Must be true at launch
 
 - [ ] Cluster nodes have gVisor (`runsc`) — managed Hetzner cloud-init, self-hosted join script, or `scripts/install-gvisor-k3s.sh`
-- [ ] User app pods use `runtimeClassName: gvisor` when `DEPLOW_APP_RUNTIME=runsc` (default)
+- [ ] User app pods always use `runtimeClassName: gvisor` (no runc escape hatch)
 - [ ] Project namespaces get NetworkPolicy isolation + hardened pod securityContext
 - [ ] Credentials flow through **bindings**
 - [ ] Git webhook auto-registers; signature-verified push deploys production branch
@@ -49,7 +50,9 @@ bash scripts/install.sh
 - Custom domains / ACME on Traefik (v2)
 - Autoscaling
 - Templates, Compose deploy, MySQL/Mongo
-- Enterprise SSO / fine-grained RBAC / public REST API / CLI
+- Enterprise SSO / fine-grained RBAC / general-purpose public REST API
+- Desktop app (**never**)
+- Full CLI feature parity with the web panel (thin client is enough)
 - Metrics dashboards, browser terminal
 - Full notification matrix (Slack/Discord/Telegram/…)
 - MicroVMs / Kata / Firecracker
@@ -72,7 +75,7 @@ Carve-out lives in [product.md](./product.md).
 
 ### Installer / cluster sandbox
 
-**Decision:** Control-plane bootstrap stays easy; **cluster nodes** must get gVisor. Managed Hetzner userdata and the self-hosted worker join script install `runsc` before/with k3s. BYO clusters use `scripts/install-gvisor-k3s.sh`. Never silently fall back to unsandboxed pods when `DEPLOW_APP_RUNTIME_REQUIRED=true`.
+**Decision:** Control-plane bootstrap stays easy; **cluster nodes** must get gVisor. Managed Hetzner userdata and the self-hosted worker join script install `runsc` before/with k3s. BYO clusters use `scripts/install-gvisor-k3s.sh`. Never fall back to unsandboxed pods — runc is not allowed for user apps.
 
 **Not the launch bar:** “install Docker gVisor for local containers” or Docker-agent install for app deploy.
 
@@ -83,10 +86,21 @@ Carve-out lives in [product.md](./product.md).
 3. v2: custom domains + previews
 4. Never chase templates/Compose/multi-DB as a Coolify response
 
+## Interfaces (locked)
+
+| Surface | GTM role |
+| --- | --- |
+| **Web** | Primary operator path; launch bar is UI-complete |
+| **MCP** | Same lifecycle for agents; do not oversell as the lead story |
+| **CLI** | Thin remote client on operator PATs; claim only after `login` + deploy/status work |
+| **Desktop** | Never |
+
 ## Anti-checklist (do not delay launch for these)
 
 - Matching Dokploy/Coolify feature matrices
-- MCP as a marketing lead (tokens may exist; don’t oversell)
+- Shipping thin CLI before launch bar is green (nice-to-have polish)
+- MCP as the only marketing lead (tokens may exist; don’t oversell)
 - Enterprise SSO packaging
 - Autoscaling / placement UI
 - MicroVM support
+- Desktop, mail server, hybrid multi-tenant cloud

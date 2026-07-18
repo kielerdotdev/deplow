@@ -1,14 +1,14 @@
 # Example pgBackRest stanza for a dedicated project Postgres → MinIO
-# Stanza name must match the project id (used by deplow PITR APIs).
-# Copy to pgbackrest.conf, set DEPLOW_PITR_ENABLED=1 and PGBACKREST_CONFIG,
+# Stanza name must match the project id (used by hostrig PITR APIs).
+# Copy to pgbackrest.conf, set HOSTRIG_PITR_ENABLED=1 and PGBACKREST_CONFIG,
 # then run: ./infra/pgbackrest/ensure-stanza.sh <project-id> <project-slug>
 
 [global]
 repo1-type=s3
 repo1-s3-endpoint=http://127.0.0.1:59000
-repo1-s3-bucket=deplow-backups
-repo1-s3-key=deplow
-repo1-s3-key-secret=deplowsecret
+repo1-s3-bucket=hostrig-backups
+repo1-s3-key=hostrig
+repo1-s3-key-secret=hostrigsecret
 repo1-s3-region=us-east-1
 repo1-path=/pgbackrest
 repo1-s3-uri-style=path

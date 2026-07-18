@@ -1,5 +1,5 @@
-import { eq, sql, db, platformIngress, netbirdServices } from "@deplow/db"
-import type { NetbirdDomainMode, NetbirdStatus } from "@deplow/shared"
+import { eq, sql, db, platformIngress, netbirdServices } from "@hostrig/db"
+import type { NetbirdDomainMode, NetbirdStatus } from "@hostrig/shared"
 
 import { decryptString, encryptString } from "@/lib/core/crypto"
 import { env } from "@/lib/env"

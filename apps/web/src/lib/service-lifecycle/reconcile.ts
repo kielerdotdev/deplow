@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt, db, operations, services } from "@deplow/db"
+import { and, eq, inArray, lt, db, operations, services } from "@hostrig/db"
 
 import { transitionServiceBestEffort } from "./transition"
 

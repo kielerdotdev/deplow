@@ -75,7 +75,7 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     const src = readFileSync(path.join(root, "lib/services.ts"), "utf8")
     expect(src).toContain("createCaddyReloadOnChange")
     expect(src).toContain("onChange")
-    expect(src).toContain("deplow-caddy")
+    expect(src).toContain("hostrig-caddy")
   })
 
   it("createAndDeploy and connectGit register remote webhooks via lifecycle", () => {
@@ -153,7 +153,7 @@ describe("lifecycle structure (create → deploy → proxy → destroy)", () => 
     expect(orpc).toContain("selectRollbackTarget")
     const queue = readFileSync(path.join(root, "lib/core/queue/index.ts"), "utf8")
     expect(queue).not.toContain("enqueueDeploy")
-    expect(queue).not.toContain("deplow-deploy")
+    expect(queue).not.toContain("hostrig-deploy")
   })
 })
 

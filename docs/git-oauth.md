@@ -43,13 +43,13 @@ Manifest keys (not UI labels):
 GitHub **rejects** App-level `hook_attributes.url` when it is not on the public Internet (`localhost`, RFC1918, etc.).  
 `buildGitHubAppManifest` **omits** `hook_attributes` in that case so Create App still works.
 
-- OAuth `callback_urls` include `DEPLOW_PUBLIC_URL` **and** `http://localhost:9565` / `127.0.0.1` so local vs LAN mismatches are less painful.
+- OAuth `callback_urls` include `HOSTRIG_PUBLIC_URL` **and** `http://localhost:9565` / `127.0.0.1` so local vs LAN mismatches are less painful.
 - **Connect GitHub** does **not** send `redirect_uri` in the authorize request (avoids “redirect_uri is not associated…” when env host ≠ App callback). GitHub uses the App’s registered Callback URL(s).
 - If Connect still fails: open the App → **Callback URL** and add  
-  `{DEPLOW_PUBLIC_URL}/api/git/oauth/github/callback` exactly (Integrations page shows this URL).
-- For GitHub → your laptop push webhooks, set `DEPLOW_PUBLIC_URL` to a **tunnel** (cloudflared, ngrok), then create/recreate the App.
+  `{HOSTRIG_PUBLIC_URL}/api/git/oauth/github/callback` exactly (Integrations page shows this URL).
+- For GitHub → your laptop push webhooks, set `HOSTRIG_PUBLIC_URL` to a **tunnel** (cloudflared, ngrok), then create/recreate the App.
 - Per-repo hooks are still created via API on connect when the control plane URL is reachable.
-- **Post-OAuth redirects** prefer a public `DEPLOW_PUBLIC_URL` over the reverse-proxy internal bind host (`http://192.168.x.x:…`). Set `DEPLOW_PUBLIC_URL=https://your.public.host` so Reconnect / Switch account returns to the public site.
+- **Post-OAuth redirects** prefer a public `HOSTRIG_PUBLIC_URL` over the reverse-proxy internal bind host (`http://192.168.x.x:…`). Set `HOSTRIG_PUBLIC_URL=https://your.public.host` so Reconnect / Switch account returns to the public site.
 
 ## Schema (summary)
 
@@ -84,7 +84,7 @@ Integrations → **Remove App**:
 2. Clears encrypted credentials + git links on this server
 3. Opens GitHub **Advanced** settings so you can **Delete GitHub App** (GitHub has no API to delete the registration)
 
-Then **Create GitHub App** again so callback URLs match current `DEPLOW_PUBLIC_URL`.
+Then **Create GitHub App** again so callback URLs match current `HOSTRIG_PUBLIC_URL`.
 
 ## Acceptance
 

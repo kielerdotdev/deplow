@@ -9,7 +9,7 @@ CREATE TABLE `observe_projects` (
 	`quota_per_5m` integer DEFAULT 1000 NOT NULL,
 	`quota_per_hour` integer DEFAULT 5000 NOT NULL,
 	`quota_per_month` integer DEFAULT 1000000 NOT NULL,
-	`grouping_mechanism` text DEFAULT 'deplow-v1' NOT NULL,
+	`grouping_mechanism` text DEFAULT 'hostrig-v1' NOT NULL,
 	`digest_counter` integer DEFAULT 0 NOT NULL,
 	`stored_event_count` integer DEFAULT 0 NOT NULL,
 	`created_at` integer NOT NULL,

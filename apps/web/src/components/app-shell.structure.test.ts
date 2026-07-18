@@ -254,7 +254,7 @@ describe("UI shell structure", () => {
     expect(existsSync(path.join(root, "lib/agent"))).toBe(false)
     expect(existsSync(path.join(root, "orpc/nodes.ts"))).toBe(false)
     expect(existsSync(path.join(root, "routes/api/agent.$.ts"))).toBe(false)
-    expect(existsSync(path.join(root, "routes/deplow-agent.ts"))).toBe(false)
+    expect(existsSync(path.join(root, "routes/hostrig-agent.ts"))).toBe(false)
     const router = readFileSync(path.join(root, "orpc/router.ts"), "utf8")
     expect(router).not.toContain('nodes:')
     expect(router).toContain("cluster:")

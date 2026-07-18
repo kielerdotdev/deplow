@@ -6,8 +6,8 @@
  *   node scripts/observe-dogfood-dsn.mjs
  *
  * Then add to .env:
- *   DEPLOW_OBSERVE_DOGFOOD=1
- *   DEPLOW_OBSERVE_DOGFOOD_DSN=<printed>
+ *   HOSTRIG_OBSERVE_DOGFOOD=1
+ *   HOSTRIG_OBSERVE_DOGFOOD_DSN=<printed>
  */
 import Database from "better-sqlite3"
 import fs from "node:fs"
@@ -16,15 +16,15 @@ import { fileURLToPath } from "node:url"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const candidates = [
-  process.env.DEPLOW_SQLITE_PATH,
+  process.env.HOSTRIG_SQLITE_PATH,
   process.env.DATABASE_URL?.startsWith("file:")
     ? process.env.DATABASE_URL.replace(/^file:/, "")
     : process.env.DATABASE_URL && !process.env.DATABASE_URL.includes("://")
       ? process.env.DATABASE_URL
       : null,
-  path.join(root, "data", "deplow.db"),
-  path.join(root, "data", "deplow.sqlite"),
-  path.join(root, "apps/web", "data", "deplow.db"),
+  path.join(root, "data", "hostrig.db"),
+  path.join(root, "data", "hostrig.sqlite"),
+  path.join(root, "apps/web", "data", "hostrig.db"),
 ].filter(Boolean)
 
 function buildDsn({ publicKey, host, sentryId, protocol }) {
@@ -41,7 +41,7 @@ function main() {
   }
 
   const db = new Database(dbPath, { readonly: true })
-  const projectId = process.env.DEPLOW_OBSERVE_DOGFOOD_PROJECT_ID
+  const projectId = process.env.HOSTRIG_OBSERVE_DOGFOOD_PROJECT_ID
 
   const row = projectId
     ? db
@@ -72,9 +72,9 @@ function main() {
   }
 
   const base = (
-    process.env.DEPLOW_OBSERVE_INGEST_URL ||
+    process.env.HOSTRIG_OBSERVE_INGEST_URL ||
     process.env.BETTER_AUTH_URL ||
-    process.env.DEPLOW_PUBLIC_URL ||
+    process.env.HOSTRIG_PUBLIC_URL ||
     "http://localhost:9565"
   ).replace(/\/$/, "")
   const u = new URL(base)
@@ -89,9 +89,9 @@ function main() {
   console.error(`# db ${dbPath}`)
   console.error(`# project ${row.project_id}  sentryId=${row.sentry_id}`)
   console.error("# Add to .env:")
-  console.error("# DEPLOW_OBSERVE_DOGFOOD=1")
-  console.error(`# DEPLOW_OBSERVE_DOGFOOD_DSN=${dsn}`)
-  console.error(`# DEPLOW_OBSERVE_DOGFOOD_PROJECT_ID=${row.project_id}`)
+  console.error("# HOSTRIG_OBSERVE_DOGFOOD=1")
+  console.error(`# HOSTRIG_OBSERVE_DOGFOOD_DSN=${dsn}`)
+  console.error(`# HOSTRIG_OBSERVE_DOGFOOD_PROJECT_ID=${row.project_id}`)
 }
 
 main()

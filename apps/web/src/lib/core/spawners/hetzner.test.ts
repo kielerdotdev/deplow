@@ -58,7 +58,7 @@ describe("HetznerSpawner", () => {
     const arg = createServer.mock.calls[0]![0]
     expect(arg.userData).toContain("k3s")
     expect(arg.labels).toMatchObject({
-      "deplow.spawned": "true",
+      "hostrig.spawned": "true",
       env: "dogfood",
     })
     expect(arg.sshKeys).toEqual(["my-key"])

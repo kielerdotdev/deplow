@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from "node:crypto"
 
-import { and, db, eq, isNull, mcpTokens, user } from "@deplow/db"
+import { and, db, eq, isNull, mcpTokens, user } from "@hostrig/db"
 
 import type { Session } from "@/lib/auth"
 
-const TOKEN_PREFIX = "deplow_"
+const TOKEN_PREFIX = "hostrig_"
 
 export const MCP_SCOPES = ["*", "read"] as const
 export type McpScope = (typeof MCP_SCOPES)[number]
@@ -166,6 +166,7 @@ export async function resolveSessionFromMcpToken(
     .catch(() => undefined)
 
   const now = new Date()
+  const scopes = parseScopes(row.scopesJson)
   return {
     user: {
       id: owner.id,
@@ -187,5 +188,20 @@ export async function resolveSessionFromMcpToken(
       ipAddress: null,
       userAgent: null,
     },
+    mcpScopes: scopes,
+  }
+}
+
+/** Whether this session is an MCP token without full (`*`) scope. */
+export function isReadOnlyMcpToken(session: Session | null | undefined): boolean {
+  const scopes = session?.mcpScopes
+  if (!scopes || scopes.length === 0) return false
+  if (scopes.includes("*")) return false
+  return scopes.includes("read")
+}
+
+export function assertMcpWriteAccess(session: Session | null | undefined): void {
+  if (isReadOnlyMcpToken(session)) {
+    throw new Error("This API token is read-only")
   }
 }

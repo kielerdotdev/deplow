@@ -1,0 +1,261 @@
+---
+import LandingLayout from '../layouts/LandingLayout.astro';
+import Logo from '../components/landing/Logo.astro';
+
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://hostrig.waitforit.cc';
+const repoUrl = 'https://github.com/kielerdotdev/hostrig';
+const installHref = '/docs/getting-started/quick-start/';
+---
+
+<LandingLayout
+	title="Pricing — Hostrig"
+	description="Hostrig is free forever on infrastructure you own. Self-host the full platform. No seats, no metering, no desktop tax."
+>
+	<nav class="nav">
+		<a href="/" class="nav-brand" aria-label="Hostrig home">
+			<Logo size={28} />
+			<span class="nav-wordmark">Hostrig</span>
+		</a>
+		<div class="nav-right">
+			<a href="/#product" class="nav-link">Product</a>
+			<a href="/docs/" class="nav-link">Docs</a>
+			<a href="/pricing/" class="nav-link">Pricing</a>
+			<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="nav-link">
+				GitHub
+				<span class="nav-link-arrow" aria-hidden="true">&#8599;</span>
+			</a>
+			<a class="nav-cta" href={appUrl}>Open app</a>
+		</div>
+	</nav>
+
+	<main>
+		<section class="hero pricing-hero">
+			<p class="mode-label">Pricing</p>
+			<h1 class="tagline pricing-title">
+				<span class="tagline-main">Free to run.</span>
+				<span class="tagline-sub">Yours to own.</span>
+			</h1>
+			<p class="lede">
+				The full platform is open source and self-hosted. You pay for your VPS and cluster — not
+				per seat, not per deploy, not per domain.
+			</p>
+		</section>
+
+		<section class="band pricing-band">
+			<div class="price-grid">
+				<article class="price-card price-card--feature">
+					<span class="price-n">01</span>
+					<span class="price-tag">Self-hosted</span>
+					<h2>Hobby</h2>
+					<p class="price-lead">
+						Run the entire control plane and data plane on machines you own. Unlimited projects,
+						deploys, and platform wildcards.
+					</p>
+					<p class="price-amount">$0</p>
+					<p class="price-note">Forever · your infrastructure</p>
+					<ul class="price-features">
+						<li>Full platform — web, MCP, optional Observe</li>
+						<li>Typed services on k3s + gVisor for apps</li>
+						<li>Postgres, Redis, bindings, backups</li>
+						<li>Git push-to-deploy · rollbacks · logs</li>
+						<li>No metering · no telemetry required</li>
+					</ul>
+					<div class="price-actions">
+						<a class="hero-button" href={installHref}>Install self-hosted</a>
+						<a class="secondary-link" href={repoUrl} target="_blank" rel="noopener noreferrer">
+							Read the source →
+						</a>
+					</div>
+				</article>
+
+				<article class="price-card">
+					<span class="price-n">02</span>
+					<span class="price-tag">Later</span>
+					<h2>Hosted control plane</h2>
+					<p class="price-lead">
+						Optional managed control plane is not productized yet. When it exists, it will be
+						priced honestly — not invented as fake SKUs on this page.
+					</p>
+					<p class="price-amount price-amount--soft">—</p>
+					<p class="price-note">Not available · not required</p>
+					<ul class="price-features">
+						<li>Self-host remains first-class forever</li>
+						<li>No lock-in: k3s workloads stay portable</li>
+						<li>Support / SaaS tiers only if we ship them</li>
+					</ul>
+					<div class="price-actions">
+						<a class="secondary-link" href="/docs/">Stay on Hobby →</a>
+					</div>
+				</article>
+			</div>
+		</section>
+
+		<section class="band">
+			<div class="band-head">
+				<h2>What you actually pay for</h2>
+				<p>
+					Compute and storage on your provider (Hetzner, bare metal, etc.). Edge TLS via
+					Cloudflare / NetBird / Tailscale. Container registry of your choice. That is the bill.
+				</p>
+			</div>
+			<ul class="out-list">
+				<li>No per-seat tax for the self-hosted control plane</li>
+				<li>No bandwidth metering from Hostrig</li>
+				<li>No desktop license — Web and MCP only for now</li>
+				<li>Observe is optional and uses your ClickHouse when enabled</li>
+			</ul>
+		</section>
+
+		<section class="cta" aria-label="Get started">
+			<div class="cta-panel">
+				<h2>Start free on your cluster.</h2>
+				<p>Install the control plane, connect k3s, deploy the first URL.</p>
+				<div class="cta-actions">
+					<a class="hero-button" href={installHref}>Quick start</a>
+					<a class="hero-button hero-button--ghost" href={appUrl}>Open app</a>
+				</div>
+				<ul class="trust-chips">
+					<li>$0 Hobby</li>
+					<li>MIT</li>
+					<li>You own the cluster</li>
+				</ul>
+			</div>
+		</section>
+	</main>
+
+	<footer class="footer">
+		<a href="/" class="footer-brand" aria-label="Hostrig home">Hostrig</a>
+		<div class="footer-links">
+			<a href="/#product">Product</a>
+			<a href="/docs/">Docs</a>
+			<a href="/pricing/">Pricing</a>
+			<a href={appUrl}>App</a>
+			<a href={repoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
+		</div>
+		<span class="footer-meta">&copy; {new Date().getFullYear()} · MIT</span>
+	</footer>
+</LandingLayout>
+
+<style>
+	.pricing-hero {
+		padding-bottom: 1rem;
+	}
+
+	.pricing-title {
+		max-width: 16ch;
+	}
+
+	.pricing-band {
+		padding-top: 2rem;
+	}
+
+	.price-grid {
+		display: grid;
+		gap: 1.25rem;
+		max-width: 52rem;
+	}
+
+	@media (min-width: 800px) {
+		.price-grid {
+			grid-template-columns: 1.15fr 0.85fr;
+			align-items: stretch;
+		}
+	}
+
+	.price-card {
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		background: var(--surface);
+		padding: 1.5rem 1.35rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+	}
+
+	.price-card--feature {
+		background: var(--surface-raised);
+		box-shadow: 0 1px 0 rgb(255 255 255 / 5%);
+	}
+
+	.price-n {
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		color: var(--fg-dim);
+	}
+
+	.price-tag {
+		font-family: var(--font-mono);
+		font-size: 0.68rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--fg-dim);
+	}
+
+	.price-card h2 {
+		font-size: 1.35rem;
+		font-weight: 600;
+		letter-spacing: -0.03em;
+		color: var(--fg);
+	}
+
+	.price-lead {
+		color: var(--fg-muted);
+		font-size: 0.95rem;
+		line-height: 1.5;
+		margin: 0.15rem 0 0.35rem;
+	}
+
+	.price-amount {
+		font-size: 2.5rem;
+		font-weight: 650;
+		letter-spacing: -0.04em;
+		color: var(--fg);
+		line-height: 1;
+		margin-top: 0.35rem;
+	}
+
+	.price-amount--soft {
+		color: var(--fg-dim);
+		font-weight: 500;
+	}
+
+	.price-note {
+		font-size: 0.85rem;
+		color: var(--fg-dim);
+		margin-bottom: 0.5rem;
+	}
+
+	.price-features {
+		list-style: none;
+		display: grid;
+		gap: 0.55rem;
+		margin: 0.5rem 0 1rem;
+		padding-top: 0.85rem;
+		border-top: 1px solid var(--border);
+		flex: 1;
+	}
+
+	.price-features li {
+		font-size: 0.9rem;
+		color: var(--fg-muted);
+		line-height: 1.4;
+		padding-left: 1rem;
+		position: relative;
+	}
+
+	.price-features li::before {
+		content: '✓';
+		position: absolute;
+		left: 0;
+		color: var(--ok);
+		font-size: 0.8rem;
+	}
+
+	.price-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.85rem 1rem;
+		margin-top: auto;
+	}
+</style>

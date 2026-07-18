@@ -44,7 +44,7 @@ export function resetLastCaddyReload(): void {
 export async function reloadCaddyProxy(
   options: CaddyReloadOptions = {},
 ): Promise<CaddyReloadResult> {
-  const container = options.containerName ?? "deplow-caddy"
+  const container = options.containerName ?? "hostrig-caddy"
   const configPath = options.configPath ?? "/etc/caddy/Caddyfile"
   const run = options.runCommand ?? defaultRun
 
@@ -67,7 +67,7 @@ export async function reloadCaddyProxy(
 
   const message = (result.stderr || result.stdout || `exit ${result.code}`).trim()
   // Do not throw — deploy should succeed even if proxy is offline in local dev
-  console.warn(`[deplow] caddy reload failed (${container}): ${message}`)
+  console.warn(`[hostrig] caddy reload failed (${container}): ${message}`)
   lastReload = { ok: false, message, at }
   return lastReload
 }
@@ -79,7 +79,7 @@ export async function reloadCaddyProxy(
 export async function probeCaddyProxy(
   options: CaddyReloadOptions = {},
 ): Promise<CaddyProbeResult> {
-  const container = options.containerName ?? "deplow-caddy"
+  const container = options.containerName ?? "hostrig-caddy"
   const run = options.runCommand ?? defaultRun
 
   const result = await run("docker", [
@@ -87,7 +87,7 @@ export async function probeCaddyProxy(
     container,
     "wget",
     "-qO-",
-    "http://127.0.0.1:80/deplow-health",
+    "http://127.0.0.1:80/hostrig-health",
   ])
 
   if (result.code === 0) {

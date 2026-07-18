@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/env", () => ({
   env: {
     observeEnabled: true,
-    observeStagingDir: "/tmp/deplow-observe-test",
+    observeStagingDir: "/tmp/hostrig-observe-test",
   },
 }))
 
@@ -29,7 +29,7 @@ vi.mock("@/lib/core/queue", () => ({
   enqueueObserveDigest: mocks.enqueueObserveDigest,
 }))
 
-import { eventToEnvelope } from "@deplow/observe"
+import { eventToEnvelope } from "@hostrig/observe"
 
 import {
   handleEnvelopeRequest,

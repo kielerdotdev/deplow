@@ -1,5 +1,5 @@
 import type { TrendsQuery } from "./types"
-import type { TrendsQueryRun } from "@deplow/observe"
+import type { TrendsQueryRun } from "@hostrig/observe"
 
 /** Map web TrendsQuery → package runner input. */
 export function toTrendsQueryRun(q: TrendsQuery): TrendsQueryRun {

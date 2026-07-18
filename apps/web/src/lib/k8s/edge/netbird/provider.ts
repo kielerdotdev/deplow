@@ -1,7 +1,7 @@
 import type {
   NetbirdConnectInput,
   NetbirdEdgeStatus,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import {
   applyNetbirdAgent,

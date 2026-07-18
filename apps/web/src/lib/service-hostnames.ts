@@ -2,7 +2,7 @@
  * Persist and sync service_hostnames with Caddy routes.
  */
 
-import { and, db, eq, serviceHostnames, services, projects } from "@deplow/db"
+import { and, db, eq, serviceHostnames, services, projects } from "@hostrig/db"
 
 import {
   productionHostname,

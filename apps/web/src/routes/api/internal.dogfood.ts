@@ -4,18 +4,25 @@ import { env } from "@/lib/env"
 import { ensureDogfoodBootstrap } from "@/lib/observe/dogfood"
 
 /**
- * Dev dogfood: returns project-scoped DSN + OTEL (creates deplow-dogfood if needed).
+ * Dev dogfood: returns project-scoped DSN + OTEL (creates hostrig-dogfood if needed).
  */
 export const Route = createFileRoute("/api/internal/dogfood")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         if (!env.observeDogfood) {
           return Response.json({
             enabled: false,
             dsn: null,
             otelEndpoint: null,
           })
+        }
+        // Never expose DSN/OTEL headers unauthenticated on a public control plane.
+        const { resolveActor } = await import("@/mcp/auth")
+        const { isInstanceAdmin } = await import("@/lib/access")
+        const session = await resolveActor(request.headers)
+        if (!session || !(await isInstanceAdmin(session.user.id))) {
+          return Response.json({ error: "Forbidden" }, { status: 403 })
         }
         const boot = await ensureDogfoodBootstrap()
         return Response.json({

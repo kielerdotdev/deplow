@@ -29,8 +29,9 @@ connect or create k3s cluster (Settings → Cluster)
 | **Runtime**               | **k3s only** — Deployments / StatefulSets / Ingress; user apps under **gVisor** RuntimeClass ([secure-runtime.md](./secure-runtime.md)) |
 | **Proxy**                 | Traefik Ingress `{slug}.{baseDomain}` — [access.md](./access.md)                                                                |
 | **Git webhooks**          | Push-to-deploy main track                                                                                                       |
-| **Ops UX**                | Create / list / destroy, deploy, stop, logs                                                                                     |
+| **Ops UX**                | Create / list / destroy, deploy, stop, logs, rollback                                                                           |
 | **Organizations**         | Soft multi-user: invite members (`owner` / `member`); system settings gated to instance admins                                  |
+| **Interfaces**            | Web dashboard · MCP · thin operator CLI — same oRPC/core backend ([mcp.md](./mcp.md))                                           |
 
 ## Optional addon (not GTM)
 
@@ -60,18 +61,29 @@ connect or create k3s cluster (Settings → Cluster)
 - Autoscaling / MicroVMs (Kata / Firecracker)
 - One-click templates / app marketplace
 - SSO / fine-grained RBAC (soft orgs with `owner`/`member` invites are in scope)
-- CLI, general-purpose public API keys
+- General-purpose public REST API productization (MCP + CLI share operator PATs over oRPC — not a third API surface)
+- Desktop / Electron / native apps
+- Built-in transactional mail server, MySQL/Mongo catalogs, Compose-as-deploy
 - Browser terminal, volume browser
 - Slack/Discord/Telegram/email notification **hubs**
 - Full metrics dashboards as Deploy core (optional **Observe** addon — [observe.md](./observe.md))
+- CLI that bypasses the control plane (no local Docker/k8s product runtime in the CLI)
 
 ### Thin notify exception (GTM)
 
 Full notification products stay out. **Allowed:** one operator-configured **HTTPS webhook** fired on deploy/provision **failure** (optional success). See [gtm.md](./gtm.md). Do not expand into a Coolify-style notify matrix.
 
-### MCP (in scope)
+### Interfaces (in scope): Web · MCP · CLI
 
-Operator **MCP personal access tokens** + Streamable HTTP at `/api/mcp` for Cursor/agent deploy — see [mcp.md](./mcp.md). Not a general public REST API. Not a substitute for a typed CLI.
+Three clients, **one backend** (oRPC + core services):
+
+| Surface | Role |
+| --- | --- |
+| **Web** | Full operator UI |
+| **MCP** | Streamable HTTP at `/api/mcp` for Cursor/agents — [mcp.md](./mcp.md) |
+| **CLI** | Thin remote client (`hostrig`): login, projects, deploy, logs, status, rollback. Same operator PATs as MCP. No desktop; no second control plane. |
+
+Market **Web · MCP · CLI** once the thin client is in the monorepo (`apps/cli`). Never market a desktop app.
 
 ## Stack (v1)
 
@@ -102,7 +114,8 @@ No Hostrig SDK required — apps read standard env vars. URLs must be valid **on
 Follow [sequencing.md](./sequencing.md) and [gtm.md](./gtm.md):
 
 - Market v1 as **service-first** stack on **k3s** + **gVisor** user apps + **platform wildcard** via edge → Traefik
-- Do **not** imply PR previews, custom domains kitchen sink, public-IP/sslip dogfood, Docker-agent, or a CLI
+- Interfaces: **Web · MCP · thin CLI** (claim CLI only after it ships); **never** desktop
+- Do **not** imply PR previews, custom domains kitchen sink, public-IP/sslip dogfood, or Docker-agent
 - Do **not** claim “Secure by default” / unbreakable / MicroVM-grade isolation — name gVisor and operator patch duty
 - Do **not** imply Postgres/Redis are publicly proxied
 - TLS: terminate at Cloudflare / Netbird / Tailscale; Traefik stays HTTP-only in the cluster

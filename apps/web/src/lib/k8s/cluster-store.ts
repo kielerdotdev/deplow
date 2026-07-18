@@ -1,7 +1,7 @@
-import { createHash, randomBytes } from "node:crypto"
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 
-import { eq, db, clusters, nodes } from "@deplow/db"
-import type { ClusterSummary } from "@deplow/shared"
+import { eq, db, clusters, nodes } from "@hostrig/db"
+import type { ClusterSummary } from "@hostrig/shared"
 
 import { isHetznerConfigured } from "@/lib/core"
 import { decryptString, encryptString } from "@/lib/core/crypto"
@@ -60,6 +60,27 @@ export async function getClusterRow() {
     .where(eq(clusters.id, DEFAULT_CLUSTER_ID))
     .limit(1)
   return row ?? null
+}
+
+/** Map crypto/probe jargon into actions a first-time operator can take. */
+export function mapClusterErrorMessage(message: string): string {
+  if (
+    message.includes("Unsupported state or unable to authenticate data") ||
+    message.includes("bad decrypt") ||
+    message.includes("Invalid authentication tag") ||
+    message.includes("unable to authenticate")
+  ) {
+    return "Stored kubeconfig could not be decrypted (encryption key may have changed). Disconnect this cluster and reconnect with a fresh kubeconfig."
+  }
+  if (
+    message.includes("ECONNREFUSED") ||
+    message.includes("ENOTFOUND") ||
+    message.includes("ETIMEDOUT") ||
+    message.includes("certificate")
+  ) {
+    return `${message} — check that the k3s API is reachable from this control plane, then reconnect if needed.`
+  }
+  return message
 }
 
 export async function requireConnectedKubeconfig(): Promise<string> {
@@ -124,6 +145,36 @@ function markRemovableNodes(
   })
 }
 
+/**
+ * Strip cluster recon details for non-instance-admins (IPs, edge recipes, node inventory).
+ * Members still see readiness for deploy UX.
+ */
+export function redactClusterSummaryForMember(
+  summary: ClusterSummary,
+): ClusterSummary {
+  return {
+    ...summary,
+    serverUrl: null,
+    externalIp: null,
+    errorMessage: null,
+    nodes: [],
+    traefikOrigin: "http://127.0.0.1:80",
+    edgeCommands: {
+      netbird: "",
+      tailscale: "",
+      cloudflareOrigin: "",
+    },
+    hetznerConfigured: false,
+    managed: {
+      canCreate: false,
+      canAddNode: false,
+      canRemoveNode: false,
+      canViewKubeconfig: false,
+      canDestroy: false,
+    },
+  }
+}
+
 export async function getClusterSummary(): Promise<ClusterSummary> {
   const row = await getClusterRow()
   const hetznerConfigured = isHetznerConfigured()
@@ -168,7 +219,9 @@ export async function getClusterSummary(): Promise<ClusterSummary> {
     const yaml = decryptKubeconfig(row.kubeconfigEncrypted)
     probe = await probeCluster(yaml)
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
+    const message = mapClusterErrorMessage(
+      e instanceof Error ? e.message : String(e),
+    )
     return {
       id: DEFAULT_CLUSTER_ID,
       name: row.name,
@@ -214,7 +267,11 @@ export async function getClusterSummary(): Promise<ClusterSummary> {
     serverUrl: probe.serverUrl ?? row.serverUrl,
     externalIp: probe.externalIp ?? row.externalIp,
     errorMessage:
-      status === "error" ? (probe.message ?? row.errorMessage) : null,
+      status === "error"
+        ? mapClusterErrorMessage(
+            probe.message ?? row.errorMessage ?? "Cluster probe failed",
+          )
+        : null,
     nodeCount: probe.nodes.length,
     readyNodeCount: probe.nodes.filter((n) => n.ready).length,
     traefikReady: probe.traefikReady,
@@ -256,6 +313,20 @@ export async function connectByoKubeconfig(input: {
   const probe = await probeCluster(input.kubeconfig)
   if (!probe.ok) {
     throw new Error(probe.message ?? "Could not reach Kubernetes API")
+  }
+
+  // Close Traefik NodePort/LoadBalancer public exposure (edge → loopback model).
+  try {
+    const { ensureTraefikNotPublic } = await import("./traefik-harden")
+    const hardened = await ensureTraefikNotPublic(input.kubeconfig)
+    if (hardened.patched) {
+      console.info(`[hostrig] ${hardened.message}`)
+    }
+  } catch (e) {
+    console.warn(
+      "[hostrig] Traefik harden skipped:",
+      e instanceof Error ? e.message : e,
+    )
   }
 
   const encrypted = encryptKubeconfig(input.kubeconfig)
@@ -369,6 +440,17 @@ export function hashBootstrapToken(token: string): string {
   return createHash("sha256").update(token).digest("hex")
 }
 
+/** Constant-time compare of bootstrap token digests (hex strings). */
+export function bootstrapTokenHashEquals(
+  providedToken: string,
+  expectedHash: string,
+): boolean {
+  const a = Buffer.from(hashBootstrapToken(providedToken), "utf8")
+  const b = Buffer.from(expectedHash, "utf8")
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
+}
+
 export async function createBootstrapToken(): Promise<{
   token: string
   expiresAt: Date
@@ -406,7 +488,7 @@ export async function completeBootstrap(input: {
   if (row.bootstrapTokenExpiresAt.getTime() < Date.now()) {
     throw new Error("Bootstrap token expired")
   }
-  if (hashBootstrapToken(input.token) !== row.bootstrapTokenHash) {
+  if (!bootstrapTokenHashEquals(input.token, row.bootstrapTokenHash)) {
     throw new Error("Invalid bootstrap token")
   }
 

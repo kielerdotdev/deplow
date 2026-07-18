@@ -4,7 +4,7 @@ import type {
   ResourceCredentials,
   ResourceKind,
   StorageCredentials,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import type { BackupKind } from "../backup.service"
 import type { PitrWindow } from "../pitr.service"

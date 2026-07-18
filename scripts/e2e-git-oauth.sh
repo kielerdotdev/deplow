@@ -10,7 +10,7 @@ ORIGIN="$BASE"
 EMAIL="git-e2e-$(date +%s)@example.com"
 PASS="testpass123"
 PROJECT="gitoauth$(date +%s | tail -c 6)"
-SCRATCH="${SCRATCH_DIR:-/tmp/deplow-git-oauth-e2e}"
+SCRATCH="${SCRATCH_DIR:-/tmp/hostrig-git-oauth-e2e}"
 mkdir -p "$SCRATCH"
 
 cleanup() { rm -f "$COOKIE_JAR"; }
@@ -99,14 +99,14 @@ echo "$DEPLOY" | grep -qE 'running|building|deploying|failed|railpack|build' \
   || echo "$DEPLOY" | grep -q 'status'
 echo "OK: fromGit path invoked (clone succeeded or non-clone error)"
 
-if [ -n "${DEPLOW_GITHUB_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
-  TOKEN="${DEPLOW_GITHUB_TOKEN:-$GITHUB_TOKEN}"
+if [ -n "${HOSTRIG_GITHUB_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
+  TOKEN="${HOSTRIG_GITHUB_TOKEN:-$GITHUB_TOKEN}"
   echo "==> listGitRepos with PAT"
   LIST=$(rpc "projects/listGitRepos" "{\"json\":{\"provider\":\"github\",\"token\":\"$TOKEN\"}}")
   echo "$LIST" | tee "$SCRATCH/list-repos.json"
   echo "$LIST" | grep -q 'repos'
 else
-  echo "==> skip listGitRepos (no DEPLOW_GITHUB_TOKEN)"
+  echo "==> skip listGitRepos (no HOSTRIG_GITHUB_TOKEN)"
 fi
 
 echo "==> disconnectGit"

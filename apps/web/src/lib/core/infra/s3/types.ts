@@ -1,4 +1,4 @@
-import type { StorageCredentials } from "@deplow/shared"
+import type { StorageCredentials } from "@hostrig/shared"
 
 export type S3ProviderKind = "minio" | "r2"
 

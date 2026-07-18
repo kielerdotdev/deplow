@@ -1,5 +1,5 @@
 import type { ObserveClickHouseConfig } from "../clickhouse/client"
-import { esc, iso, queryJson } from "./common"
+import { esc, iso, queryJson, safeAttrKey } from "./common"
 import { resolveIntervalSec, type TrendsInterval } from "./trends-run"
 
 export type MetricCatalogItem = {
@@ -126,7 +126,7 @@ export async function runMetricsSeries(
 
   const groupField = opts.groupBy?.[0]
   const groupExpr = groupField
-    ? `coalesce(Attributes['${esc(groupField)}'], ResourceAttributes['${esc(groupField)}'], '')`
+    ? `coalesce(Attributes['${esc(safeAttrKey(groupField))}'], ResourceAttributes['${esc(safeAttrKey(groupField))}'], '')`
     : `''`
 
   const temporal = temporalExpr(opts.temporalAgg, valueCol, intervalSec)

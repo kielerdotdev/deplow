@@ -1,4 +1,4 @@
-import type { StorageCredentials } from "@deplow/shared"
+import type { StorageCredentials } from "@hostrig/shared"
 
 import { StorageProvisioner } from "../infra/storage"
 import type { PlatformConfig } from "../platform-config"

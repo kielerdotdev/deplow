@@ -21,7 +21,7 @@ import {
   CommandPalette,
   CommandPaletteTrigger,
 } from "@/components/command-palette"
-import { DeplowLogo } from "@/components/deplow-logo"
+import { HostrigLogo } from "@/components/hostrig-logo"
 import { SoftHit } from "@/components/soft-hit"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProjectSwitcher } from "@/components/project-switcher"
@@ -255,7 +255,7 @@ function ShellChrome({
             className="flex size-8 items-center justify-center"
             title="Hostrig home"
           >
-            <DeplowLogo size={20} className="text-foreground" />
+            <HostrigLogo size={20} className="text-foreground" />
           </Link>
         </SoftHit>
 

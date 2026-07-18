@@ -2,11 +2,24 @@
 import LandingLayout from '../layouts/LandingLayout.astro';
 import Logo from '../components/landing/Logo.astro';
 import DashboardMockup from '../components/landing/diagrams/DashboardMockup.astro';
+import TrendsMockup from '../components/landing/diagrams/TrendsMockup.astro';
 
-const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://deplow.waitforit.cc';
-const repoUrl = 'https://github.com/kielerdotdev/deplow';
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://hostrig.waitforit.cc';
+const repoUrl = 'https://github.com/kielerdotdev/hostrig';
 const demoUrl = '/demo/hostrig-demo.mp4';
 const demoPoster = '/demo/hostrig-demo-poster.jpg';
+const installCmd =
+	'curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash';
+
+const runtimeStrip = [
+	'k3s',
+	'gVisor',
+	'Railpack',
+	'Postgres',
+	'Redis',
+	'Traefik',
+	'MCP',
+];
 
 const pillars = [
 	{
@@ -26,34 +39,112 @@ const pillars = [
 	},
 	{
 		eyebrow: '04',
-		title: 'Agent-ready, UI-complete',
-		body: 'MCP tokens at /api/mcp for Cursor and similar clients. deploy_from_git creates a project, deploys a web service from a repo, and returns the public URL. Postgres and bindings stay explicit steps — same lifecycle as the dashboard.',
+		title: 'Web · MCP · CLI',
+		body: 'Dashboard for humans. MCP at /api/mcp for agents. Thin hostrig CLI for scripts — same operator PATs and oRPC backend. Postgres and bindings stay explicit steps.',
 	},
 ];
 
 const loop = [
-	{ n: '01', title: 'Cluster + Domains', body: 'Connect or create k3s. Set base domain and edge (Cloudflare, NetBird, or Tailscale).' },
-	{ n: '02', title: 'Project + services', body: 'Empty project. Add web/worker and Postgres/Redis when you need them. Bind DATABASE_URL / REDIS_URL.' },
-	{ n: '03', title: 'Build & ship', body: 'Prebuilt image, or git → Railpack/Dockerfile → your registry → k3s under gVisor.' },
-	{ n: '04', title: 'Operate', body: 'Logs, retry, backups to platform S3, optional Observe. Destroy cleans the project namespace.' },
+	{
+		n: '01',
+		title: 'Cluster + Domains',
+		body: 'Connect or create k3s. Set base domain and edge (Cloudflare, NetBird, or Tailscale).',
+	},
+	{
+		n: '02',
+		title: 'Project + services',
+		body: 'Empty project. Add web/worker and Postgres/Redis when you need them. Bind DATABASE_URL / REDIS_URL.',
+	},
+	{
+		n: '03',
+		title: 'Build & ship',
+		body: 'Prebuilt image, or git → Railpack/Dockerfile → your registry → k3s under gVisor.',
+	},
+	{
+		n: '04',
+		title: 'Operate',
+		body: 'Logs, retry, rollback, backups to platform S3, optional Observe. Destroy cleans the project namespace.',
+	},
 ];
 
-const vs = [
+const capabilities = [
 	{
-		them: 'Coolify / Dokploy',
-		us: 'Hostrig',
-		lines: [
-			{ them: 'Compose + templates + many DBs', us: 'Typed services + bindings only' },
-			{ them: 'Docker-host / multi-runtime sprawl', us: 'One k3s cluster, gVisor apps' },
-			{ them: 'Feature-matrix race', us: 'Railway-shaped loop, self-hosted' },
-			{ them: 'Panel-first only', us: 'Dashboard + MCP for agents' },
+		n: '01',
+		heading: 'Deploy',
+		items: [
+			{ name: 'Git push-to-deploy', desc: 'Webhooks on the production branch. Railpack or Dockerfile.' },
+			{ name: 'Prebuilt images', desc: 'Skip the build when you already have a registry tag.' },
+			{ name: 'Platform URL', desc: '{project}.{baseDomain} via edge → Traefik. Wildcard only in v1.' },
+			{ name: 'Immutable rollbacks', desc: 'Redeploy a prior successful image in one action.' },
 		],
+	},
+	{
+		n: '02',
+		heading: 'Data',
+		items: [
+			{ name: 'Postgres per project', desc: 'Dedicated workload + volume in the project namespace.' },
+			{ name: 'Redis when you need it', desc: 'Same service model as apps — add on demand.' },
+			{ name: 'Explicit bindings', desc: 'DATABASE_URL / REDIS_URL only where you wire them.' },
+			{ name: 'Backups to S3', desc: 'On-demand and scheduled dumps to platform object storage.' },
+		],
+	},
+	{
+		n: '03',
+		heading: 'Operate',
+		items: [
+			{ name: 'Web dashboard', desc: 'Full lifecycle: services, logs, secrets, cluster, domains.' },
+			{ name: 'MCP for agents', desc: 'Streamable HTTP + operator PATs. Same path as the UI.' },
+			{ name: 'gVisor for apps', desc: 'RuntimeClass by default. Honest limits — not MicroVMs.' },
+			{ name: 'Failure webhook', desc: 'One HTTPS hook on deploy/provision failure. No notify matrix.' },
+		],
+	},
+];
+
+type Mark = 'win' | 'loss' | 'neutral';
+type CompareLine = { feature: string; them: string; us: string; themMark: Mark; usMark: Mark };
+
+const compareRows: CompareLine[] = [
+	{
+		feature: 'Runtime',
+		them: 'Docker host / multi-runtime sprawl',
+		us: 'One k3s cluster, gVisor apps',
+		themMark: 'loss',
+		usMark: 'win',
+	},
+	{
+		feature: 'Product shape',
+		them: 'Compose + templates + many DBs',
+		us: 'Typed services + bindings only',
+		themMark: 'neutral',
+		usMark: 'win',
+	},
+	{
+		feature: 'Isolation story',
+		them: 'Plain containers (usually)',
+		us: 'gVisor RuntimeClass by default',
+		themMark: 'loss',
+		usMark: 'win',
+	},
+	{
+		feature: 'Interfaces',
+		them: 'Panel-first',
+		us: 'Web + MCP (same backend)',
+		themMark: 'neutral',
+		usMark: 'win',
+	},
+	{
+		feature: 'Scope',
+		them: 'Feature-matrix race',
+		us: 'Railway-shaped loop, self-hosted',
+		themMark: 'loss',
+		usMark: 'win',
 	},
 ];
 
 const notFor = [
 	'Docker Compose as a deploy path',
 	'MySQL, Mongo, or one-click marketplaces',
+	'Desktop apps (Web · MCP · CLI only)',
 	'Custom domains kitchen sink (v2)',
 	'Enterprise SSO / fine-grained RBAC (v1)',
 	'MicroVMs or “completely secure” multi-tenant cloud claims',
@@ -70,7 +161,7 @@ const faqs = [
 	},
 	{
 		q: 'Does MCP auto-create Postgres?',
-		a: 'No. deploy_from_git creates a project (optional), analyzes the repo, creates a web service, deploys, and returns a public URL when ready. Add Postgres/Redis and bindings in the UI or with further steps — same as a human would.',
+		a: 'No. deploy_from_git creates a project (optional), analyzes the repo, creates a web service, deploys, and returns a public URL when ready. Add Postgres/Redis and bindings in the UI or with further MCP tools — same as a human would.',
 	},
 	{
 		q: 'Do I need Kubernetes expertise?',
@@ -86,15 +177,44 @@ const faqs = [
 	},
 	{
 		q: 'How secure are user apps?',
-		a: 'User apps run under gVisor on k3s with hardened pods and per-project NetworkPolicy. That is a real sandbox — not MicroVMs, not “unbreakable,” not hostile multi-tenant SaaS isolation. You trust the cluster operator and keep nodes patched. DEPLOW_APP_RUNTIME=runc is a temporary escape hatch that turns the sandbox off.',
+		a: 'User apps run under gVisor on k3s with hardened pods and per-project NetworkPolicy. That is a real sandbox — not MicroVMs, not “unbreakable,” not hostile multi-tenant SaaS isolation. You trust the cluster operator and keep nodes patched. HOSTRIG_APP_RUNTIME=runc is a temporary escape hatch that turns the sandbox off.',
 	},
 ];
+
+const softwareLd = {
+	'@context': 'https://schema.org',
+	'@type': 'SoftwareApplication',
+	name: 'Hostrig',
+	applicationCategory: 'DeveloperApplication',
+	applicationSubCategory: 'Self-hosted PaaS',
+	operatingSystem: 'Linux',
+	url: 'https://hostrig.com',
+	downloadUrl: repoUrl,
+	license: 'https://opensource.org/licenses/MIT',
+	offers: {
+		'@type': 'Offer',
+		price: '0',
+		priceCurrency: 'USD',
+	},
+	description:
+		'Opinionated self-hosted PaaS on k3s: typed services, gVisor for user apps, git push-to-deploy, platform wildcard URLs. Web and MCP.',
+	featureList: [
+		'Service-first projects on k3s',
+		'gVisor RuntimeClass for user apps',
+		'Postgres and Redis with explicit bindings',
+		'Git push-to-deploy',
+		'MCP for agents',
+		'Platform wildcard URLs via Traefik + edge',
+	],
+};
 ---
 
 <LandingLayout
 	title="Hostrig — self-hosted PaaS on k3s"
-	description="Opinionated self-hosted PaaS: typed services on k3s, gVisor for user apps, git push-to-deploy, platform wildcard URLs. MCP for agents. You own the cluster."
+	description="Opinionated self-hosted PaaS: typed services on k3s, gVisor for user apps, git push-to-deploy, platform wildcard URLs. Web + MCP. You own the cluster."
 >
+	<script type="application/ld+json" set:html={JSON.stringify(softwareLd)} />
+
 	<nav class="nav">
 		<a href="/" class="nav-brand" aria-label="Hostrig home">
 			<Logo size={28} />
@@ -104,6 +224,7 @@ const faqs = [
 			<a href="#product" class="nav-link">Product</a>
 			<a href="#loop" class="nav-link">How it works</a>
 			<a href="/docs/" class="nav-link">Docs</a>
+			<a href="/pricing/" class="nav-link">Pricing</a>
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="nav-link">
 				GitHub
 				<span class="nav-link-arrow" aria-hidden="true">&#8599;</span>
@@ -114,16 +235,32 @@ const faqs = [
 
 	<main>
 		<section class="hero">
+			<button type="button" class="install-chip" data-install-chip data-cmd={installCmd}>
+				<span class="install-chip-prompt" aria-hidden="true">$</span>
+				<code class="install-chip-cmd">{installCmd}</code>
+				<span class="install-chip-hint" data-install-hint>Copy</span>
+			</button>
 			<p class="brand-mark">Hostrig</p>
-			<h1 class="tagline">Self-hosted PaaS on k3s.</h1>
+			<h1 class="tagline">
+				<span class="tagline-main">Self-hosted PaaS on k3s.</span>
+				<span class="tagline-sub">Own the cluster.</span>
+			</h1>
 			<p class="lede">
-				Typed services, explicit bindings, public URL — apps under gVisor on
-				a cluster you own. UI or MCP. Same loop.
+				Typed services, explicit bindings, public URL — apps under gVisor on a cluster you
+				own. Web, MCP, or CLI. Same loop.
 			</p>
 			<div class="hero-actions">
-				<a class="hero-button" href={appUrl}>Start deploying</a>
-				<a class="secondary-link" href="#demo">Watch the demo →</a>
+				<a class="hero-button" href={appUrl}>Open app</a>
+				<a class="hero-button hero-button--ghost" href="/docs/getting-started/quick-start/">
+					Install self-hosted
+				</a>
 			</div>
+			<p class="hero-secondary">
+				<a class="secondary-link" href="#demo">Watch the demo →</a>
+			</p>
+			<ul class="runtime-strip" aria-label="Runtime">
+				{runtimeStrip.map((item) => <li>{item}</li>)}
+			</ul>
 		</section>
 
 		<section class="demo-bleed" id="demo" aria-label="Product demo">
@@ -152,8 +289,8 @@ const faqs = [
 				<p class="mode-label">The product</p>
 				<h2>Railway-shaped. Self-hosted. Honest sandbox.</h2>
 				<p>
-					Coolify wins the feature list. Hosted PaaS wins convenience.
-					Hostrig wins a boring, opinionated path on a cluster you control.
+					Coolify wins the feature list. Hosted PaaS wins convenience. Hostrig wins a boring,
+					opinionated path on a cluster you control.
 				</p>
 			</div>
 			<div class="moat-list">
@@ -169,13 +306,41 @@ const faqs = [
 			</div>
 		</section>
 
+		<section class="band band--dark" id="capabilities" aria-label="Capabilities">
+			<div class="band-head band-head--on-dark">
+				<p class="mode-label">Platform</p>
+				<h2>What we ship. Nothing else.</h2>
+				<p>Three groups. No 40-item matrix. If it is not here, it is out of scope on purpose.</p>
+			</div>
+			<div class="cap-grid">
+				{
+					capabilities.map((g) => (
+						<div class="cap-group">
+							<div class="cap-group-head">
+								<span class="cap-n">{g.n}</span>
+								<h3>{g.heading}</h3>
+							</div>
+							<ul class="cap-list">
+								{g.items.map((item) => (
+									<li>
+										<strong>{item.name}</strong>
+										<span>{item.desc}</span>
+									</li>
+								))}
+							</ul>
+						</div>
+					))
+				}
+			</div>
+		</section>
+
 		<section class="band prompt-band" id="agent" aria-label="Agent deploy">
 			<div class="band-head">
 				<p class="mode-label">MCP</p>
 				<h2>Agents can drive the same lifecycle.</h2>
 				<p>
-					Streamable HTTP at <code>/api/mcp</code>. Operator tokens under Settings → API &amp; MCP.
-					<code>deploy_from_git</code> ships a repo to a web service URL — it does not invent
+					Streamable HTTP at <code>/api/mcp</code>. Operator tokens under Settings → API &amp;
+					MCP. <code>deploy_from_git</code> ships a repo to a web service URL — it does not invent
 					Postgres or bindings for you.
 				</p>
 			</div>
@@ -229,13 +394,13 @@ const faqs = [
 					<span class="dot"></span>
 					<span class="dot"></span>
 					<span class="dot"></span>
-					<span class="url">app.hostrig / projects / showcase</span>
+					<span class="url">app / projects / showcase</span>
 				</div>
 				<div class="shot-frame">
 					<DashboardMockup />
 				</div>
 				<figcaption>
-					Nested chrome, dense rows — services and resources in one overview.
+					Deploy overview — nested shell, dense service rows, bindings to Postgres/Redis.
 				</figcaption>
 			</figure>
 		</section>
@@ -245,38 +410,60 @@ const faqs = [
 				<p class="mode-label">Positioning</p>
 				<h2>Not Coolify-shaped. Not a Docker panel.</h2>
 				<p>
-					If you need Compose + every database + templates, use the panels that chase that.
-					If you want sandboxed app + Postgres + Redis + S3 on k3s with git push, use us.
+					If you need Compose + every database + templates, use the panels that chase that. If
+					you want sandboxed app + Postgres + Redis + S3 on k3s with git push, use us.
 				</p>
 			</div>
-			{
-				vs.map((block) => (
-					<div class="compare">
-						<div class="compare-head">
-							<span>{block.them}</span>
-							<span>{block.us}</span>
-						</div>
-						{block.lines.map((line) => (
-							<div class="compare-row">
-								<span class="compare-them">{line.them}</span>
-								<span class="compare-us">{line.us}</span>
+			<div class="cmp">
+				<div class="cmp-row cmp-row--head">
+					<div class="cmp-cell cmp-cell--feature">Feature</div>
+					<div class="cmp-cell">Coolify / Dokploy</div>
+					<div class="cmp-cell cmp-cell--win">Hostrig</div>
+				</div>
+				{
+					compareRows.map((r) => (
+						<div class="cmp-row">
+							<div class="cmp-cell cmp-cell--feature">{r.feature}</div>
+							<div class="cmp-cell">
+								<span class={`cmp-mark cmp-mark--${r.themMark}`} aria-hidden="true" />
+								<span>{r.them}</span>
 							</div>
-						))}
-					</div>
-				))
-			}
+							<div class="cmp-cell cmp-cell--win">
+								<span class={`cmp-mark cmp-mark--${r.usMark}`} aria-hidden="true" />
+								<span>{r.us}</span>
+							</div>
+						</div>
+					))
+				}
+			</div>
 		</section>
 
-		<section class="band" id="observe">
+		<section class="band band--shot" id="observe">
 			<div class="band-head">
 				<p class="mode-label">Optional</p>
 				<h2>Observe when you need signal</h2>
 				<p>
-					Sentry-compatible errors, OTLP traces / metrics / logs, issues, and charts —
-					same control plane, ClickHouse-backed. Not required to ship. Not the lead story.
+					Sentry-compatible errors, OTLP traces / metrics / logs, issues, and charts — same
+					control plane, ClickHouse-backed. Not required to ship. Not the lead story.
 				</p>
 			</div>
-			<a class="inline-link" href="/docs/guides/observe/">Observe setup →</a>
+			<figure class="shot">
+				<div class="browser-chrome" aria-hidden="true">
+					<span class="dot"></span>
+					<span class="dot"></span>
+					<span class="dot"></span>
+					<span class="url">app / observe / showcase / charts</span>
+				</div>
+				<div class="shot-frame">
+					<TrendsMockup />
+				</div>
+				<figcaption>
+					Same shell as Deploy — dark nested chrome, charts and tables, no separate product UI.
+				</figcaption>
+			</figure>
+			<p style="margin-top: 1.25rem">
+				<a class="inline-link" href="/docs/guides/observe/">Observe setup →</a>
+			</p>
 		</section>
 
 		<section class="band" id="not-for">
@@ -311,13 +498,19 @@ const faqs = [
 		<section class="cta" aria-label="Get started">
 			<div class="cta-panel">
 				<h2>Ship the first URL on your cluster.</h2>
-				<p>Connect k3s, add a service, deploy. UI or MCP — same path.</p>
+				<p>Connect k3s, add a service, deploy. Web or MCP — same path.</p>
 				<div class="cta-actions">
 					<a class="hero-button" href={appUrl}>Open app</a>
-					<a class="secondary-link" href="/docs/getting-started/quick-start/">
-						Quick start →
+					<a class="hero-button hero-button--ghost" href="/docs/getting-started/quick-start/">
+						Install self-hosted
 					</a>
 				</div>
+				<ul class="trust-chips">
+					<li>Web · MCP · CLI</li>
+					<li>gVisor apps</li>
+					<li>You own the cluster</li>
+					<li>No credit card</li>
+				</ul>
 			</div>
 		</section>
 	</main>
@@ -328,6 +521,7 @@ const faqs = [
 			<a href="#product">Product</a>
 			<a href="#loop">How it works</a>
 			<a href="/docs/">Docs</a>
+			<a href="/pricing/">Pricing</a>
 			<a href={appUrl}>App</a>
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 		</div>
@@ -369,5 +563,20 @@ const faqs = [
 		}
 
 		runPrompt();
+
+		const chip = document.querySelector('[data-install-chip]') as HTMLButtonElement | null;
+		const hint = document.querySelector('[data-install-hint]');
+		chip?.addEventListener('click', async () => {
+			const cmd = chip.dataset.cmd ?? '';
+			try {
+				await navigator.clipboard.writeText(cmd);
+				if (hint) hint.textContent = 'Copied';
+				setTimeout(() => {
+					if (hint) hint.textContent = 'Copy';
+				}, 1600);
+			} catch {
+				if (hint) hint.textContent = 'Select & copy';
+			}
+		});
 	</script>
 </LandingLayout>

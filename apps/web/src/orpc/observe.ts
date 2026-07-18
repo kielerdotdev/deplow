@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server"
-import { and, eq, isNull, observeIssues, observeKeys, observeProjects } from "@deplow/db"
-import { pingClickHouse } from "@deplow/observe"
+import { and, eq, isNull, observeIssues, observeKeys, observeProjects } from "@hostrig/db"
+import { pingClickHouse } from "@hostrig/observe"
 import * as z from "zod"
 
 import { assertProjectAccess } from "@/lib/access"
@@ -22,10 +22,10 @@ import {
   countEventsForIssueInRange,
   eventHistogramForIssue,
   getClickHouse,
-} from "@deplow/observe"
+} from "@hostrig/observe"
 import { resolveTimeRange } from "@/lib/observe/context"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 function requireObserve() {
   if (!env.observeEnabled) {
@@ -38,7 +38,7 @@ export const status = authedProcedure.handler(async () => {
     return {
       enabled: false as const,
       clickhouseOk: false,
-      detail: "Set DEPLOW_OBSERVE_ENABLED=1 and start compose profile observe",
+      detail: "Set HOSTRIG_OBSERVE_ENABLED=1 and start compose profile observe",
     }
   }
   const ready = await ensureObserveReady()
@@ -83,7 +83,7 @@ export const projectsGet = authedProcedure
     }
   })
 
-export const projectsEnable = authedProcedure
+export const projectsEnable = writeProcedure
   .input(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ context, input }) => {
     requireObserve()
@@ -109,7 +109,7 @@ export const projectsEnable = authedProcedure
     }
   })
 
-export const projectsSetup = authedProcedure
+export const projectsSetup = writeProcedure
   .input(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ context, input }) => {
     requireObserve()
@@ -202,7 +202,7 @@ export const issuesGet = authedProcedure
     }
   })
 
-export const issuesUpdateTriage = authedProcedure
+export const issuesUpdateTriage = writeProcedure
   .input(
     z.object({
       issueId: z.string().uuid(),
@@ -237,7 +237,7 @@ export const issuesUpdateTriage = authedProcedure
     return { ok: true as const }
   })
 
-export const issuesUpdateStatus = authedProcedure
+export const issuesUpdateStatus = writeProcedure
   .input(
     z.object({
       issueId: z.string().uuid(),
@@ -262,7 +262,7 @@ export const issuesUpdateStatus = authedProcedure
     return { ok: true as const }
   })
 
-export const issuesBulkUpdateStatus = authedProcedure
+export const issuesBulkUpdateStatus = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),

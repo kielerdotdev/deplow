@@ -2,7 +2,7 @@
  * Managed provider: single Hetzner VM (cloud-init k3s server) + k3s agent workers.
  * Source id: "hetzner"
  */
-import { eq, db, spawnedServers } from "@deplow/db"
+import { eq, db, spawnedServers } from "@hostrig/db"
 
 import {
   createServerSpawners,
@@ -74,13 +74,13 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
   ): Promise<CreateManagedClusterResult> {
     if (!this.isConfigured()) {
       throw new Error(
-        "Hetzner is not configured. Set DEPLOW_HETZNER_API_TOKEN on the control plane.",
+        "Hetzner is not configured. Set HOSTRIG_HETZNER_API_TOKEN on the control plane.",
       )
     }
     const publicUrl = env.publicControlPlaneUrl.replace(/\/$/, "")
     if (!isPublicInternetUrl(publicUrl)) {
       throw new Error(
-        `DEPLOW_PUBLIC_URL must be reachable from the Internet (got "${publicUrl}") so the VM can POST kubeconfig.`,
+        `HOSTRIG_PUBLIC_URL must be reachable from the Internet (got "${publicUrl}") so the VM can POST kubeconfig.`,
       )
     }
 
@@ -104,7 +104,7 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
       location: input.location?.trim() || env.hetznerLocation,
       userData,
       labels: {
-        "deplow.role": "k3s-server",
+        "hostrig.role": "k3s-server",
       },
     })
 
@@ -118,12 +118,12 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
       status: spawned.status,
       metadataJson: JSON.stringify({
         ...(spawned.metadata ?? {}),
-        "deplow.role": "k3s-server",
+        "hostrig.role": "k3s-server",
         k8sNodeName: name,
       }),
     })
 
-    const { clusters } = await import("@deplow/db")
+    const { clusters } = await import("@hostrig/db")
     await db
       .update(clusters)
       .set({
@@ -142,7 +142,7 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
   async addNode(input: AddManagedNodeInput): Promise<AddManagedNodeResult> {
     if (!this.isConfigured()) {
       throw new Error(
-        "Hetzner is not configured. Set DEPLOW_HETZNER_API_TOKEN on the control plane.",
+        "Hetzner is not configured. Set HOSTRIG_HETZNER_API_TOKEN on the control plane.",
       )
     }
     const join = await getNodeJoinToken()
@@ -171,7 +171,7 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
       location: input.location?.trim() || env.hetznerLocation,
       userData,
       labels: {
-        "deplow.role": "k3s-agent",
+        "hostrig.role": "k3s-agent",
       },
     })
 
@@ -185,7 +185,7 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
       status: spawned.status,
       metadataJson: JSON.stringify({
         ...(spawned.metadata ?? {}),
-        "deplow.role": "k3s-agent",
+        "hostrig.role": "k3s-agent",
         k8sNodeName: name,
       }),
     })
@@ -198,7 +198,7 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
   ): Promise<RemoveManagedNodeResult> {
     if (!this.isConfigured()) {
       throw new Error(
-        "Hetzner is not configured. Set DEPLOW_HETZNER_API_TOKEN on the control plane.",
+        "Hetzner is not configured. Set HOSTRIG_HETZNER_API_TOKEN on the control plane.",
       )
     }
     const nodeName = input.nodeName.trim()
@@ -209,7 +209,7 @@ export class HetznerCloudInitProvider implements ManagedClusterProvider {
     const rows = await db.select().from(spawnedServers)
     const match = rows.find((r) => {
       const meta = parseMetadata(r.metadataJson)
-      const role = String(meta["deplow.role"] ?? "")
+      const role = String(meta["hostrig.role"] ?? "")
       if (role === "k3s-server") return false
       const k8sName = String(meta.k8sNodeName ?? r.name)
       return k8sName === nodeName || r.name === nodeName

@@ -33,7 +33,7 @@ export function buildOrphanLog(rng, projectId, t, tl) {
       "service.version": release.version,
       "deployment.environment": pickEnv(rng),
     },
-    LogAttributes: { "deplow.loadgen": "1", "deplow.scenario": "orphan" },
+    LogAttributes: { "hostrig.loadgen": "1", "hostrig.scenario": "orphan" },
   }
 }
 
@@ -52,7 +52,7 @@ export function buildMetricBatch(rng, projectId, t, tl) {
     },
     Attributes: {
       "host.name": `${svc.name}-${Math.floor(rng() * 4)}`,
-      "deplow.loadgen": "1",
+      "hostrig.loadgen": "1",
     },
   }
   const kind = Math.floor(rng() * 3)

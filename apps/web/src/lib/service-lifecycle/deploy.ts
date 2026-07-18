@@ -2,7 +2,7 @@
  * Deploy orchestration — prebuilt image or git → registry → k3s.
  */
 
-import { and, desc, eq, db, deployments, projects, services } from "@deplow/db"
+import { and, desc, eq, db, deployments, projects, services } from "@hostrig/db"
 import {
   createOperation,
   markOperationQueued,

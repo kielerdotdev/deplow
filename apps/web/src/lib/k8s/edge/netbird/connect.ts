@@ -1,4 +1,4 @@
-import type { NetbirdConnectInput, NetbirdManagedDomain } from "@deplow/shared"
+import type { NetbirdConnectInput, NetbirdManagedDomain } from "@hostrig/shared"
 
 import {
   getClusterSummary,
@@ -67,7 +67,7 @@ async function waitForPeer(
     return { id: peer.id, name: peer.name || hostname }
   }
   throw new Error(
-    `NetBird peer "${hostname}" did not appear within ${PEER_TIMEOUT_MS / 1000}s. Check DaemonSet logs in namespace deplow-system.`,
+    `NetBird peer "${hostname}" did not appear within ${PEER_TIMEOUT_MS / 1000}s. Check DaemonSet logs in namespace hostrig-system.`,
   )
 }
 

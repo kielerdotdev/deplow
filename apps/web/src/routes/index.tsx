@@ -187,7 +187,10 @@ function DashboardPage() {
           done: Boolean(githubLinked || gitlabLinked),
         },
         {
-          label: "Connect a k3s cluster",
+          label:
+            cluster?.status === "error"
+              ? "Fix cluster connection"
+              : "Connect a k3s cluster",
           to: "/settings/cluster",
           done: clusterReady,
         },

@@ -5,7 +5,7 @@ import type {
   ResourceCredentials,
   ResourceKind,
   StorageCredentials,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import { decryptString, encryptString } from "./crypto"
 import { DataServiceRegistry, type DataServiceDriver } from "./data-services"

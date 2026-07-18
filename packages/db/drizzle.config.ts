@@ -4,7 +4,7 @@ import "dotenv/config"
 import { defineConfig } from "drizzle-kit"
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url))
-const databaseUrl = process.env.DATABASE_URL ?? "data/deplow.db"
+const databaseUrl = process.env.DATABASE_URL ?? "data/hostrig.db"
 const resolvedUrl = path.isAbsolute(databaseUrl)
   ? databaseUrl
   : path.join(packageRoot, databaseUrl)

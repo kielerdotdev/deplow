@@ -1,7 +1,11 @@
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
 
-import { get as getDeployment, logs as deploymentLogs } from "@/orpc/deployments"
+import {
+  get as getDeployment,
+  logs as deploymentLogs,
+  rollback as rollbackDeployment,
+} from "@/orpc/deployments"
 import { get as getOperation } from "@/orpc/operations"
 
 import { callAuthed, sessionFromMcpContext } from "./call"
@@ -41,5 +45,19 @@ export const deploymentLogsTool = createTool({
   execute: async (input, context) => {
     const session = sessionFromMcpContext(context)
     return callAuthed(deploymentLogs, input, session)
+  },
+})
+
+export const deploymentRollbackTool = createTool({
+  id: "deployment_rollback",
+  description:
+    "Roll a service back to a previous successful image. Omit deploymentId to use the latest prior success.",
+  inputSchema: z.object({
+    serviceId: z.string().min(1),
+    deploymentId: z.string().min(1).optional(),
+  }),
+  execute: async (input, context) => {
+    const session = sessionFromMcpContext(context)
+    return callAuthed(rollbackDeployment, input, session)
   },
 })

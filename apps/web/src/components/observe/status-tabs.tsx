@@ -72,7 +72,7 @@ export function StatusTabs<T extends string>({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border pb-0",
+        "flex flex-wrap items-center gap-x-3 gap-y-2",
         className,
       )}
       data-testid="status-tabs"
@@ -80,7 +80,7 @@ export function StatusTabs<T extends string>({
       <div
         role="tablist"
         aria-label={ariaLabel}
-        className="flex min-w-0 flex-1 flex-wrap items-end gap-0.5"
+        className="inline-flex min-w-0 flex-wrap items-center gap-0.5 rounded-lg bg-muted/50 p-0.5 ring-1 ring-inset ring-border/60"
       >
         {tabs.map((tab, index) => {
           const isActive = active === tab.value
@@ -98,21 +98,22 @@ export function StatusTabs<T extends string>({
               onClick={() => onChange(tab.value)}
               onKeyDown={(e) => onKeyDown(e, index)}
               className={cn(
-                "relative inline-flex min-h-10 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                "relative inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium transition-[color,background-color,box-shadow] duration-150",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "active:scale-[0.98]",
                 isActive
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
+                  ? "bg-background text-foreground shadow-sm ring-1 ring-border/80"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {tab.label}
               {tab.count !== undefined ? (
                 <span
                   className={cn(
-                    "inline-flex min-w-[1.25rem] items-center justify-center rounded-md px-1.5 py-0.5 text-xs tabular-nums",
+                    "inline-flex min-w-[1.15rem] items-center justify-center rounded px-1 py-px text-[11px] tabular-nums",
                     isActive
-                      ? "bg-muted font-medium text-foreground"
-                      : "bg-muted/60 text-muted-foreground",
+                      ? "bg-muted font-semibold text-foreground"
+                      : "text-muted-foreground/90",
                   )}
                 >
                   {tab.count}
@@ -122,11 +123,11 @@ export function StatusTabs<T extends string>({
           )
         })}
       </div>
-      <div className="flex shrink-0 items-center gap-2 pb-2">
+      <div className="flex shrink-0 items-center gap-2">
         {trailing}
         {totalCount !== undefined ? (
           <span
-            className="text-sm tabular-nums text-muted-foreground"
+            className="text-[13px] tabular-nums text-muted-foreground"
             data-testid="status-tabs-total"
             aria-live="polite"
           >

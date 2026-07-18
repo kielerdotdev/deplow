@@ -26,9 +26,9 @@ export type OrgOption = {
   role: "owner" | "member"
 }
 
+/** Apply Set-Cookie-like attributes from the server (Path, SameSite, Secure). */
 export function applyOrgCookie(setCookie: string) {
-  const pair = setCookie.split(";")[0]
-  if (pair) document.cookie = pair
+  if (setCookie.trim()) document.cookie = setCookie
 }
 
 export function OrgSwitcher({

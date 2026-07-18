@@ -260,7 +260,7 @@ export function buildTrace(rng, projectId, scenario, startMs) {
         "tenant.id": scenario.tenant,
         "http.route": stripMethod(route),
         "code.function": pick(rng, ["handle", "middleware", "handler", "worker"]),
-        "deplow.scenario": scenario.id,
+        "hostrig.scenario": scenario.id,
       },
     })
   }
@@ -313,8 +313,8 @@ function makeSpan(
     ),
     SpanAttributes: {
       ...cleanAttrs,
-      "deplow.loadgen": "1",
-      "deplow.scenario": scenario.id,
+      "hostrig.loadgen": "1",
+      "hostrig.scenario": scenario.id,
       "deployment.release": scenario.release.version,
       ...(scenario.synthetic
         ? { "http.route": cleanAttrs["http.route"] || "/health" }

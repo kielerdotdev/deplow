@@ -1,4 +1,4 @@
-const STORAGE_KEY = "deplow.command.recents"
+const STORAGE_KEY = "hostrig.command.recents"
 const MAX_RECENTS = 8
 
 export type RecentCommand = {

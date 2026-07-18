@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router"
 import { ChevronDownIcon, GlobeIcon } from "lucide-react"
-import type { PlatformEdgeMode, ProxyIngressStatus } from "@deplow/shared"
+import type { PlatformEdgeMode, ProxyIngressStatus } from "@hostrig/shared"
 
 import { CommandAction } from "@/components/command-action"
 import { NetbirdEdgeWizard } from "@/components/netbird-edge-wizard"

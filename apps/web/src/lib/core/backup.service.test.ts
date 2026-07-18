@@ -113,7 +113,7 @@ function fakeTarget(linkId = "link1"): BackupTarget {
 
 function testPlatformConfig(): PlatformConfig {
   return {
-    backupBucket: "deplow-backups",
+    backupBucket: "hostrig-backups",
     s3: {
       provider: "minio",
       endpoint: "http://127.0.0.1:9000",
@@ -122,14 +122,14 @@ function testPlatformConfig(): PlatformConfig {
       accessKeyId: "test",
       secretAccessKey: "test",
       region: "us-east-1",
-      backupBucket: "deplow-backups",
+      backupBucket: "hostrig-backups",
     },
   } as PlatformConfig
 }
 
 describe("BackupService.prune", () => {
   afterEach(() => {
-    delete process.env.DEPLOW_BACKUP_RETAIN
+    delete process.env.HOSTRIG_BACKUP_RETAIN
   })
 
   it("deletes rows beyond the retention window", async () => {

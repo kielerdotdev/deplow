@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { eq } from "@deplow/db"
+import { eq } from "@hostrig/db"
 import {
   analyzeSourceInputSchema,
   connectServiceGitInputSchema,
@@ -11,7 +11,7 @@ import {
   listGitReposInputSchema,
   updateServiceInputSchema,
   type BuildStrategyOverride,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import { assertProjectAccess } from "@/lib/access"
 import {
@@ -42,7 +42,7 @@ import {
   services,
 } from "@/lib/services"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 import type { Session } from "@/lib/auth"
 
 function lifecycleError(e: unknown): never {
@@ -97,7 +97,16 @@ function summary(row: typeof services.$inferSelect) {
     errorMessage: row.errorMessage,
     errorCode: row.errorCode,
     lastOperationId: row.lastOperationId,
-    env: row.envJson ? (JSON.parse(row.envJson) as Record<string, string>) : {},
+    env: (() => {
+      const raw = row.envJson
+        ? (JSON.parse(row.envJson) as Record<string, string>)
+        : {}
+      const masked: Record<string, string> = {}
+      for (const [k, v] of Object.entries(raw)) {
+        masked[k] = v ? "********" : ""
+      }
+      return masked
+    })(),
     rootDirectory: row.rootDirectory,
     buildStrategyOverride:
       (row.buildStrategyOverride as BuildStrategyOverride | null) ?? null,
@@ -169,7 +178,7 @@ export const get = authedProcedure
     return { ...summary(service), bindings: providers }
   })
 
-export const create = authedProcedure
+export const create = writeProcedure
   .input(createServiceInputSchema)
   .handler(async ({ context, input }) => {
     await assertProjectAccess(input.projectId, context.session!)
@@ -203,7 +212,7 @@ export const create = authedProcedure
     return { ...service, operationId }
   })
 
-export const analyzeSource = authedProcedure
+export const analyzeSource = writeProcedure
   .input(analyzeSourceInputSchema)
   .handler(async ({ context, input }) => {
     const userId = context.session!.user.id
@@ -248,7 +257,7 @@ export const analyzeSource = authedProcedure
     }
   })
 
-export const createAndDeploy = authedProcedure
+export const createAndDeploy = writeProcedure
   .input(createAndDeployServiceInputSchema)
   .handler(async ({ context, input }) => {
     const project = await assertProjectAccess(input.projectId, context.session!)
@@ -389,7 +398,7 @@ export const createAndDeploy = authedProcedure
     }
   })
 
-export const update = authedProcedure
+export const update = writeProcedure
   .input(updateServiceInputSchema)
   .handler(async ({ context, input }) => {
     const { service } = await accessibleService(input.id, context.session!)
@@ -447,7 +456,7 @@ export const update = authedProcedure
     )
   })
 
-export const destroy = authedProcedure
+export const destroy = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     await accessibleService(input.id, context.session!)
@@ -461,7 +470,7 @@ export const destroy = authedProcedure
     }
   })
 
-export const retryProvision = authedProcedure
+export const retryProvision = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     const { service } = await accessibleService(input.id, context.session!)
@@ -479,7 +488,7 @@ export const retryProvision = authedProcedure
     }
   })
 
-export const connectGit = authedProcedure
+export const connectGit = writeProcedure
   .input(connectServiceGitInputSchema)
   .handler(async ({ context, input }) => {
     await accessibleService(input.serviceId, context.session!)
@@ -503,7 +512,7 @@ export const connectGit = authedProcedure
     }
   })
 
-export const disconnectGit = authedProcedure
+export const disconnectGit = writeProcedure
   .input(z.object({ serviceId: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     await accessibleService(input.serviceId, context.session!)

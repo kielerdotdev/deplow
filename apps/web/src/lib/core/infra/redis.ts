@@ -1,6 +1,6 @@
 import Redis from "ioredis"
 
-import type { RedisCredentials } from "@deplow/shared"
+import type { RedisCredentials } from "@hostrig/shared"
 
 import { randomPassword, sanitizeIdentifier } from "../crypto"
 

@@ -96,6 +96,6 @@ describe("service lifecycle single writer", () => {
     )
     expect(queue).not.toContain("enqueueDeploy")
     expect(queue).not.toContain("DeployJobData")
-    expect(queue).not.toContain("DEPLOW_LEGACY_DOCKER_DEPLOY")
+    expect(queue).not.toContain("HOSTRIG_LEGACY_DOCKER_DEPLOY")
   })
 })

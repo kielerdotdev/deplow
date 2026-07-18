@@ -8,7 +8,7 @@ description: Optional Sentry-compatible errors and OTLP telemetry on the same co
 ## Enable
 
 1. Run the Observe infra profile (ClickHouse + otel collector) — see [Scripts](/docs/reference/scripts/)
-2. Set `DEPLOW_OBSERVE_ENABLED=true` (and related env) on the control plane — see [Environment](/docs/reference/environment/)
+2. Set `HOSTRIG_OBSERVE_ENABLED=true` (and related env) on the control plane — see [Environment](/docs/reference/environment/)
 3. Open **Observe** in the app and pick a project
 
 ## What you get

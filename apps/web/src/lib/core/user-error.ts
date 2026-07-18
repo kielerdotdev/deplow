@@ -7,17 +7,17 @@ const PATTERNS: Array<{ re: RegExp; message: string }> = [
   {
     re: /gVisor RuntimeClass|RuntimeClass "gvisor"|handler runsc/i,
     message:
-      "gVisor is not available on the cluster. Install runsc on every k3s node (scripts/install-gvisor-k3s.sh) — see docs/secure-runtime.md. Escape hatch: DEPLOW_APP_RUNTIME=runc.",
+      "gVisor is not available on the cluster. Install runsc on every k3s node (scripts/install-gvisor-k3s.sh) — see docs/secure-runtime.md. User apps require gVisor; there is no runc escape hatch.",
   },
   {
     re: /gVisor runtime|runsc.*not installed|runtime "runsc"/i,
     message:
-      "gVisor (runsc) is not installed. On k3s: scripts/install-gvisor-k3s.sh. Legacy Docker: install runsc and restart the daemon. See docs/secure-runtime.md. Escape hatch: DEPLOW_APP_RUNTIME=runc.",
+      "gVisor (runsc) is not installed. On k3s: scripts/install-gvisor-k3s.sh. See docs/secure-runtime.md. User apps cannot run without gVisor.",
   },
   {
     re: /is not available on this host|runtime ".*?" is not available|RuntimeClass ".*?" is not available/i,
     message:
-      "Configured container runtime is missing. Install it on cluster nodes or set DEPLOW_APP_RUNTIME=runc temporarily.",
+      "gVisor RuntimeClass is missing. Install runsc on every k3s node (scripts/install-gvisor-k3s.sh).",
   },
   {
     re: /docker build failed|railpack.*failed|build failed/i,
@@ -60,9 +60,9 @@ const PATTERNS: Array<{ re: RegExp; message: string }> = [
       "Could not reach a platform service. Check Redis/Caddy and your S3 backend (MinIO or R2).",
   },
   {
-    re: /Missing required environment variable|secrets key|BETTER_AUTH_SECRET|DEPLOW_SECRETS_KEY/i,
+    re: /Missing required environment variable|secrets key|BETTER_AUTH_SECRET|HOSTRIG_SECRETS_KEY/i,
     message:
-      "Auth or secrets encryption key is missing. Set BETTER_AUTH_SECRET and DEPLOW_SECRETS_KEY.",
+      "Auth or secrets encryption key is missing. Set BETTER_AUTH_SECRET and HOSTRIG_SECRETS_KEY.",
   },
   {
     re: /webhook body too large|payload too large/i,

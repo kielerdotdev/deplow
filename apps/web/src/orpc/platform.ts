@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server"
-import { updateIngressSettingsInputSchema } from "@deplow/shared"
+import { updateIngressSettingsInputSchema } from "@hostrig/shared"
 
 import { assertInstanceAdmin } from "@/lib/access"
 import {
@@ -12,7 +12,7 @@ import { getProxyIngressStatus } from "@/lib/proxy-ingress-status"
 import { rebuildAutoHostnames } from "@/lib/service-hostnames"
 import { proxyService } from "@/lib/services"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 export const proxyStatus = authedProcedure.handler(async ({ context }) => {
   await assertInstanceAdmin(context.session!)
@@ -31,7 +31,7 @@ export const ingressGet = authedProcedure.handler(async ({ context }) => {
   return settings
 })
 
-export const ingressUpdate = authedProcedure
+export const ingressUpdate = writeProcedure
   .input(updateIngressSettingsInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)

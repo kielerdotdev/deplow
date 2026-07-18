@@ -25,7 +25,7 @@ describe("createHetznerCloudClient", () => {
       image: "ubuntu-24.04",
       location: "fsn1",
       userData: "#!/bin/bash\necho hi",
-      labels: { "deplow.spawned": "true" },
+      labels: { "hostrig.spawned": "true" },
       sshKeys: ["laptop"],
     })
 
@@ -94,6 +94,6 @@ describe("createUnconfiguredHetznerCloudClient", () => {
         location: "fsn1",
         userData: "",
       }),
-    ).rejects.toThrow(/DEPLOW_HETZNER_API_TOKEN/)
+    ).rejects.toThrow(/HOSTRIG_HETZNER_API_TOKEN/)
   })
 })

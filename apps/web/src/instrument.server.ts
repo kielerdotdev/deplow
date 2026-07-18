@@ -8,7 +8,7 @@ import type { NodeOptions } from "@sentry/node"
 import { env } from "./lib/env"
 import { dogfoodSentryOptions } from "./lib/observe/dogfood"
 
-const SENTRY_GLOBAL_KEY = "__deplowDogfoodSentry"
+const SENTRY_GLOBAL_KEY = "__hostrigDogfoodSentry"
 
 export function initDogfoodSentryServer(dsn: string) {
   const g = globalThis as typeof globalThis & {

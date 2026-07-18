@@ -1,4 +1,4 @@
-import type { DatabaseCredentials, ResourceCredentials } from "@deplow/shared"
+import type { DatabaseCredentials, ResourceCredentials } from "@hostrig/shared"
 
 import type { BackupStore } from "./backup.service"
 import type { DataServiceDriver } from "./data-services"
@@ -24,7 +24,7 @@ export class PitrService {
   ) {}
 
   static enabled(): boolean {
-    return process.env.DEPLOW_PITR_ENABLED === "1"
+    return process.env.HOSTRIG_PITR_ENABLED === "1"
   }
 
   async status(

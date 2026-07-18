@@ -9,8 +9,8 @@ import {
   organizations,
   projects,
   user,
-} from "@deplow/db"
-import type { OrganizationRole } from "@deplow/shared"
+} from "@hostrig/db"
+import type { OrganizationRole } from "@hostrig/shared"
 
 type ActorSession = {
   user: {
@@ -20,7 +20,7 @@ type ActorSession = {
   }
 }
 
-export const ACTIVE_ORG_COOKIE = "deplow_org"
+export const ACTIVE_ORG_COOKIE = "hostrig_org"
 
 const roleRank: Record<OrganizationRole, number> = {
   member: 1,
@@ -121,8 +121,47 @@ export function parseActiveOrgCookie(headers: Headers): string | null {
   return value || null
 }
 
+/**
+ * Cookie attributes for the active org. Applied via document.cookie on the client
+ * (see org-switcher) so HttpOnly cannot be set from JS — membership is always
+ * re-validated server-side. Secure is recommended when the public URL is HTTPS.
+ */
 export function activeOrgSetCookie(organizationId: string): string {
-  return `${ACTIVE_ORG_COOKIE}=${encodeURIComponent(organizationId)}; Path=/; SameSite=Lax; Max-Age=${60 * 60 * 24 * 365}`
+  const secure =
+    process.env.NODE_ENV === "production" &&
+    (process.env.BETTER_AUTH_URL ?? process.env.HOSTRIG_PUBLIC_URL ?? "").startsWith(
+      "https:",
+    )
+  const parts = [
+    `${ACTIVE_ORG_COOKIE}=${encodeURIComponent(organizationId)}`,
+    "Path=/",
+    "SameSite=Lax",
+    `Max-Age=${60 * 60 * 24 * 365}`,
+  ]
+  if (secure) parts.push("Secure")
+  return parts.join("; ")
+}
+
+/**
+ * Whether public email/password sign-up is allowed.
+ * - HOSTRIG_ALLOW_SIGNUP=0|false → never
+ * - HOSTRIG_ALLOW_SIGNUP=1|true → always
+ * - default: only until the first instance admin exists (bootstrap)
+ */
+export async function isSignupAllowed(): Promise<boolean> {
+  const raw = (process.env.HOSTRIG_ALLOW_SIGNUP ?? "").trim().toLowerCase()
+  if (raw === "0" || raw === "false" || raw === "no" || raw === "off") {
+    return false
+  }
+  if (raw === "1" || raw === "true" || raw === "yes" || raw === "on") {
+    return true
+  }
+  const [admins] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.instanceAdmin, true))
+    .limit(1)
+  return !admins
 }
 
 export async function resolveActiveOrganizationId(
@@ -185,18 +224,22 @@ export async function createPersonalOrganization(params: {
     createdAt: now,
   })
 
-  // First user on the instance becomes instance admin
-  const [admins] = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.instanceAdmin, true))
-    .limit(1)
-  if (!admins) {
-    await db
-      .update(user)
-      .set({ instanceAdmin: true })
-      .where(eq(user.id, params.userId))
-  }
+  // First user on the instance becomes instance admin (atomic claim).
+  await claimInstanceAdminIfNone(params.userId)
 
   return orgId
+}
+
+/** Promote user to instance admin only if no admin exists (SQLite-serialized). */
+export async function claimInstanceAdminIfNone(userId: string): Promise<boolean> {
+  const { getSqlite } = await import("@hostrig/db")
+  const sqlite = getSqlite()
+  const info = sqlite
+    .prepare(
+      `UPDATE user SET instance_admin = 1
+       WHERE id = ?
+         AND NOT EXISTS (SELECT 1 FROM user WHERE instance_admin = 1)`,
+    )
+    .run(userId) as { changes: number }
+  return info.changes > 0
 }

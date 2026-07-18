@@ -9,13 +9,13 @@ Project credentials are sensitive. Hostrig encrypts them at rest and injects the
 
 | Variable | Purpose |
 | --- | --- |
-| `DEPLOW_SECRETS_KEY` | Primary AES-GCM key for credential blobs |
-| `BETTER_AUTH_SECRET` | Fallback if `DEPLOW_SECRETS_KEY` is unset |
+| `HOSTRIG_SECRETS_KEY` | Primary AES-GCM key for credential blobs |
+| `BETTER_AUTH_SECRET` | Fallback if `HOSTRIG_SECRETS_KEY` is unset |
 
 Set a dedicated secrets key in production:
 
 ```ini
-DEPLOW_SECRETS_KEY=<random-32+-byte-secret>
+HOSTRIG_SECRETS_KEY=<random-32+-byte-secret>
 ```
 
 ## Bindings (least privilege)

@@ -1,4 +1,4 @@
-import type { DeploymentStatus } from "@deplow/shared"
+import type { DeploymentStatus } from "@hostrig/shared"
 
 export const DEPLOYMENT_STAGES = [
   "queued",

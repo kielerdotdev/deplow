@@ -1,4 +1,4 @@
-import type { ProxyIngressStatus } from "@deplow/shared"
+import type { ProxyIngressStatus } from "@hostrig/shared"
 
 import { env } from "@/lib/env"
 import {

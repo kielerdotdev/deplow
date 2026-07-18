@@ -2,7 +2,7 @@ import * as k8s from "@kubernetes/client-node"
 
 import { apiClients, loadKubeConfig } from "@/lib/k8s/client"
 
-export const NETBIRD_NAMESPACE = "deplow-system"
+export const NETBIRD_NAMESPACE = "hostrig-system"
 export const NETBIRD_SECRET_NAME = "netbird-agent"
 export const NETBIRD_DAEMONSET_NAME = "netbird-agent"
 export const NETBIRD_PEER_HOSTNAME = "hostrig-k3s"

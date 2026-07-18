@@ -1,4 +1,4 @@
-import { eq, db, deployments, projects, services } from "@deplow/db"
+import { eq, db, deployments, projects, services } from "@hostrig/db"
 
 import { requireConnectedKubeconfig } from "@/lib/k8s/cluster-store"
 import { unpublishServiceSurface } from "@/lib/k8s/surface"

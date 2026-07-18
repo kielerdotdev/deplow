@@ -51,7 +51,7 @@ export class HetznerSpawner implements ServerSpawner {
     }
 
     const labels: Record<string, string> = {
-      "deplow.spawned": "true",
+      "hostrig.spawned": "true",
       ...(options.labels ?? {}),
     }
 

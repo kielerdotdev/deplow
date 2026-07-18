@@ -1,4 +1,4 @@
-import { eq, db, serviceHostnames } from "@deplow/db"
+import { eq, db, serviceHostnames } from "@hostrig/db"
 
 import { createNetbirdClient } from "./client"
 import {

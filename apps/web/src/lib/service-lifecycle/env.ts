@@ -2,7 +2,7 @@
  * Single env builder for all deploy paths (k8s / future agent).
  */
 
-import { and, eq, isNull, db, observeKeys, observeProjects } from "@deplow/db"
+import { and, eq, isNull, db, observeKeys, observeProjects } from "@hostrig/db"
 
 import {
   containerRuntimeEnv,

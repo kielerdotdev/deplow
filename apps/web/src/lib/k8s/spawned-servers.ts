@@ -1,4 +1,4 @@
-import { db, eq, spawnedServers } from "@deplow/db"
+import { db, eq, spawnedServers } from "@hostrig/db"
 
 import {
   createServerSpawners,
@@ -21,7 +21,7 @@ export async function destroySpawnedServer(id: string): Promise<boolean> {
       const spawner = getServerSpawner(spawners, row.provider)
       if (row.provider === "hetzner" && !isHetznerConfigured()) {
         throw new Error(
-          "Hetzner is not configured. Set DEPLOW_HETZNER_API_TOKEN to destroy servers.",
+          "Hetzner is not configured. Set HOSTRIG_HETZNER_API_TOKEN to destroy servers.",
         )
       }
       await spawner.destroy(row.externalId)

@@ -9,7 +9,7 @@ Hostrig splits responsibilities between a **control plane** (the web app + SQLit
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│  Control plane (@deplow/web)                            │
+│  Control plane (@hostrig/web)                            │
 │  TanStack Start · oRPC · Better Auth · Drizzle/SQLite   │
 │  BullMQ · git webhooks · MCP · optional Observe ingest  │
 │  BuildKit (image builds) · platform MinIO/R2 client     │
@@ -35,11 +35,11 @@ Hostrig splits responsibilities between a **control plane** (the web app + SQLit
 
 | Package | Path | Role |
 | --- | --- | --- |
-| `@deplow/web` | `apps/web` | UI, oRPC API, core services, MCP |
-| `@deplow/db` | `packages/db` | Drizzle schema + SQLite client |
-| `@deplow/shared` | `packages/shared` | Zod contracts shared across layers |
-| `@deplow/observe` | `packages/observe` | ClickHouse schemas / query helpers (when Observe is enabled) |
-| `@deplow/site` | `apps/site` | Marketing + Starlight docs |
+| `@hostrig/web` | `apps/web` | UI, oRPC API, core services, MCP |
+| `@hostrig/db` | `packages/db` | Drizzle schema + SQLite client |
+| `@hostrig/shared` | `packages/shared` | Zod contracts shared across layers |
+| `@hostrig/observe` | `packages/observe` | ClickHouse schemas / query helpers (when Observe is enabled) |
+| `@hostrig/site` | `apps/site` | Marketing + Starlight docs |
 
 Core business logic lives in `apps/web/src/lib/core/` and `apps/web/src/lib/k8s/` and stays **framework-agnostic** where practical. oRPC handlers are thin adapters.
 
@@ -59,7 +59,7 @@ Project metadata, deployments, encrypted credentials, orgs, and (when enabled) O
 
 ## Optional Observe
 
-When `DEPLOW_OBSERVE_ENABLED=1` and ClickHouse is up:
+When `HOSTRIG_OBSERVE_ENABLED=1` and ClickHouse is up:
 
 - Sentry-compatible envelope ingest
 - OTLP traces / metrics / logs

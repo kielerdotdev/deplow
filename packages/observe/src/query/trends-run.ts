@@ -1,5 +1,5 @@
 import type { ObserveClickHouseConfig } from "../clickhouse/client"
-import { esc, iso, queryJson } from "./common"
+import { esc, iso, queryJson, safeAttrKey } from "./common"
 
 export type TrendsSignal = "spans" | "root_spans" | "logs" | "errors"
 export type TrendsMeasure =
@@ -184,7 +184,7 @@ export function trendsFieldExpr(signal: TrendsSignal, field: string): string {
     duration_ms: "(Duration / 1000000)",
   }
   if (attrKey) {
-    return `coalesce(${attrMap(signal)}['${esc(attrKey)}'], ${resourceMap()}['${esc(attrKey)}'], '')`
+    return `coalesce(${attrMap(signal)}['${esc(safeAttrKey(attrKey))}'], ${resourceMap()}['${esc(safeAttrKey(attrKey))}'], '')`
   }
   if (known[f]) return known[f]!
   return `coalesce(${attrMap(signal)}['${esc(f)}'], ${resourceMap()}['${esc(f)}'], '')`

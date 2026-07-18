@@ -22,6 +22,6 @@ export function createS3Adapter(config: S3AdapterConfig): S3Adapter {
 /** Derive R2 S3 API endpoint from account id. */
 export function r2EndpointForAccount(accountId: string): string {
   const id = accountId.trim()
-  if (!id) throw new Error("DEPLOW_R2_ACCOUNT_ID is required for provider=r2")
+  if (!id) throw new Error("HOSTRIG_R2_ACCOUNT_ID is required for provider=r2")
   return `https://${id}.r2.cloudflarestorage.com`
 }

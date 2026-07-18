@@ -1,7 +1,10 @@
 /**
- * Inject deplow.project_id into OTLP/JSON resource attributes when missing.
+ * Inject hostrig.project_id into OTLP/JSON resource attributes when missing.
+ * Also writes legacy deplow.project_id so older ClickHouse MVs still bridge.
  * Protobuf bodies are left untouched (clients / otelcol transform handle those).
  */
+const PROJECT_ID_ATTRS = ["hostrig.project_id", "deplow.project_id"] as const
+
 export function injectProjectIdIntoOtlpJson(
   body: Buffer,
   contentType: string | null,
@@ -27,14 +30,16 @@ export function injectProjectIdIntoOtlpJson(
         key?: string
         value?: { stringValue?: string }
       }>
-      const existing = attrs.find((a) => a.key === "deplow.project_id")
-      if (existing) {
-        existing.value = { stringValue: projectId }
-      } else {
-        attrs.push({
-          key: "deplow.project_id",
-          value: { stringValue: projectId },
-        })
+      for (const key of PROJECT_ID_ATTRS) {
+        const existing = attrs.find((a) => a.key === key)
+        if (existing) {
+          existing.value = { stringValue: projectId }
+        } else {
+          attrs.push({
+            key,
+            value: { stringValue: projectId },
+          })
+        }
       }
     }
     return Buffer.from(JSON.stringify(parsed), "utf8")

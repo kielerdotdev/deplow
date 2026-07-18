@@ -1,4 +1,4 @@
-import { eq, db, projects, services } from "@deplow/db"
+import { eq, db, projects, services } from "@hostrig/db"
 
 import { ServiceLifecycleError } from "./deploy"
 

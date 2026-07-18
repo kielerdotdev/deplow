@@ -336,7 +336,8 @@ async function resolveGithubListToken(
   throw new Error(
     link?.accessTokenEncrypted
       ? STALE_GITHUB_CREDS_MESSAGE
-      : "Connect GitHub (OAuth / App install), paste a PAT under Advanced, or set DEPLOW_GITHUB_TOKEN on the server.",
+      : "Connect GitHub (OAuth / App install) or paste a PAT under Advanced. " +
+          "Platform HOSTRIG_GITHUB_TOKEN is only shared when HOSTRIG_GIT_PLATFORM_TOKEN_SHARED=1.",
   )
 }
 
@@ -371,6 +372,7 @@ async function resolveGitlabListToken(
   throw new Error(
     link?.accessTokenEncrypted
       ? STALE_GITLAB_CREDS_MESSAGE
-      : "Connect GitLab (OAuth), paste a PAT under Advanced, or set DEPLOW_GITLAB_TOKEN on the server.",
+      : "Connect GitLab (OAuth) or paste a PAT under Advanced. " +
+          "Platform HOSTRIG_GITLAB_TOKEN is only shared when HOSTRIG_GIT_PLATFORM_TOKEN_SHARED=1.",
   )
 }

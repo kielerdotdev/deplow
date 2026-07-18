@@ -33,7 +33,7 @@ describe("dogfood self ingest", () => {
   it("uses loopback vite port, not LAN ingest URL", () => {
     const prev = process.env.PORT
     delete process.env.PORT
-    delete process.env.DEPLOW_DEV_PORT
+    delete process.env.HOSTRIG_DEV_PORT
     expect(dogfoodSelfBaseUrl()).toBe("http://127.0.0.1:9565")
     expect(buildDogfoodOtelEndpoint(7)).toBe(
       "http://127.0.0.1:9565/api/7/otlp",

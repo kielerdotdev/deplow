@@ -7,7 +7,7 @@ The bundled compose stack maps **control-plane** services to host ports. **Apps,
 
 | Service | Host port | Purpose |
 | --- | --- | --- |
-| Hostrig web (production install) | `3000` (`DEPLOW_WEB_PORT`) | Control plane UI + API + MCP |
+| Hostrig web (production install) | `3000` (`HOSTRIG_WEB_PORT`) | Control plane UI + API + MCP |
 | Platform Redis | `56380` (dev compose; production may be internal) | BullMQ queues |
 | MinIO S3 | `59000` (typical dev) | S3-compatible API |
 | MinIO console | `59001` (typical dev) | Admin UI |

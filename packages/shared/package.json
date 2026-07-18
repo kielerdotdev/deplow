@@ -1,5 +1,5 @@
 {
-  "name": "@deplow/shared",
+  "name": "@hostrig/shared",
   "private": true,
   "type": "module",
   "exports": {

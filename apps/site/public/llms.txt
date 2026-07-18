@@ -1,0 +1,27 @@
+# Hostrig
+
+> Hostrig is an opinionated self-hosted PaaS on k3s: typed services (web, worker, Postgres, Redis), gVisor for user apps, git push-to-deploy, platform wildcard URLs via Traefik + edge. Interfaces: Web dashboard, MCP, and thin CLI. Never a desktop app or Coolify-style feature matrix.
+
+## Docs
+- [Introduction](https://hostrig.com/docs/): What Hostrig is and is not
+- [Prerequisites](https://hostrig.com/docs/getting-started/prerequisites/): What you need before install
+- [Quick start](https://hostrig.com/docs/getting-started/quick-start/): Install control plane, connect k3s, first deploy
+- [Scope](https://hostrig.com/docs/concepts/scope/): In and out of scope
+- [Architecture](https://hostrig.com/docs/concepts/architecture/): Control plane, k3s, data plane
+- [Projects & services](https://hostrig.com/docs/concepts/projects/): Service-first model
+- [Security](https://hostrig.com/docs/concepts/security/): gVisor, NetworkPolicy, honest limits
+- [Cluster](https://hostrig.com/docs/guides/cluster/): Connect or create k3s
+- [Domains](https://hostrig.com/docs/guides/domains/): Platform wildcards and edge TLS
+- [Deploy](https://hostrig.com/docs/guides/deploy/): Build and ship
+- [Bindings & secrets](https://hostrig.com/docs/guides/secrets/): Explicit DATABASE_URL / REDIS_URL
+- [MCP for agents](https://hostrig.com/docs/guides/mcp/): /api/mcp tools and tokens
+- [CLI](https://hostrig.com/docs/guides/cli/): Thin hostrig client (same PATs)
+- [Observe](https://hostrig.com/docs/guides/observe/): Optional Sentry-compatible + OTLP
+- [Environment](https://hostrig.com/docs/reference/environment/): Config reference
+
+## Product pages
+- [Home](https://hostrig.com/)
+- [Pricing](https://hostrig.com/pricing/): Hobby $0 forever self-hosted
+
+## Source
+- [GitHub](https://github.com/kielerdotdev/hostrig)

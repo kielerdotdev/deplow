@@ -1,4 +1,4 @@
-import type { DatabaseCredentials } from "@deplow/shared"
+import type { DatabaseCredentials } from "@hostrig/shared"
 
 import { randomPassword, sanitizeIdentifier } from "../crypto"
 import { PostgresInstance } from "../infra/postgres"
@@ -18,7 +18,7 @@ import type {
 import type { PitrWindow } from "../pitr.service"
 
 function pitrEnabled(): boolean {
-  return process.env.DEPLOW_PITR_ENABLED === "1"
+  return process.env.HOSTRIG_PITR_ENABLED === "1"
 }
 
 export class PostgresContainerDriver implements DataServiceDriver {
@@ -115,7 +115,7 @@ export class PostgresContainerDriver implements DataServiceDriver {
       await client.connect()
       try {
         await client.query(`
-          CREATE TABLE IF NOT EXISTS deplow_meta (
+          CREATE TABLE IF NOT EXISTS hostrig_meta (
             key text PRIMARY KEY,
             value text NOT NULL,
             created_at timestamptz NOT NULL DEFAULT now()
@@ -123,14 +123,14 @@ export class PostgresContainerDriver implements DataServiceDriver {
         `)
         await client.query(
           `
-          INSERT INTO deplow_meta (key, value) VALUES ('project_slug', $1)
+          INSERT INTO hostrig_meta (key, value) VALUES ('project_slug', $1)
           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
           `,
           [ctx.projectSlug],
         )
         await client.query(
           `
-          INSERT INTO deplow_meta (key, value) VALUES ('project_id', $1)
+          INSERT INTO hostrig_meta (key, value) VALUES ('project_id', $1)
           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
           `,
           [ctx.projectId],
@@ -223,7 +223,7 @@ function makePitr(runtime: DataContainerRuntime): PitrCapable {
           windowEnd: null,
           lastBaseBackupAt: null,
           message:
-            "Set DEPLOW_PITR_ENABLED=1 and configure pgBackRest for this project stanza.",
+            "Set HOSTRIG_PITR_ENABLED=1 and configure pgBackRest for this project stanza.",
         }
       }
       try {
@@ -365,9 +365,9 @@ async function runPgbackrest(
   try {
     return await capture("pgbackrest", args)
   } catch (hostError) {
-    const dockerBin = process.env.DEPLOW_DOCKER_BIN ?? "docker"
+    const dockerBin = process.env.HOSTRIG_DOCKER_BIN ?? "docker"
     const image =
-      process.env.DEPLOW_PGBACKREST_IMAGE ?? "woblerr/pgbackrest:2.58.0-alpine"
+      process.env.HOSTRIG_PGBACKREST_IMAGE ?? "woblerr/pgbackrest:2.58.0-alpine"
     if (!opts.volumeName && opts.requireVolume) {
       throw hostError
     }

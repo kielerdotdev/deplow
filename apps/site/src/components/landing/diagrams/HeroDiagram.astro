@@ -1,71 +1,37 @@
+---
+/** Compact stack diagram — dark Atlasflow tokens */
+const font = "DM Sans, system-ui, sans-serif"
+const mono = "IBM Plex Mono, ui-monospace, monospace"
+---
+
 <svg viewBox="0 0 720 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="App connected to postgres, redis, and object storage on k3s with gVisor">
-	<rect width="720" height="320" fill="#fffcf7"></rect>
+	<rect width="720" height="320" fill="#000000" />
+	<rect x="48" y="28" width="624" height="264" rx="8" fill="#121212" stroke="#333333" />
 
-	<!-- stage -->
-	<rect x="48" y="28" width="624" height="264" rx="14" fill="#e3ede5"></rect>
+	<!-- services -->
+	<rect x="156" y="52" width="120" height="36" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="216" y="74" fill="#f2f2f2" font-family={mono} font-size="12" font-weight="500" text-anchor="middle">postgres</text>
 
-	<!-- services: 3 equal pills, evenly spaced, centers at 216 / 360 / 504 -->
-	<rect x="156" y="48" width="120" height="36" rx="18" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
-	<text x="180" y="71" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
-		>postgres</text
-	>
+	<rect x="300" y="52" width="120" height="36" rx="4" fill="#1c1c1c" stroke="#333" />
+	<circle cx="324" cy="70" r="4" fill="#22c55e" />
+	<text x="360" y="74" fill="#f2f2f2" font-family={mono} font-size="12" font-weight="500" text-anchor="middle">redis</text>
 
-	<rect x="300" y="48" width="120" height="36" rx="18" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
-	<circle cx="324" cy="66" r="4" fill="#c45438"></circle>
-	<text x="338" y="71" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
-		>redis</text
-	>
+	<rect x="444" y="52" width="120" height="36" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="504" y="74" fill="#f2f2f2" font-family={mono} font-size="12" font-weight="500" text-anchor="middle">s3</text>
 
-	<rect x="444" y="48" width="120" height="36" rx="18" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
-	<text x="482" y="71" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
-		>minio</text
-	>
-
-	<!-- drop lines into host -->
-	<path
-		d="M216 84v28M360 84v28M504 84v28"
-		stroke="#1b2030"
-		stroke-width="1.5"
-		stroke-dasharray="3 4"
-		stroke-linecap="round"
-		opacity="0.28"></path>
+	<path d="M216 88v24M360 88v24M504 88v24" stroke="#333" stroke-width="1.5" stroke-dasharray="3 4" stroke-linecap="round" />
 
 	<!-- host -->
-	<rect x="96" y="112" width="528" height="148" rx="12" fill="#fffcf7" stroke="#1b2030" stroke-width="2"></rect>
-	<rect x="116" y="132" width="488" height="108" rx="8" fill="#f5f0e7" stroke="#1b2030" stroke-width="1.5"></rect>
+	<rect x="120" y="112" width="480" height="148" rx="6" fill="#0a0a0a" stroke="#2e2e2e" />
+	<text x="140" y="138" fill="#8a8a8a" font-family={mono} font-size="11" letter-spacing="1.2">K3S · GVISOR</text>
 
-	<!-- label + leds -->
-	<rect x="132" y="144" width="104" height="22" rx="5" fill="#fffcf7" stroke="#1b2030" stroke-width="1.5"></rect>
-	<text x="144" y="159" fill="#4f6b55" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500"
-		>k3s + gVisor</text
-	>
-	<circle cx="548" cy="155" r="4.5" fill="#4f6b55"></circle>
-	<circle cx="564" cy="155" r="4.5" fill="#c45438"></circle>
-	<circle cx="580" cy="155" r="4.5" fill="#1b2030" opacity="0.15"></circle>
+	<rect x="160" y="158" width="160" height="72" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="240" y="190" fill="#f2f2f2" font-family={font} font-size="14" font-weight="500" text-anchor="middle">web</text>
+	<text x="240" y="210" fill="#8a8a8a" font-family={mono} font-size="11" text-anchor="middle">RuntimeClass gvisor</text>
 
-	<!-- 4 equal containers: w=88, gap=20, total=4*88+3*20=412, start x=(720-412)/2 wait — inside hatch: x=132..604 → center row
-	     usable width 456 starting at 132: start = 132 + (456-412)/2 = 154 -->
-	<rect x="154" y="178" width="88" height="48" rx="7" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
-	<circle cx="170" cy="194" r="3.5" fill="#4f6b55"></circle>
-	<text x="182" y="208" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
-		>app</text
-	>
+	<rect x="400" y="158" width="160" height="72" rx="4" fill="#1c1c1c" stroke="#333" />
+	<text x="480" y="190" fill="#f2f2f2" font-family={font} font-size="14" font-weight="500" text-anchor="middle">worker</text>
+	<text x="480" y="210" fill="#8a8a8a" font-family={mono} font-size="11" text-anchor="middle">private</text>
 
-	<rect x="262" y="178" width="88" height="48" rx="7" fill="#fffcf7" stroke="#c45438" stroke-width="1.75"></rect>
-	<circle cx="278" cy="194" r="3.5" fill="#c45438"></circle>
-	<text x="290" y="208" fill="#c45438" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
-		>worker</text
-	>
-
-	<rect x="370" y="178" width="88" height="48" rx="7" fill="#fffcf7" stroke="#1b2030" stroke-width="1.75"></rect>
-	<circle cx="386" cy="194" r="3.5" fill="#4f6b55"></circle>
-	<text x="398" y="208" fill="#1b2030" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
-		>web</text
-	>
-
-	<rect x="478" y="178" width="88" height="48" rx="7" fill="#e3ede5" stroke="#4f6b55" stroke-width="1.75"></rect>
-	<circle cx="494" cy="194" r="3.5" fill="#4f6b55"></circle>
-	<text x="506" y="208" fill="#4f6b55" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500"
-		>cron</text
-	>
+	<text x="140" y="250" fill="#525252" font-family={font} font-size="11">Traefik ingress · edge TLS · bindings inject DATABASE_URL / REDIS_URL</text>
 </svg>

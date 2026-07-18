@@ -18,14 +18,14 @@ export default defineConfig(({ mode }) => {
     ...loadEnv(mode, rootDir, ""),
   }
   const dogfoodDsn =
-    loaded.DEPLOW_OBSERVE_DOGFOOD_DSN ||
-    loaded.VITE_DEPLOW_OBSERVE_DOGFOOD_DSN ||
+    loaded.HOSTRIG_OBSERVE_DOGFOOD_DSN ||
+    loaded.VITE_HOSTRIG_OBSERVE_DOGFOOD_DSN ||
     ""
 
   return {
     resolve: { tsconfigPaths: true },
     define: {
-      "import.meta.env.VITE_DEPLOW_OBSERVE_DOGFOOD_DSN":
+      "import.meta.env.VITE_HOSTRIG_OBSERVE_DOGFOOD_DSN":
         JSON.stringify(dogfoodDsn),
     },
     plugins: [tailwindcss(), tanstackStart(), viteReact()],
@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => {
         "dockerode",
         "bullmq",
         "@clickhouse/client",
-        "@deplow/observe",
+        "@hostrig/observe",
       ],
       include: ["@sentry/react"],
     },

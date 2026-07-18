@@ -6,7 +6,7 @@ export interface ScheduledProject {
   getTargets: () => Promise<BackupTarget[]>
 }
 
-/** One hour — demos may go lower only with DEPLOW_BACKUP_ALLOW_FAST=1 */
+/** One hour — demos may go lower only with HOSTRIG_BACKUP_ALLOW_FAST=1 */
 export const BACKUP_MIN_INTERVAL_MS = 60 * 60 * 1000
 export const BACKUP_DEFAULT_INTERVAL_MS = 24 * 60 * 60 * 1000
 
@@ -21,7 +21,7 @@ export class BackupScheduler {
   constructor(private readonly backupService: BackupService) {}
 
   static defaultIntervalMs(): number {
-    const raw = process.env.DEPLOW_BACKUP_DEFAULT_INTERVAL_MS
+    const raw = process.env.HOSTRIG_BACKUP_DEFAULT_INTERVAL_MS
     if (raw) {
       const n = Number(raw)
       if (Number.isFinite(n) && n >= 1000) {
@@ -35,7 +35,7 @@ export class BackupScheduler {
     if (!Number.isFinite(intervalMs) || intervalMs < 1000) {
       return BACKUP_DEFAULT_INTERVAL_MS
     }
-    const allowFast = process.env.DEPLOW_BACKUP_ALLOW_FAST === "1"
+    const allowFast = process.env.HOSTRIG_BACKUP_ALLOW_FAST === "1"
     if (!allowFast && intervalMs < BACKUP_MIN_INTERVAL_MS) {
       return BACKUP_DEFAULT_INTERVAL_MS
     }
@@ -43,7 +43,7 @@ export class BackupScheduler {
   }
 
   static allowFastIntervals(): boolean {
-    return process.env.DEPLOW_BACKUP_ALLOW_FAST === "1"
+    return process.env.HOSTRIG_BACKUP_ALLOW_FAST === "1"
   }
 
   list(): Array<{ projectId: string; intervalMs: number }> {

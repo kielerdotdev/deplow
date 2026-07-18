@@ -57,6 +57,9 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Named easings → utilities ease-out-ui / ease-drawer-ui (required for @apply). */
+  --ease-out-ui: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer-ui: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /*
@@ -384,25 +387,10 @@
     animation: status-ring 1.6s ease-out infinite;
   }
 
-  .ease-out-ui {
-    transition-timing-function: var(--ease-out-ui);
-    animation-timing-function: var(--ease-out-ui);
-  }
-
-  .ease-drawer-ui {
-    transition-timing-function: var(--ease-drawer);
-    animation-timing-function: var(--ease-drawer);
-  }
-
   .stat-metric {
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.04em;
   }
-}
-
-:root {
-  --ease-out-ui: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @keyframes content-in {

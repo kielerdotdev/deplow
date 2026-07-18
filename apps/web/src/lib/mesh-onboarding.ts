@@ -1,4 +1,4 @@
-import type { MeshOnboardingHint } from "@deplow/shared"
+import type { MeshOnboardingHint } from "@hostrig/shared"
 
 import {
   isLocalhostBaseDomain,

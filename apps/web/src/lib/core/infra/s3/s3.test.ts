@@ -12,7 +12,7 @@ describe("createS3Adapter", () => {
       accessKeyId: "key",
       secretAccessKey: "secret",
       region: "us-east-1",
-      backupBucket: "deplow-backups",
+      backupBucket: "hostrig-backups",
     })
     expect(adapter.provider).toBe("minio")
   })
@@ -27,7 +27,7 @@ describe("createS3Adapter", () => {
       accessKeyId: "key",
       secretAccessKey: "secret",
       region: "auto",
-      backupBucket: "deplow-backups",
+      backupBucket: "hostrig-backups",
     })
     expect(adapter.provider).toBe("r2")
     expect(endpoint).toBe("https://acct.r2.cloudflarestorage.com")

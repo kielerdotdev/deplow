@@ -12,7 +12,7 @@ import {
   organizationMembers,
   organizations,
   user,
-} from "@deplow/db"
+} from "@hostrig/db"
 import {
   acceptInviteInputSchema,
   inviteOrganizationMemberInputSchema,
@@ -20,7 +20,7 @@ import {
   setActiveOrganizationInputSchema,
   updateMemberRoleInputSchema,
   updateOrganizationInputSchema,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import {
   ACTIVE_ORG_COOKIE,
@@ -32,7 +32,7 @@ import {
   slugifyOrgName,
 } from "@/lib/access"
 
-import { authedProcedure, publicProcedure } from "./middleware"
+import { authedProcedure, publicProcedure, writeProcedure } from "./middleware"
 
 function orgSummary(
   org: typeof organizations.$inferSelect,
@@ -104,7 +104,7 @@ export const getActive = authedProcedure.handler(async ({ context }) => {
   return orgSummary(org, membership.role)
 })
 
-export const setActive = authedProcedure
+export const setActive = writeProcedure
   .input(setActiveOrganizationInputSchema)
   .handler(async ({ context, input }) => {
     await requireOrgRole(input.organizationId, context.session!, "member")
@@ -114,7 +114,7 @@ export const setActive = authedProcedure
     }
   })
 
-export const update = authedProcedure
+export const update = writeProcedure
   .input(updateOrganizationInputSchema)
   .handler(async ({ context, input }) => {
     await requireOrgRole(input.id, context.session!, "owner")
@@ -217,7 +217,7 @@ export const listInvites = authedProcedure
     }))
   })
 
-export const invite = authedProcedure
+export const invite = writeProcedure
   .input(inviteOrganizationMemberInputSchema)
   .handler(async ({ context, input }) => {
     await requireOrgRole(input.organizationId, context.session!, "owner")
@@ -269,7 +269,7 @@ export const invite = authedProcedure
     }
   })
 
-export const revokeInvite = authedProcedure
+export const revokeInvite = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     const [invite] = await db
@@ -287,7 +287,7 @@ export const revokeInvite = authedProcedure
     return { ok: true as const }
   })
 
-export const removeMember = authedProcedure
+export const removeMember = writeProcedure
   .input(removeMemberInputSchema)
   .handler(async ({ context, input }) => {
     await requireOrgRole(input.organizationId, context.session!, "owner")
@@ -329,7 +329,7 @@ export const removeMember = authedProcedure
     return { ok: true as const }
   })
 
-export const updateMemberRole = authedProcedure
+export const updateMemberRole = writeProcedure
   .input(updateMemberRoleInputSchema)
   .handler(async ({ context, input }) => {
     await requireOrgRole(input.organizationId, context.session!, "owner")
@@ -369,7 +369,7 @@ export const updateMemberRole = authedProcedure
     return { ok: true as const }
   })
 
-export const acceptInvite = authedProcedure
+export const acceptInvite = writeProcedure
   .input(acceptInviteInputSchema)
   .handler(async ({ context, input }) => {
     const tokenHash = hashToken(input.token)

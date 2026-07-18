@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import type { S3Client } from "@aws-sdk/client-s3"
 
-import type { StorageCredentials } from "@deplow/shared"
+import type { StorageCredentials } from "@hostrig/shared"
 
 import { randomPassword, sanitizeIdentifier } from "../../crypto"
 import {
@@ -130,7 +130,7 @@ export class MinioS3Adapter implements S3Adapter {
     bucket: string,
   ): Promise<void> {
     const policyName = `pol-${bucket}`.slice(0, 32)
-    const dir = mkdtempSync(path.join(tmpdir(), "deplow-minio-"))
+    const dir = mkdtempSync(path.join(tmpdir(), "hostrig-minio-"))
     const policyPath = path.join(dir, "policy.json")
     writeFileSync(policyPath, JSON.stringify(buildBucketPolicy(bucket)))
     const adminEndpoint = this.config.appEndpoint
@@ -156,7 +156,7 @@ export class MinioS3Adapter implements S3Adapter {
     script: string,
     opts?: { policyPath?: string },
   ): Promise<void> {
-    const network = this.config.dockerNetwork ?? "deplow_default"
+    const network = this.config.dockerNetwork ?? "hostrig_default"
     const dockerArgs = [
       "run",
       "--rm",

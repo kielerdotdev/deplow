@@ -5,7 +5,7 @@
  * imagePullSecrets on the project namespace for all UI-defined registries.
  *
  * Default build registry comes from Settings → Registries (DB), with optional
- * env seed via DEPLOW_BUILD_REGISTRY when the table is empty.
+ * env seed via HOSTRIG_BUILD_REGISTRY when the table is empty.
  */
 import { spawn } from "node:child_process"
 

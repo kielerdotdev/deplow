@@ -32,13 +32,14 @@ connect or create k3s cluster
 
 ## Packages
 
-| Package          | Path                                     |
-| ---------------- | ---------------------------------------- |
-| `@deplow/web`    | `apps/web` — UI, oRPC, core services     |
-| `@deplow/db`     | `packages/db` — Drizzle schema + SQLite  |
-| `@deplow/shared` | `packages/shared` — Zod contracts        |
-| `@deplow/site`   | `apps/site` — marketing + Starlight docs |
-
+| Package            | Path                                         |
+| ------------------ | -------------------------------------------- |
+| `@hostrig/web`     | `apps/web` — UI, oRPC, core services         |
+| `@hostrig/db`      | `packages/db` — Drizzle schema + SQLite      |
+| `@hostrig/shared`  | `packages/shared` — Zod contracts            |
+| `@hostrig/observe` | `packages/observe` — ClickHouse / ingest     |
+| `@hostrig/site`    | `apps/site` — marketing + Starlight docs     |
+| `@hostrig/cli`     | `apps/cli` — thin remote CLI (`hostrig`)     |
 Core business logic is under `apps/web/src/lib/core/` and stays framework-agnostic (no oRPC / React imports).
 
 ## Prerequisites
@@ -62,14 +63,14 @@ BuildKit is started by the install script. Railpack ships inside the control-pla
 **One command. That’s the install.**
 
 ```bash
-curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
+curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash
 ```
 
 Private repo / before the `install` release exists:
 
 ```bash
 sudo bash deploy/install.sh
-# or: gh api repos/kielerdotdev/deplow/contents/deploy/install.sh --jq .content | base64 -d | sudo bash
+# or: gh api repos/kielerdotdev/hostrig/contents/deploy/install.sh --jq .content | base64 -d | sudo bash
 ```
 
 The installer:
@@ -78,24 +79,24 @@ The installer:
 - starts BuildKit (builds on the CP host)
 - bundles MinIO for object storage / backups
 - generates secrets and detects your public URL
-- pulls `ghcr.io/kielerdotdev/deplow` and starts the stack
+- pulls `ghcr.io/kielerdotdev/hostrig` and starts the stack
 - prints the URL — open it, create the first user, connect a **k3s** cluster (Settings → Cluster), set Domains
 
 App sandboxing (gVisor) is installed on **cluster nodes**, not via Docker-agent.
 
 ```bash
 # Upgrade later (preserves volumes + .env):
-curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash -s update
+curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash -s update
 
 # Private GHCR package:
 #   GHCR_TOKEN=ghp_… curl -sSL …/install.sh | sudo -E bash
 # Pin a release:
-#   DEPLOW_VERSION=v1.2.3 curl -sSL …/install.sh | sudo bash
+#   HOSTRIG_VERSION=v1.2.3 curl -sSL …/install.sh | sudo bash
 # External S3 (skip bundled MinIO):
-#   DEPLOW_BUNDLE_MINIO=0 DEPLOW_S3_PROVIDER=r2 … curl -sSL …/install.sh | sudo -E bash
+#   HOSTRIG_BUNDLE_MINIO=0 HOSTRIG_S3_PROVIDER=r2 … curl -sSL …/install.sh | sudo -E bash
 ```
 
-Installs under `/opt/deplow` (`DEPLOW_HOME` to override). Image: `ghcr.io/kielerdotdev/deplow` (**linux/amd64**, built on `main` / tags).
+Installs under `/opt/hostrig` (`HOSTRIG_HOME` to override). Image: `ghcr.io/kielerdotdev/hostrig` (**linux/amd64**, built on `main` / tags).
 
 **From a repo checkout** (uses in-tree `deploy/` assets):
 
@@ -133,7 +134,7 @@ Attach `hostrig.com` under the Worker’s **Domains** tab after the first deploy
 
 Details: [`.devcontainer/README.md`](./.devcontainer/README.md).
 
-`DEPLOW_BASE_DOMAIN` only seeds Domains on first boot; day-to-day changes are in the **Domains** tab.
+`HOSTRIG_BASE_DOMAIN` only seeds Domains on first boot; day-to-day changes are in the **Domains** tab.
 
 Production VPS install remains `deploy/install.sh` / the curl installer above — that is not a local-dev path.
 
@@ -170,7 +171,7 @@ See [docs/access.md](./docs/access.md) and [docs/gtm.md](./docs/gtm.md).
 
 **Git (preferred):** Dashboard → **Integrations** → create/configure **GitHub App** (manifest) or **GitLab OAuth**, then **Connect** on a project. We auto-register the push webhook and clone private repos with short-lived installation/OAuth tokens. PAT paste remains under **Advanced** only. See [docs/git-oauth.md](./docs/git-oauth.md).
 
-**MCP (Cursor / agents):** Dashboard → **Settings** → create an MCP token, then point Cursor at `{DEPLOW_PUBLIC_URL}/api/mcp` with `Authorization: Bearer …`. Prefer the `deploy_from_git` tool for end-to-end deploys. See [docs/mcp.md](./docs/mcp.md).
+**MCP (Cursor / agents):** Dashboard → **Settings** → create an MCP token, then point Cursor at `{HOSTRIG_PUBLIC_URL}/api/mcp` with `Authorization: Bearer …`. Prefer the `deploy_from_git` tool for end-to-end deploys. See [docs/mcp.md](./docs/mcp.md).
 
 Webhooks are signature-verified (`X-Hub-Signature-256` / `X-Gitlab-Token`). Push to the configured production branch clones, builds (Railpack/Dockerfile), deploys the production slot, and updates the proxy. Manual UI deploys still work.
 
@@ -180,34 +181,36 @@ Webhook endpoint: `POST /api/webhooks/git/{serviceId}`.
 
 | Variable                            | Purpose                             | Default                                |
 | ----------------------------------- | ----------------------------------- | -------------------------------------- |
-| `DATABASE_URL`                      | Control-plane SQLite                | `data/deplow.db` (under `packages/db`) |
+| `DATABASE_URL`                      | Control-plane SQLite                | `data/hostrig.db` (under `packages/db`) |
 | `BETTER_AUTH_SECRET`                | Auth + secrets encryption fallback  | required in prod                       |
-| `DEPLOW_SECRETS_KEY`                | AES-GCM key for project credentials | falls back to auth secret              |
-| `DEPLOW_POSTGRES_*`                 | Platform Postgres admin             | compose defaults                       |
-| `DEPLOW_REDIS_*`                    | Platform Redis                      | compose defaults                       |
-| `DEPLOW_S3_PROVIDER`                | Object store adapter (`minio` \| `r2`) | `minio`                                |
-| `DEPLOW_S3_ENDPOINT` / `R2_ACCOUNT` | MinIO URL or R2 account id            | required in prod                       |
-| `DEPLOW_S3_ACCESS_KEY` / `_SECRET`  | S3 credentials                        | required in prod                       |
-| `DEPLOW_BACKUP_BUCKET`              | Backup bucket name                    | `deplow-backups`                       |
-| `DEPLOW_BACKUP_DEFAULT_INTERVAL_MS` | Scheduled backup interval           | `86400000` (daily)                     |
-| `DEPLOW_BACKUP_RETAIN`              | Snapshots kept per project          | `7`                                    |
-| `DEPLOW_BACKUP_ALLOW_FAST`          | Allow sub-hour schedule intervals   | unset (`1` to enable)                  |
-| `DEPLOW_PITR_ENABLED`               | Enable PITR APIs / UI               | unset (`1` to enable)                  |
+| `HOSTRIG_SECRETS_KEY`                | AES-GCM key for project credentials | falls back to auth secret              |
+| `HOSTRIG_POSTGRES_*`                 | Platform Postgres admin             | compose defaults                       |
+| `HOSTRIG_REDIS_*`                    | Platform Redis                      | compose defaults                       |
+| `HOSTRIG_S3_PROVIDER`                | Object store adapter (`minio` \| `r2`) | `minio`                                |
+| `HOSTRIG_S3_ENDPOINT` / `R2_ACCOUNT` | MinIO URL or R2 account id            | required in prod                       |
+| `HOSTRIG_S3_ACCESS_KEY` / `_SECRET`  | S3 credentials                        | required in prod                       |
+| `HOSTRIG_BACKUP_BUCKET`              | Backup bucket name                    | `hostrig-backups`                       |
+| `HOSTRIG_BACKUP_DEFAULT_INTERVAL_MS` | Scheduled backup interval           | `86400000` (daily)                     |
+| `HOSTRIG_BACKUP_RETAIN`              | Snapshots kept per project          | `7`                                    |
+| `HOSTRIG_BACKUP_ALLOW_FAST`          | Allow sub-hour schedule intervals   | unset (`1` to enable)                  |
+| `HOSTRIG_PITR_ENABLED`               | Enable PITR APIs / UI               | unset (`1` to enable)                  |
 | `PGBACKREST_CONFIG`                 | Path to pgBackRest conf             | unset (required when PITR is on)       |
-| `DEPLOW_PGBACKREST_IMAGE`           | Docker image if host binary missing | `woblerr/pgbackrest:2.58.0-alpine`     |
-| `DEPLOW_APP_RUNTIME`                | `runsc` → RuntimeClass `gvisor`     | `runsc`                                |
-| `DEPLOW_APP_RUNTIME_REQUIRED`       | Fail deploy if RuntimeClass missing | `true`                                 |
-| `DEPLOW_APP_MEMORY_MB` / `_CPUS`    | User app pod resource limits        | `512` / `1`                            |
-| `DEPLOW_BASE_DOMAIN`                | Seeds platform base domain once     | empty / `apps.localhost` in dev        |
-| `DEPLOW_PUBLIC_URL_PROTOCOL`        | Seeds shown URL protocol once       | `https` / `http` for localhost         |
+| `HOSTRIG_PGBACKREST_IMAGE`           | Docker image if host binary missing | `woblerr/pgbackrest:2.58.0-alpine`     |
+| `HOSTRIG_APP_RUNTIME`                | Always gVisor (`runsc`); runc rejected | `runsc`                             |
+| `HOSTRIG_APP_RUNTIME_REQUIRED`       | Always true — no unsandboxed apps   | `true`                                 |
+| `HOSTRIG_APP_MEMORY_MB` / `_CPUS`    | User app pod resource limits        | `512` / `1`                            |
+| `HOSTRIG_BASE_DOMAIN`                | Seeds platform base domain once     | empty / `apps.localhost` in dev        |
+| `HOSTRIG_PUBLIC_URL_PROTOCOL`        | Seeds shown URL protocol once       | `https` / `http` for localhost         |
 | `CLOUDFLARE_TUNNEL_TOKEN`           | cloudflared tunnel token (edge)     | empty                                  |
 | `BUILDKIT_HOST`                     | For Railpack                        | `docker-container://buildkit`          |
 | `RAILPACK_BIN`                      | Railpack executable                 | `railpack`                             |
-| `DEPLOW_PUBLIC_URL`                 | Control plane public URL            | OAuth callbacks + webhook base         |
-| `DEPLOW_GITHUB_APP_*`               | GitHub App credentials (or UI)      | see Integrations / `docs/git-oauth.md` |
-| `DEPLOW_GITLAB_OAUTH_*`             | GitLab OAuth Application            | see Integrations / `docs/git-oauth.md` |
+| `HOSTRIG_PUBLIC_URL`                 | Control plane public URL            | OAuth callbacks + webhook base         |
+| `HOSTRIG_GITHUB_APP_*`               | GitHub App credentials (or UI)      | see Integrations / `docs/git-oauth.md` |
+| `HOSTRIG_GITLAB_OAUTH_*`             | GitLab OAuth Application            | see Integrations / `docs/git-oauth.md` |
 
 Full template: [`.env.example`](./.env.example).
+
+Legacy `DEPLOW_*` / `VITE_DEPLOW_*` env vars are still accepted (mapped to `HOSTRIG_*` at boot and in `deploy/install.sh`). Prefer the new names in new installs.
 
 ## Supported deploy modes
 
@@ -223,7 +226,7 @@ User app pods run under **gVisor** (`runtimeClassName: gvisor`) with hardened de
 
 | Command                                         | Description                                      |
 | ----------------------------------------------- | ------------------------------------------------ |
-| `deploy/install.sh` / `… \| bash -s update`     | VPS pull-only install / upgrade (`/opt/deplow`)  |
+| `deploy/install.sh` / `… \| bash -s update`     | VPS pull-only install / upgrade (`/opt/hostrig`)  |
 | `bash scripts/deploy.sh` / `pnpm deploy`        | Same installer using in-tree `deploy/` assets    |
 | `bash scripts/install.sh` / `pnpm install:host` | Optional host tooling (not the local-dev path)   |
 | `pnpm dev`                                      | Web app on :9565 (auto-started in Dev Container) |

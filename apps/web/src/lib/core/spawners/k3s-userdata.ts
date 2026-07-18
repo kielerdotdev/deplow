@@ -29,7 +29,7 @@ if [ -z "$PUBLIC_IP" ]; then
 fi
 export PUBLIC_IP
 
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --tls-san=$PUBLIC_IP --write-kubeconfig-mode 644 --node-name ${shellSingleQuote(name)}" sh -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --tls-san=$PUBLIC_IP --write-kubeconfig-mode 600 --node-name ${shellSingleQuote(name)}" sh -
 
 for i in $(seq 1 90); do
   [ -f /etc/rancher/k3s/k3s.yaml ] && break

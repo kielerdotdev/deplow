@@ -21,10 +21,11 @@ import {
   initDogfoodOtel,
   shutdownDogfoodOtel,
 } from "@/lib/observe/dogfood-otel"
+import { withSecurityHeaders } from "@/lib/security-headers"
 
 const baseFetch = createStartHandler(defaultStreamHandler)
 
-const DOGFOOD_READY_KEY = "__deplowDogfoodReady"
+const DOGFOOD_READY_KEY = "__hostrigDogfoodReady"
 
 function dogfoodReadySlot(): {
   current: Promise<DogfoodBootstrap | null> | null
@@ -92,11 +93,13 @@ export default createServerEntry({
       env.observeDogfood &&
       (isObserveIngestUrl(url.href) || isDogfoodMetaPath(url.pathname))
     ) {
-      return baseFetch(request)
+      const res = await baseFetch(request)
+      return withSecurityHeaders(res, url.pathname, request)
     }
 
     try {
-      return await baseFetch(request)
+      const res = await baseFetch(request)
+      return withSecurityHeaders(res, url.pathname, request)
     } catch (error) {
       if (env.observeDogfood) Sentry.captureException(error)
       throw error

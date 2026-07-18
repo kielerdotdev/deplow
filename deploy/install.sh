@@ -1,41 +1,67 @@
 #!/usr/bin/env bash
-# One-shot VPS install / update for deplow.
+# One-shot VPS install / update for hostrig.
 #
-#   curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
+#   curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash
 #
 # That is the whole install. Docker, gVisor, MinIO, secrets, public URL, pull, start.
 #
 # Update later:
-#   curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash -s update
+#   curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash -s update
 #
 # Optional env:
-#   DEPLOW_HOME              install dir (default /opt/deplow)
-#   DEPLOW_VERSION           image tag (default latest)
-#   DEPLOW_IMAGE             full image ref (overrides version)
-#   DEPLOW_PUBLIC_URL        e.g. http://1.2.3.4:3000 (auto-detected if unset)
-#   DEPLOW_WEB_PORT          host port (default 3000)
-#   DEPLOW_BUNDLE_MINIO      1 (default) bundle MinIO · 0 use external S3 only
-#   DEPLOW_APP_RUNTIME       runsc (default) · runc to skip gVisor
-#   GHCR_TOKEN / GITHUB_TOKEN  pull private ghcr.io/kielerdotdev/deplow
+#   HOSTRIG_HOME              install dir (default /opt/hostrig)
+#   HOSTRIG_VERSION           image tag (default latest)
+#   HOSTRIG_IMAGE             full image ref (overrides version)
+#   HOSTRIG_PUBLIC_URL        e.g. http://1.2.3.4:3000 (auto-detected if unset)
+#   HOSTRIG_WEB_PORT          host port (default 3000)
+#   HOSTRIG_BUNDLE_MINIO      1 (default) bundle MinIO · 0 use external S3 only
+#   HOSTRIG_APP_RUNTIME       always runsc/gVisor for user apps (runc not allowed)
+#   GHCR_TOKEN / GITHUB_TOKEN  pull private ghcr.io/kielerdotdev/hostrig
 #   CLOUDFLARE_TUNNEL_TOKEN  also starts cloudflared (edge profile)
-#   DEPLOW_ASSET_BASE        override raw asset URL (private-repo fallback)
+#   HOSTRIG_ASSET_BASE        override raw asset URL (private-repo fallback)
 if [ -z "${BASH_VERSION:-}" ]; then
   echo "ERROR: run with bash (curl … | bash)" >&2
   exit 1
 fi
 set -euo pipefail
 
-DEPLOW_HOME="${DEPLOW_HOME:-/opt/deplow}"
-DEPLOW_VERSION="${DEPLOW_VERSION:-latest}"
-DEPLOW_IMAGE="${DEPLOW_IMAGE:-ghcr.io/kielerdotdev/deplow:${DEPLOW_VERSION}}"
-DEPLOW_ASSET_BASE="${DEPLOW_ASSET_BASE:-https://github.com/kielerdotdev/deplow/releases/download/install}"
-DEPLOW_WEB_PORT="${DEPLOW_WEB_PORT:-3000}"
-DEPLOW_BUNDLE_MINIO="${DEPLOW_BUNDLE_MINIO:-1}"
-DEPLOW_APP_RUNTIME="${DEPLOW_APP_RUNTIME:-runsc}"
-DEPLOW_APP_RUNTIME_REQUIRED="${DEPLOW_APP_RUNTIME_REQUIRED:-true}"
-COMPOSE_PROJECT="deplow"
+# Legacy DEPLOW_* env aliases (pre-hostrig brand). HOSTRIG_* wins when both set.
+while IFS= read -r _legacy; do
+  [ -n "$_legacy" ] || continue
+  _suffix="${_legacy#DEPLOW_}"
+  _next="HOSTRIG_${_suffix}"
+  if [ -z "${!_next:-}" ] && [ -n "${!_legacy:-}" ]; then
+    printf -v "$_next" '%s' "${!_legacy}"
+    export "$_next"
+  fi
+done < <(compgen -e | grep '^DEPLOW_' || true)
+unset _legacy _suffix _next
+
+# Prefer new home; fall back to a previous /opt/deplow install if present.
+if [ -z "${HOSTRIG_HOME:-}" ]; then
+  if [ -n "${DEPLOW_HOME:-}" ]; then
+    HOSTRIG_HOME="$DEPLOW_HOME"
+  elif [ -d /opt/deplow ] && [ ! -d /opt/hostrig ]; then
+    HOSTRIG_HOME="/opt/deplow"
+  else
+    HOSTRIG_HOME="/opt/hostrig"
+  fi
+fi
+HOSTRIG_VERSION="${HOSTRIG_VERSION:-latest}"
+HOSTRIG_IMAGE="${HOSTRIG_IMAGE:-ghcr.io/kielerdotdev/hostrig:${HOSTRIG_VERSION}}"
+HOSTRIG_ASSET_BASE="${HOSTRIG_ASSET_BASE:-https://github.com/kielerdotdev/hostrig/releases/download/install}"
+HOSTRIG_WEB_PORT="${HOSTRIG_WEB_PORT:-3000}"
+HOSTRIG_BUNDLE_MINIO="${HOSTRIG_BUNDLE_MINIO:-1}"
+# User apps always require gVisor — runc is not an escape hatch.
+if [ "${HOSTRIG_APP_RUNTIME:-runsc}" = "runc" ] || [ "${HOSTRIG_APP_RUNTIME:-}" = "default" ]; then
+  echo "ERROR: HOSTRIG_APP_RUNTIME=runc is not allowed. User apps require gVisor (runsc)." >&2
+  exit 1
+fi
+HOSTRIG_APP_RUNTIME="runsc"
+HOSTRIG_APP_RUNTIME_REQUIRED="true"
+COMPOSE_PROJECT="hostrig"
 ACTION="${1:-install}"
-IMAGE_ASSETS_PATH="/opt/deplow-assets"
+IMAGE_ASSETS_PATH="/opt/hostrig-assets"
 
 say() { printf '\n\033[1m==>\033[0m %s\n' "$*"; }
 ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -66,12 +92,12 @@ can_write_host() {
 compose() {
   # shellcheck disable=SC2086
   env COMPOSE_PROFILES="${COMPOSE_PROFILES:-}" \
-    docker compose -p "$COMPOSE_PROJECT" --project-directory "$DEPLOW_HOME" "$@"
+    docker compose -p "$COMPOSE_PROJECT" --project-directory "$HOSTRIG_HOME" "$@"
 }
 
 detect_public_url() {
-  if [ -n "${DEPLOW_PUBLIC_URL:-}" ]; then
-    printf '%s\n' "$DEPLOW_PUBLIC_URL"
+  if [ -n "${HOSTRIG_PUBLIC_URL:-}" ]; then
+    printf '%s\n' "$HOSTRIG_PUBLIC_URL"
     return
   fi
   local ip=""
@@ -83,9 +109,9 @@ detect_public_url() {
     ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
   fi
   if [ -n "$ip" ]; then
-    printf 'http://%s:%s\n' "$ip" "$DEPLOW_WEB_PORT"
+    printf 'http://%s:%s\n' "$ip" "$HOSTRIG_WEB_PORT"
   else
-    printf 'http://localhost:%s\n' "$DEPLOW_WEB_PORT"
+    printf 'http://localhost:%s\n' "$HOSTRIG_WEB_PORT"
   fi
 }
 
@@ -118,19 +144,15 @@ ensure_docker() {
 }
 
 ensure_gvisor() {
-  if [ "$DEPLOW_APP_RUNTIME" != "runsc" ]; then
-    ok "Skipping gVisor (DEPLOW_APP_RUNTIME=$DEPLOW_APP_RUNTIME)"
-    return
-  fi
+  # Control-plane host may still use Docker for builds; gVisor is required on
+  # k3s nodes for user apps. Install runsc on the CP host when possible so
+  # doctor/local checks pass; never fall back to runc for user apps.
   if docker info 2>/dev/null | grep -qi runsc && have runsc; then
     ok "gVisor (runsc) ready"
     return
   fi
   if ! can_write_host; then
-    warn "gVisor missing and not root — set DEPLOW_APP_RUNTIME=runc or re-run with sudo"
-    DEPLOW_APP_RUNTIME=runc
-    DEPLOW_APP_RUNTIME_REQUIRED=false
-    return
+    die "gVisor (runsc) missing and not root — re-run install with sudo. User apps require gVisor; runc is not allowed."
   fi
   say "Installing gVisor (runsc)"
   local arch url
@@ -138,11 +160,7 @@ ensure_gvisor() {
   case "$arch" in
     x86_64 | amd64) arch="x86_64" ;;
     aarch64 | arm64) arch="aarch64" ;;
-    *) warn "Unsupported arch $arch — set DEPLOW_APP_RUNTIME=runc to continue without gVisor"
-       DEPLOW_APP_RUNTIME=runc
-       DEPLOW_APP_RUNTIME_REQUIRED=false
-       return
-       ;;
+    *) die "Unsupported arch $arch for gVisor — user apps require runsc" ;;
   esac
   url="https://storage.googleapis.com/gvisor/releases/release/latest/${arch}"
   curl -fsSL "${url}/runsc" -o /usr/local/bin/runsc
@@ -180,9 +198,7 @@ EOF
   if docker info 2>/dev/null | grep -qi runsc; then
     ok "gVisor (runsc) registered"
   else
-    warn "gVisor install may need a manual Docker restart — falling back to runc for now"
-    DEPLOW_APP_RUNTIME=runc
-    DEPLOW_APP_RUNTIME_REQUIRED=false
+    die "gVisor install incomplete — restart Docker and re-run install. User apps require gVisor; runc is not allowed."
   fi
 }
 
@@ -215,28 +231,28 @@ ghcr_login() {
 }
 
 pull_image() {
-  say "Pulling $DEPLOW_IMAGE"
-  if docker pull "$DEPLOW_IMAGE"; then
+  say "Pulling $HOSTRIG_IMAGE"
+  if docker pull "$HOSTRIG_IMAGE"; then
     ok "Image ready"
     return
   fi
-  if ghcr_login && docker pull "$DEPLOW_IMAGE"; then
+  if ghcr_login && docker pull "$HOSTRIG_IMAGE"; then
     ok "Image ready (authenticated)"
     return
   fi
-  if docker image inspect "$DEPLOW_IMAGE" >/dev/null 2>&1; then
-    warn "Registry pull failed — using local image $DEPLOW_IMAGE"
+  if docker image inspect "$HOSTRIG_IMAGE" >/dev/null 2>&1; then
+    warn "Registry pull failed — using local image $HOSTRIG_IMAGE"
     return
   fi
   cat >&2 <<EOF
 
-Cannot pull $DEPLOW_IMAGE
+Cannot pull $HOSTRIG_IMAGE
 
 If the package is private, set a token and re-run:
   export GHCR_TOKEN=ghp_…   # classic PAT with read:packages
   curl -sSL …/install.sh | sudo -E bash
 
-Or make the GHCR package public (GitHub → Packages → deplow → Package settings).
+Or make the GHCR package public (GitHub → Packages → hostrig → Package settings).
 EOF
   die "Image pull failed"
 }
@@ -249,13 +265,13 @@ write_file() {
 sync_assets_from_image() {
   say "Extracting deploy assets from image"
   local cid
-  cid="$(docker create "$DEPLOW_IMAGE")"
-  mkdir -p "$DEPLOW_HOME"
-  if docker cp "${cid}:${IMAGE_ASSETS_PATH}/docker-compose.yml" "$DEPLOW_HOME/docker-compose.yml" 2>/dev/null \
-    && docker cp "${cid}:${IMAGE_ASSETS_PATH}/Caddyfile" "$DEPLOW_HOME/Caddyfile" 2>/dev/null; then
-    if [ ! -f "$DEPLOW_HOME/.env" ]; then
-      docker cp "${cid}:${IMAGE_ASSETS_PATH}/.env.example" "$DEPLOW_HOME/.env" 2>/dev/null \
-        || docker cp "${cid}:${IMAGE_ASSETS_PATH}/env.example" "$DEPLOW_HOME/.env" 2>/dev/null \
+  cid="$(docker create "$HOSTRIG_IMAGE")"
+  mkdir -p "$HOSTRIG_HOME"
+  if docker cp "${cid}:${IMAGE_ASSETS_PATH}/docker-compose.yml" "$HOSTRIG_HOME/docker-compose.yml" 2>/dev/null \
+    && docker cp "${cid}:${IMAGE_ASSETS_PATH}/Caddyfile" "$HOSTRIG_HOME/Caddyfile" 2>/dev/null; then
+    if [ ! -f "$HOSTRIG_HOME/.env" ]; then
+      docker cp "${cid}:${IMAGE_ASSETS_PATH}/.env.example" "$HOSTRIG_HOME/.env" 2>/dev/null \
+        || docker cp "${cid}:${IMAGE_ASSETS_PATH}/env.example" "$HOSTRIG_HOME/.env" 2>/dev/null \
         || true
     fi
     docker rm -f "$cid" >/dev/null
@@ -267,28 +283,28 @@ sync_assets_from_image() {
 }
 
 sync_assets_from_tree_or_url() {
-  mkdir -p "$DEPLOW_HOME"
+  mkdir -p "$HOSTRIG_HOME"
   local src=""
   if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/docker-compose.yml" ] && [ -f "$SCRIPT_DIR/Caddyfile" ]; then
     src="$SCRIPT_DIR"
   fi
   if [ -n "$src" ]; then
     say "Copying deploy assets from $src"
-    cp "$src/docker-compose.yml" "$DEPLOW_HOME/docker-compose.yml"
-    cp "$src/Caddyfile" "$DEPLOW_HOME/Caddyfile"
-    if [ ! -f "$DEPLOW_HOME/.env" ] && [ -f "$src/.env.example" ]; then
-      cp "$src/.env.example" "$DEPLOW_HOME/.env"
+    cp "$src/docker-compose.yml" "$HOSTRIG_HOME/docker-compose.yml"
+    cp "$src/Caddyfile" "$HOSTRIG_HOME/Caddyfile"
+    if [ ! -f "$HOSTRIG_HOME/.env" ] && [ -f "$src/.env.example" ]; then
+      cp "$src/.env.example" "$HOSTRIG_HOME/.env"
     fi
     ok "Assets from local tree"
     return
   fi
-  say "Downloading deploy assets from $DEPLOW_ASSET_BASE"
-  if ! curl -fsSL "${DEPLOW_ASSET_BASE}/docker-compose.yml" -o "$DEPLOW_HOME/docker-compose.yml"; then
-    die "Could not download compose file (private repo?). Place install next to deploy/ assets, or use an image that embeds /opt/deplow-assets."
+  say "Downloading deploy assets from $HOSTRIG_ASSET_BASE"
+  if ! curl -fsSL "${HOSTRIG_ASSET_BASE}/docker-compose.yml" -o "$HOSTRIG_HOME/docker-compose.yml"; then
+    die "Could not download compose file (private repo?). Place install next to deploy/ assets, or use an image that embeds /opt/hostrig-assets."
   fi
-  curl -fsSL "${DEPLOW_ASSET_BASE}/Caddyfile" -o "$DEPLOW_HOME/Caddyfile"
-  if [ ! -f "$DEPLOW_HOME/.env" ]; then
-    curl -fsSL "${DEPLOW_ASSET_BASE}/.env.example" -o "$DEPLOW_HOME/.env"
+  curl -fsSL "${HOSTRIG_ASSET_BASE}/Caddyfile" -o "$HOSTRIG_HOME/Caddyfile"
+  if [ ! -f "$HOSTRIG_HOME/.env" ]; then
+    curl -fsSL "${HOSTRIG_ASSET_BASE}/.env.example" -o "$HOSTRIG_HOME/.env"
   fi
   ok "Assets downloaded"
 }
@@ -312,12 +328,12 @@ gen_secret() {
 }
 
 env_get() {
-  local key="$1" envf="$DEPLOW_HOME/.env"
+  local key="$1" envf="$HOSTRIG_HOME/.env"
   grep -E "^${key}=" "$envf" 2>/dev/null | head -1 | cut -d= -f2- || true
 }
 
 env_set() {
-  local key="$1" val="$2" envf="$DEPLOW_HOME/.env"
+  local key="$1" val="$2" envf="$HOSTRIG_HOME/.env"
   if grep -q "^${key}=" "$envf" 2>/dev/null; then
     # Escape & \ for sed
     local esc
@@ -329,18 +345,18 @@ env_set() {
 }
 
 ensure_env() {
-  local envf="$DEPLOW_HOME/.env" public_url
+  local envf="$HOSTRIG_HOME/.env" public_url
   if [ ! -f "$envf" ]; then
     write_file "$envf" <<'EOF'
 BETTER_AUTH_SECRET=replace-me
 BETTER_AUTH_URL=http://localhost:3000
-DEPLOW_PUBLIC_URL=http://localhost:3000
-DEPLOW_SECRETS_KEY=replace-me-long-random
-DEPLOW_BASE_DOMAIN=apps.localhost
-DEPLOW_PUBLIC_URL_PROTOCOL=http
-DEPLOW_DOCKER_NETWORK=deplow_default
-DEPLOW_APP_RUNTIME=runsc
-DEPLOW_APP_RUNTIME_REQUIRED=true
+HOSTRIG_PUBLIC_URL=http://localhost:3000
+HOSTRIG_SECRETS_KEY=replace-me-long-random
+HOSTRIG_BASE_DOMAIN=apps.localhost
+HOSTRIG_PUBLIC_URL_PROTOCOL=http
+HOSTRIG_DOCKER_NETWORK=hostrig_default
+HOSTRIG_APP_RUNTIME=runsc
+HOSTRIG_APP_RUNTIME_REQUIRED=true
 BUILDKIT_HOST=docker-container://buildkit
 EOF
   fi
@@ -354,49 +370,52 @@ EOF
     env_set BETTER_AUTH_SECRET "$(gen_secret)"
     ok "Generated BETTER_AUTH_SECRET"
   fi
-  secrets="$(env_get DEPLOW_SECRETS_KEY)"
+  secrets="$(env_get HOSTRIG_SECRETS_KEY)"
   if [ -z "$secrets" ] || [ "$secrets" = "replace-me-long-random" ] || [ "${#secrets}" -lt 32 ]; then
-    env_set DEPLOW_SECRETS_KEY "$(gen_secret)"
-    ok "Generated DEPLOW_SECRETS_KEY"
+    env_set HOSTRIG_SECRETS_KEY "$(gen_secret)"
+    ok "Generated HOSTRIG_SECRETS_KEY"
   fi
 
-  env_set DEPLOW_IMAGE "$DEPLOW_IMAGE"
+  # Platform Redis (BullMQ) — never leave unauthenticated
+  local redis_pw
+  redis_pw="$(env_get HOSTRIG_REDIS_PASSWORD)"
+  if [ -z "$redis_pw" ] || [ "$redis_pw" = "replace-me" ] || [ "${#redis_pw}" -lt 16 ]; then
+    env_set HOSTRIG_REDIS_PASSWORD "$(gen_secret | tr -d '/+=' | head -c 32)"
+    ok "Generated HOSTRIG_REDIS_PASSWORD"
+  fi
+
+  env_set HOSTRIG_IMAGE "$HOSTRIG_IMAGE"
   env_set BETTER_AUTH_URL "$public_url"
-  env_set DEPLOW_PUBLIC_URL "$public_url"
-  env_set DEPLOW_WEB_PORT "$DEPLOW_WEB_PORT"
-  env_set DEPLOW_APP_RUNTIME "$DEPLOW_APP_RUNTIME"
-  env_set DEPLOW_APP_RUNTIME_REQUIRED "$DEPLOW_APP_RUNTIME_REQUIRED"
-  env_set DEPLOW_DOCKER_NETWORK "deplow_default"
+  env_set HOSTRIG_PUBLIC_URL "$public_url"
+  env_set HOSTRIG_WEB_PORT "$HOSTRIG_WEB_PORT"
+  env_set HOSTRIG_APP_RUNTIME "$HOSTRIG_APP_RUNTIME"
+  env_set HOSTRIG_APP_RUNTIME_REQUIRED "$HOSTRIG_APP_RUNTIME_REQUIRED"
+  env_set HOSTRIG_DOCKER_NETWORK "hostrig_default"
   env_set BUILDKIT_HOST "docker-container://buildkit"
 
-  if [ "$DEPLOW_BUNDLE_MINIO" = "1" ] || [ "$DEPLOW_BUNDLE_MINIO" = "true" ]; then
+  if [ "$HOSTRIG_BUNDLE_MINIO" = "1" ] || [ "$HOSTRIG_BUNDLE_MINIO" = "true" ]; then
     local access secret
-    access="$(env_get DEPLOW_S3_ACCESS_KEY)"
-    secret="$(env_get DEPLOW_S3_SECRET_KEY)"
-    if [ -z "$access" ]; then
-      access="deplow"
-      env_set DEPLOW_S3_ACCESS_KEY "$access"
-    fi
-    if [ -z "$secret" ] || [ "$secret" = "deplowsecret" ]; then
-      # Keep stable on re-install if already set; otherwise generate
-      if [ -z "$secret" ]; then
-        secret="$(gen_secret | tr -d '/+=' | head -c 32)"
-        env_set DEPLOW_S3_SECRET_KEY "$secret"
-      fi
-    fi
-    # MinIO root password must be >= 8 chars — gen_secret is fine
-    if [ "${#secret}" -lt 8 ]; then
+    access="$(env_get HOSTRIG_S3_ACCESS_KEY)"
+    secret="$(env_get HOSTRIG_S3_SECRET_KEY)"
+    # Rotate empty or known-insecure placeholders (never leave hostrigsecret in prod)
+    if [ -z "$secret" ] || [ "$secret" = "hostrigsecret" ] || [ "$secret" = "replace-me" ] || [ "${#secret}" -lt 16 ]; then
       secret="$(gen_secret | tr -d '/+=' | head -c 32)"
-      env_set DEPLOW_S3_SECRET_KEY "$secret"
+      env_set HOSTRIG_S3_SECRET_KEY "$secret"
+      ok "Generated HOSTRIG_S3_SECRET_KEY (rotated weak/empty MinIO root password)"
     fi
-    env_set DEPLOW_S3_PROVIDER "minio"
-    env_set DEPLOW_S3_ENDPOINT "http://minio:9000"
-    env_set DEPLOW_S3_APP_ENDPOINT "http://minio:9000"
-    env_set DEPLOW_S3_REGION "us-east-1"
-    env_set DEPLOW_BACKUP_BUCKET "deplow-backups"
+    if [ -z "$access" ] || [ "$access" = "hostrig" ] || [ "$access" = "change-me-access-key" ]; then
+      access="hostrig_$(gen_secret | tr -d '/+=' | head -c 8)"
+      env_set HOSTRIG_S3_ACCESS_KEY "$access"
+      ok "Generated HOSTRIG_S3_ACCESS_KEY"
+    fi
+    env_set HOSTRIG_S3_PROVIDER "minio"
+    env_set HOSTRIG_S3_ENDPOINT "http://minio:9000"
+    env_set HOSTRIG_S3_APP_ENDPOINT "http://minio:9000"
+    env_set HOSTRIG_S3_REGION "us-east-1"
+    env_set HOSTRIG_BACKUP_BUCKET "hostrig-backups"
     ok "Bundled MinIO (S3) configured"
   else
-    ok "External S3 mode (DEPLOW_BUNDLE_MINIO=0) — ensure DEPLOW_S3_* is set"
+    ok "External S3 mode (HOSTRIG_BUNDLE_MINIO=0) — ensure HOSTRIG_S3_* is set"
   fi
 
   if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
@@ -406,11 +425,14 @@ EOF
 
   PUBLIC_URL="$public_url"
   ok "Public URL: $public_url"
+
+  # Restrict .env permissions (auth secrets, S3 keys, Redis password)
+  chmod 600 "$envf" 2>/dev/null || true
 }
 
 compose_profiles() {
   local profiles=()
-  if [ "$DEPLOW_BUNDLE_MINIO" = "1" ] || [ "$DEPLOW_BUNDLE_MINIO" = "true" ]; then
+  if [ "$HOSTRIG_BUNDLE_MINIO" = "1" ] || [ "$HOSTRIG_BUNDLE_MINIO" = "true" ]; then
     profiles+=("bundled-s3")
   fi
   if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || [ -n "$(env_get CLOUDFLARE_TUNNEL_TOKEN 2>/dev/null || true)" ]; then
@@ -426,19 +448,19 @@ compose_profiles() {
 }
 
 ensure_minio_bucket() {
-  if [ "$DEPLOW_BUNDLE_MINIO" != "1" ] && [ "$DEPLOW_BUNDLE_MINIO" != "true" ]; then
+  if [ "$HOSTRIG_BUNDLE_MINIO" != "1" ] && [ "$HOSTRIG_BUNDLE_MINIO" != "true" ]; then
     return
   fi
   local access secret bucket
-  access="$(env_get DEPLOW_S3_ACCESS_KEY)"
-  secret="$(env_get DEPLOW_S3_SECRET_KEY)"
-  bucket="$(env_get DEPLOW_BACKUP_BUCKET)"
-  bucket="${bucket:-deplow-backups}"
+  access="$(env_get HOSTRIG_S3_ACCESS_KEY)"
+  secret="$(env_get HOSTRIG_S3_SECRET_KEY)"
+  bucket="$(env_get HOSTRIG_BACKUP_BUCKET)"
+  bucket="${bucket:-hostrig-backups}"
   say "Ensuring MinIO bucket '$bucket'"
   # Wait for minio healthy
   local i
   for i in $(seq 1 30); do
-    if docker exec deplow-minio curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
+    if docker exec hostrig-minio curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
       break
     fi
     sleep 1
@@ -453,12 +475,12 @@ wait_for_control_plane() {
   say "Waiting for control plane"
   local code i css
   for i in $(seq 1 90); do
-    code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${DEPLOW_WEB_PORT}/login" 2>/dev/null || true)"
+    code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${HOSTRIG_WEB_PORT}/login" 2>/dev/null || true)"
     if [ "$code" = "200" ] || [ "$code" = "302" ]; then
       # Confirm CSS is actually served (the failure mode we hit in prod)
-      css="$(curl -sS "http://127.0.0.1:${DEPLOW_WEB_PORT}/login" 2>/dev/null | tr -d '\0' | sed -n 's/.*href="\(\/assets\/styles-[^"]*\.css\)".*/\1/p' | head -1 || true)"
+      css="$(curl -sS "http://127.0.0.1:${HOSTRIG_WEB_PORT}/login" 2>/dev/null | tr -d '\0' | sed -n 's/.*href="\(\/assets\/styles-[^"]*\.css\)".*/\1/p' | head -1 || true)"
       if [ -n "$css" ]; then
-        code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${DEPLOW_WEB_PORT}${css}" 2>/dev/null || true)"
+        code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${HOSTRIG_WEB_PORT}${css}" 2>/dev/null || true)"
         if [ "$code" = "200" ]; then
           ok "Control plane + CSS healthy"
           return 0
@@ -471,35 +493,35 @@ wait_for_control_plane() {
     fi
     sleep 2
   done
-  warn "Control plane not healthy yet — check: docker compose -p deplow --project-directory $DEPLOW_HOME logs web"
+  warn "Control plane not healthy yet — check: docker compose -p hostrig --project-directory $HOSTRIG_HOME logs web"
   return 2
 }
 
 print_done() {
-  local url="${PUBLIC_URL:-http://localhost:${DEPLOW_WEB_PORT}}"
+  local url="${PUBLIC_URL:-http://localhost:${HOSTRIG_WEB_PORT}}"
   cat <<EOF
 
 ╔══════════════════════════════════════════╗
-║          deplow is ready                 ║
+║          hostrig is ready                 ║
 ╚══════════════════════════════════════════╝
 
   Open:     ${url}
-  Home:     ${DEPLOW_HOME}
-  Image:    ${DEPLOW_IMAGE}
+  Home:     ${HOSTRIG_HOME}
+  Image:    ${HOSTRIG_IMAGE}
 
   First visit → create the admin user.
   Then Domains → set your base domain.
 
-  Logs:    docker compose -p deplow --project-directory ${DEPLOW_HOME} logs -f web
-  Update:  curl -sSL ${DEPLOW_ASSET_BASE}/install.sh | sudo bash -s update
-  Stop:    docker compose -p deplow --project-directory ${DEPLOW_HOME} down
+  Logs:    docker compose -p hostrig --project-directory ${HOSTRIG_HOME} logs -f web
+  Update:  curl -sSL ${HOSTRIG_ASSET_BASE}/install.sh | sudo bash -s update
+  Stop:    docker compose -p hostrig --project-directory ${HOSTRIG_HOME} down
 
 EOF
 }
 
 do_install() {
   need_root
-  say "deplow install → $DEPLOW_HOME"
+  say "hostrig install → $HOSTRIG_HOME"
   ensure_docker
   ensure_gvisor
   ensure_buildkit
@@ -517,10 +539,10 @@ do_install() {
 
 do_update() {
   need_root
-  if [ ! -f "$DEPLOW_HOME/docker-compose.yml" ]; then
-    die "No install at $DEPLOW_HOME — run install first (no args)."
+  if [ ! -f "$HOSTRIG_HOME/docker-compose.yml" ]; then
+    die "No install at $HOSTRIG_HOME — run install first (no args)."
   fi
-  say "deplow update → $DEPLOW_HOME"
+  say "hostrig update → $HOSTRIG_HOME"
   ensure_docker
   ensure_gvisor
   ensure_buildkit
@@ -528,10 +550,10 @@ do_update() {
   # Refresh compose/Caddyfile, keep .env
   say "Refreshing deploy assets (preserving .env)"
   local cid
-  cid="$(docker create "$DEPLOW_IMAGE")"
-  docker cp "${cid}:${IMAGE_ASSETS_PATH}/docker-compose.yml" "$DEPLOW_HOME/docker-compose.yml" 2>/dev/null \
+  cid="$(docker create "$HOSTRIG_IMAGE")"
+  docker cp "${cid}:${IMAGE_ASSETS_PATH}/docker-compose.yml" "$HOSTRIG_HOME/docker-compose.yml" 2>/dev/null \
     || sync_assets_from_tree_or_url
-  docker cp "${cid}:${IMAGE_ASSETS_PATH}/Caddyfile" "$DEPLOW_HOME/Caddyfile" 2>/dev/null || true
+  docker cp "${cid}:${IMAGE_ASSETS_PATH}/Caddyfile" "$HOSTRIG_HOME/Caddyfile" 2>/dev/null || true
   docker rm -f "$cid" >/dev/null
   ensure_env
   compose_profiles

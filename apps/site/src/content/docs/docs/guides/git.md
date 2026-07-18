@@ -20,7 +20,7 @@ Hostrig registers the push webhook and clones with short-lived credentials. You 
 
 | Item | Notes |
 | --- | --- |
-| `DEPLOW_PUBLIC_URL` | Public URL of the control plane (OAuth callbacks + webhook URL) |
+| `HOSTRIG_PUBLIC_URL` | Public URL of the control plane (OAuth callbacks + webhook URL) |
 | GitHub App | Contents: read · Metadata: read · Webhooks: read/write · Events: push |
 | GitLab OAuth | Scopes: `read_api`, `read_repository`, `write_repository` |
 | Registry | Default build registry for source builds |
@@ -34,7 +34,7 @@ Hostrig registers the push webhook and clones with short-lived credentials. You 
 ## Advanced
 
 - **PAT:** Advanced source settings — paste a token (escape hatch for private clones without OAuth)
-- **Platform tokens:** `DEPLOW_GITHUB_TOKEN` / `DEPLOW_GITLAB_TOKEN` for operator-wide listing
+- **Platform tokens:** `HOSTRIG_GITHUB_TOKEN` / `HOSTRIG_GITLAB_TOKEN` for operator-wide listing
 - Manual webhook URL only if auto-registration fails
 
 Contributor detail: repository `docs/git-oauth.md`.

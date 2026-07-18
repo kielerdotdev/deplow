@@ -67,7 +67,7 @@ type ConnectionStatus = {
   }>
 }
 
-const TOKEN_KEY = "deplow.git.pat"
+const TOKEN_KEY = "hostrig.git.pat"
 const SEARCH_DEBOUNCE_MS = 300
 const BRANCH_SEARCH_THRESHOLD = 8
 

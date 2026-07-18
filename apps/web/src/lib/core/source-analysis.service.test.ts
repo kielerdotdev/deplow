@@ -43,7 +43,7 @@ afterEach(() => {
 
 describe("findDockerfiles", () => {
   it("finds root and nested Dockerfiles", () => {
-    const dir = tempDir("deplow-df-")
+    const dir = tempDir("hostrig-df-")
     try {
       write(dir, "Dockerfile", "FROM alpine\n")
       write(dir, "apps/api/Dockerfile", "FROM node\n")
@@ -59,7 +59,7 @@ describe("findDockerfiles", () => {
 
 describe("findApplicationRoots", () => {
   it("detects monorepo app roots", () => {
-    const dir = tempDir("deplow-apps-")
+    const dir = tempDir("hostrig-apps-")
     try {
       write(dir, "apps/web/package.json", '{"name":"web"}')
       write(dir, "apps/api/package.json", '{"name":"api"}')
@@ -75,7 +75,7 @@ describe("findApplicationRoots", () => {
 
 describe("analyzeDirectory", () => {
   it("selects railpack when no Dockerfile and returns Railpack metadata", async () => {
-    const dir = tempDir("deplow-rp-")
+    const dir = tempDir("hostrig-rp-")
     try {
       write(
         dir,
@@ -105,7 +105,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("defaults to railpack even when a root Dockerfile exists", async () => {
-    const dir = tempDir("deplow-root-df-")
+    const dir = tempDir("hostrig-root-df-")
     try {
       write(dir, "Dockerfile", "FROM alpine\nEXPOSE 80\nCMD npm run dev\n")
       write(
@@ -134,7 +134,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("still lists nested Dockerfiles but does not auto-select them", async () => {
-    const dir = tempDir("deplow-nested-df-")
+    const dir = tempDir("hostrig-nested-df-")
     try {
       write(dir, "services/api/Dockerfile", "FROM node\n")
       write(dir, "package.json", '{"name":"x","scripts":{"start":"node ."}}')
@@ -155,7 +155,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("requires Dockerfile choice only when Dockerfile strategy is forced", async () => {
-    const dir = tempDir("deplow-multi-df-")
+    const dir = tempDir("hostrig-multi-df-")
     try {
       write(dir, "apps/api/Dockerfile", "FROM node\n")
       write(dir, "apps/web/Dockerfile", "FROM nginx\n")
@@ -174,7 +174,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("does not force Dockerfile choice in auto mode with multiple Dockerfiles", async () => {
-    const dir = tempDir("deplow-multi-df-auto-")
+    const dir = tempDir("hostrig-multi-df-auto-")
     try {
       write(dir, "apps/api/Dockerfile", "FROM node\n")
       write(dir, "apps/web/Dockerfile", "FROM nginx\n")
@@ -195,7 +195,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("uses a root Dockerfile only when strategyOverride is dockerfile", async () => {
-    const dir = tempDir("deplow-root-wins-")
+    const dir = tempDir("hostrig-root-wins-")
     try {
       write(dir, "Dockerfile", "FROM alpine\n")
       write(dir, "apps/api/Dockerfile", "FROM node\n")
@@ -214,7 +214,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("requires application choice for monorepos with multiple apps", async () => {
-    const dir = tempDir("deplow-mono-")
+    const dir = tempDir("hostrig-mono-")
     try {
       write(
         dir,
@@ -243,7 +243,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("infers worker from start command", async () => {
-    const dir = tempDir("deplow-worker-")
+    const dir = tempDir("hostrig-worker-")
     try {
       write(
         dir,
@@ -269,7 +269,7 @@ describe("analyzeDirectory", () => {
   })
 
   it("reports missing start command for Railpack apps", async () => {
-    const dir = tempDir("deplow-nostart-")
+    const dir = tempDir("hostrig-nostart-")
     try {
       write(dir, "package.json", '{"name":"x"}')
       const result = await analyzeDirectory({

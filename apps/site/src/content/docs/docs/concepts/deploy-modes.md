@@ -42,4 +42,4 @@ else                              → railpack build → push registry → run
 
 ## Runtime after build
 
-Regardless of build path, **user app pods** use gVisor RuntimeClass when `DEPLOW_APP_RUNTIME=runsc` (default). Builds themselves use runc/BuildKit — not gVisor.
+Regardless of build path, **user app pods** always use gVisor RuntimeClass. Builds themselves use the default containerd runtime/BuildKit — not gVisor.

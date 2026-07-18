@@ -16,6 +16,8 @@ describe("k3s userdata", () => {
     expect(script).toContain("https://cp.example.com/api/cluster/bootstrap")
     expect(script).toContain("cb_secret")
     expect(script).toContain("--tls-san=")
+    expect(script).toContain("--write-kubeconfig-mode 600")
+    expect(script).not.toContain("--write-kubeconfig-mode 644")
     expect(script).toContain("server-1")
     expect(script).toContain("install_gvisor_k3s")
     expect(script).toContain("containerd-shim-runsc-v1")

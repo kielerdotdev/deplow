@@ -1,25 +1,29 @@
 /**
  * Hardened pod/container settings for user app workloads on k3s.
- * Mirrors packages/runtime host-config defaults (gVisor + caps + RO rootfs + limits).
+ * User apps always use gVisor RuntimeClass — runc is not an option.
  */
 
+export const USER_APP_RUNTIME_CLASS = "gvisor" as const
+
 export type UserAppPodHardeningInput = {
-  /** OCI / DEPLOW_APP_RUNTIME value: runsc → RuntimeClass gvisor; runc → none */
-  appRuntime: string
+  /**
+   * @deprecated Ignored — user apps always use gVisor.
+   * Kept for call-site compatibility.
+   */
+  appRuntime?: string
   memoryBytes: number
   /** CPU in Docker NanoCpus units (1 CPU = 1e9) */
   nanoCpus: number
   readOnlyRootfs?: boolean
   /**
    * Non-root UID for restricted PSS. Default 65532 (distroless/nonroot).
-   * Images that must run as root need DEPLOW_APP_RUNTIME=runc + softer policy later.
    */
   runAsUser?: number
 }
 
 export type UserAppPodHardening = {
-  /** Set on pod spec when gVisor is selected */
-  runtimeClassName?: string
+  /** Always gvisor for user apps */
+  runtimeClassName: typeof USER_APP_RUNTIME_CLASS
   podSecurityContext: {
     runAsNonRoot: true
     runAsUser: number
@@ -46,18 +50,30 @@ export type UserAppPodHardening = {
   volumeMounts: Array<{ name: string; mountPath: string }>
 }
 
-/** Map DEPLOW_APP_RUNTIME to a Kubernetes RuntimeClass name. */
-export function resolveRuntimeClassName(appRuntime: string): string | undefined {
-  const r = appRuntime.trim().toLowerCase()
-  if (!r || r === "runc" || r === "default") return undefined
-  if (r === "runsc" || r.startsWith("runsc") || r === "gvisor") return "gvisor"
-  // Future: kata → "kata". Unknown values pass through as RuntimeClass names.
-  return r
+/**
+ * Map HOSTRIG_APP_RUNTIME to a Kubernetes RuntimeClass name.
+ * User apps always use gVisor; runc / default / empty are rejected (return gvisor).
+ */
+export function resolveRuntimeClassName(appRuntime?: string): string {
+  const r = (appRuntime ?? "").trim().toLowerCase()
+  if (r === "runc" || r === "default") {
+    console.warn(
+      "[hostrig] HOSTRIG_APP_RUNTIME=runc is disabled — user apps always use gVisor RuntimeClass",
+    )
+  }
+  // Always gvisor for user app workloads (runsc, gvisor, empty, or unknown).
+  if (!r || r === "runc" || r === "default" || r === "runsc" || r.startsWith("runsc") || r === "gvisor") {
+    return USER_APP_RUNTIME_CLASS
+  }
+  // Reject alternate sandboxes for now — only gVisor is supported.
+  console.warn(
+    `[hostrig] Unsupported HOSTRIG_APP_RUNTIME="${appRuntime}" — forcing gVisor`,
+  )
+  return USER_APP_RUNTIME_CLASS
 }
 
-export function isGvisorRuntime(appRuntime: string): boolean {
-  const name = resolveRuntimeClassName(appRuntime)
-  return name === "gvisor"
+export function isGvisorRuntime(_appRuntime?: string): boolean {
+  return true
 }
 
 function formatCpu(nanoCpus: number): string {
@@ -82,10 +98,9 @@ export function buildUserAppPodHardening(
   const readOnly = input.readOnlyRootfs !== false
   const memory = formatMemory(input.memoryBytes)
   const cpu = formatCpu(input.nanoCpus)
-  const runtimeClassName = resolveRuntimeClassName(input.appRuntime)
 
   return {
-    runtimeClassName,
+    runtimeClassName: USER_APP_RUNTIME_CLASS,
     podSecurityContext: {
       runAsNonRoot: true,
       runAsUser: uid,

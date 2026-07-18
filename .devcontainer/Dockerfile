@@ -52,7 +52,7 @@ RUN corepack enable \
 
 USER node
 ENV PATH="/home/node/.local/share/pnpm:/home/node/.local/bin:/usr/local/bin:${PATH}"
-ENV DEPLOW_HETZNER_K3S_BIN=/usr/local/bin/hetzner-k3s
+ENV HOSTRIG_HETZNER_K3S_BIN=/usr/local/bin/hetzner-k3s
 ENV RAILPACK_BIN=/usr/local/bin/railpack
 # workspaceFolder is set to the host path at runtime
 WORKDIR /home/node

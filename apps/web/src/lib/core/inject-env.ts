@@ -1,4 +1,4 @@
-import type { ProjectCredentials } from "@deplow/shared"
+import type { ProjectCredentials } from "@hostrig/shared"
 
 import type { PlatformConfig } from "./platform-config"
 

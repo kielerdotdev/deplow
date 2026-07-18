@@ -9,7 +9,7 @@ Security is a first-class product feature — not an optional appendix. Priority
 
 | Layer | Behavior |
 | --- | --- |
-| **User apps** | Pods use **gVisor** (`runtimeClassName: gvisor`) when `DEPLOW_APP_RUNTIME=runsc` |
+| **User apps** | Pods **always** use **gVisor** (`runtimeClassName: gvisor`) — runc not allowed |
 | **Data services** | Postgres/Redis stay on the default containerd runtime |
 | **Platform** | Traefik and system pods on the default runtime |
 | **Builds** | Railpack / BuildKit use runc (not gVisor) |
@@ -28,14 +28,14 @@ Typical host-kernel bugs in the Dirty Pipe / Dirty COW class are much harder to 
 
 1. Connect a **k3s** cluster (BYO kubeconfig or managed Hetzner)
 2. Install **gVisor** on every node — managed cloud-init / join script does this; BYO: `scripts/install-gvisor-k3s.sh`
-3. Keep `DEPLOW_APP_RUNTIME=runsc` (default) and `DEPLOW_APP_RUNTIME_REQUIRED=true` in production
-4. Set strong `BETTER_AUTH_SECRET` / `DEPLOW_SECRETS_KEY`
+3. Install gVisor on every node — user apps **always** use RuntimeClass `gvisor` (runc is not allowed)
+4. Set strong `BETTER_AUTH_SECRET` / `HOSTRIG_SECRETS_KEY` (distinct keys)
 5. Protect kubeconfig and MCP tokens; patch nodes; do not expose Postgres/Redis publicly
 6. Terminate TLS at a trusted edge; do not open Traefik as a naked public HTTP origin without understanding the risk
 
-## Escape hatch
+## No runc escape hatch
 
-If an image cannot run under gVisor, set `DEPLOW_APP_RUNTIME=runc` temporarily. This logs a warning and weakens isolation — fix the image; do not treat runc as the marketed default.
+User apps cannot opt out of gVisor. If an image cannot run under gVisor, fix the image (non-root, compatible syscalls). Optional: `HOSTRIG_APP_READONLY_ROOTFS=false` only disables read-only rootfs — the pod still uses gVisor.
 
 ## What we do not claim
 

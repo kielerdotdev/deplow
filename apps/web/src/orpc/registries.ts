@@ -4,7 +4,7 @@ import {
   deleteRegistryInputSchema,
   setDefaultBuildRegistryInputSchema,
   updateRegistryInputSchema,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import { assertInstanceAdmin } from "@/lib/access"
 import { requireConnectedKubeconfig } from "@/lib/k8s/cluster-store"
@@ -17,14 +17,14 @@ import {
   updateRegistry,
 } from "@/lib/registries"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 export const list = authedProcedure.handler(async ({ context }) => {
   await assertInstanceAdmin(context.session!)
   return listRegistries()
 })
 
-export const create = authedProcedure
+export const create = writeProcedure
   .input(createRegistryInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -37,7 +37,7 @@ export const create = authedProcedure
     }
   })
 
-export const update = authedProcedure
+export const update = writeProcedure
   .input(updateRegistryInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -50,7 +50,7 @@ export const update = authedProcedure
     }
   })
 
-export const remove = authedProcedure
+export const remove = writeProcedure
   .input(deleteRegistryInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -64,7 +64,7 @@ export const remove = authedProcedure
     }
   })
 
-export const setDefaultBuild = authedProcedure
+export const setDefaultBuild = writeProcedure
   .input(setDefaultBuildRegistryInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -78,7 +78,7 @@ export const setDefaultBuild = authedProcedure
   })
 
 /** Push dockerconfigjson secrets for all credentialed registries into every proj-* namespace. */
-export const syncToCluster = authedProcedure.handler(async ({ context }) => {
+export const syncToCluster = writeProcedure.handler(async ({ context }) => {
   await assertInstanceAdmin(context.session!)
   try {
     const kubeconfigYaml = await requireConnectedKubeconfig()

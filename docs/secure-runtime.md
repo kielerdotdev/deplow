@@ -39,19 +39,21 @@ k3s node
         ├── runtimeClassName: gvisor
         ├── securityContext: non-root, RuntimeDefault seccomp
         ├── container: drop ALL caps, no priv-esc, RO rootfs, /tmp emptyDir
-        └── resources from DEPLOW_APP_MEMORY_MB / DEPLOW_APP_CPUS
+        └── resources from HOSTRIG_APP_MEMORY_MB / HOSTRIG_APP_CPUS
 ```
 
-Control plane runs **outside** the cluster and never mounts credentials into user app pods beyond injected env/bindings.
+Control plane runs **outside** the cluster and never mounts credentials into user app pods beyond injected env/bindings (no Kubernetes service-account token automount).
+
+**Builds** run on the control plane with Docker/BuildKit (host `docker.sock`, privileged BuildKit). Treat multi-user instances as sharing that CP trust boundary; isolate builders for hostile multi-tenant.
 
 ---
 
 ## Explicitly IN scope
 
-1. Config: `DEPLOW_APP_RUNTIME` (default `runsc` → RuntimeClass `gvisor`)
-2. `deployWebService` sets `runtimeClassName`, securityContext, resources, volumes
-3. RuntimeClass preflight: create/ensure `gvisor`; fail clearly when required and missing
-4. NetworkPolicy + LimitRange + PSS labels on project namespaces
+1. User apps always use RuntimeClass `gvisor` (no runc escape hatch)
+2. `deployWebService` sets `runtimeClassName: gvisor`, securityContext, resources, volumes
+3. RuntimeClass preflight: create/ensure `gvisor`; fail hard if missing
+4. NetworkPolicy + LimitRange + ResourceQuota + PSS labels on project namespaces
 5. Node bootstrap: Hetzner cloud-init installs runsc + containerd config; `scripts/install-gvisor-k3s.sh` for BYO
 6. Docs + env examples aligned with k3s (not Docker-as-runtime)
 
@@ -83,13 +85,13 @@ Control plane runs **outside** the cluster and never mounts credentials into use
 
 | Env | Default | Meaning |
 | --- | --- | --- |
-| `DEPLOW_APP_RUNTIME` | `runsc` | Maps to RuntimeClass `gvisor`; `runc` omits RuntimeClass (escape hatch) |
-| `DEPLOW_APP_RUNTIME_REQUIRED` | `true` | Fail deploy if RuntimeClass cannot be ensured |
-| `DEPLOW_APP_MEMORY_MB` | `512` | Memory request/limit for user apps |
-| `DEPLOW_APP_CPUS` | `1` | CPU request/limit for user apps |
-| `DEPLOW_APP_READONLY_ROOTFS` | `true` | `readOnlyRootFilesystem` on app containers |
+| `HOSTRIG_APP_RUNTIME` | `runsc` (forced) | Always maps to RuntimeClass `gvisor`. `runc` is rejected. |
+| `HOSTRIG_APP_RUNTIME_REQUIRED` | `true` (forced) | Always fail deploy if RuntimeClass cannot be ensured |
+| `HOSTRIG_APP_MEMORY_MB` | `512` | Memory request/limit for user apps |
+| `HOSTRIG_APP_CPUS` | `1` | CPU request/limit for user apps |
+| `HOSTRIG_APP_READONLY_ROOTFS` | `true` | `readOnlyRootFilesystem` on app containers |
 
-When `DEPLOW_APP_RUNTIME=runc`, log a clear warning — apps are not sandboxed.
+There is **no** unsandboxed user-app path. Install gVisor on every node or deploys fail.
 
 ---
 
@@ -126,7 +128,7 @@ Approximate Deployment template for web/worker:
 spec:
   template:
     spec:
-      runtimeClassName: gvisor   # omitted when DEPLOW_APP_RUNTIME=runc
+      runtimeClassName: gvisor   # always — runc not allowed
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -150,7 +152,7 @@ spec:
               mountPath: /tmp
 ```
 
-Images that cannot run as non-root or need a writable rootfs: prefer fixing the image; temporary escape hatches are `DEPLOW_APP_READONLY_ROOTFS=false` and `DEPLOW_APP_RUNTIME=runc` (unsandboxed).
+Images that cannot run as non-root or need a writable rootfs: fix the image; temporary opt-out of RO rootfs only is `HOSTRIG_APP_READONLY_ROOTFS=false` (still under gVisor).
 
 ---
 
@@ -158,15 +160,19 @@ Images that cannot run as non-root or need a writable rootfs: prefer fixing the 
 
 Per `proj-*` namespace (`hostrig-project-isolation`):
 
-- Ingress: same namespace + `kube-system` (Traefik)
-- Egress: same namespace + DNS (kube-system :53) + TCP 80/443
-- Cross-project namespaces: denied by default
+- Ingress: same namespace + Traefik pods in `kube-system` (not entire kube-system)
+- Egress: same namespace + DNS (kube-system :53) + TCP 80/443 to **public IPs only**
+  (`0.0.0.0/0` with exceptions for RFC1918, link-local `169.254.0.0/16`, CGNAT, loopback)
+- Cross-project ClusterIP and cloud metadata: denied on the open HTTP/S rule
+- User app pods: `automountServiceAccountToken: false`
+
+Also applied: LimitRange + ResourceQuota (`hostrig-quota`) per project namespace.
 
 ---
 
 ## MicroVMs — out of product scope
 
-Isolation stays behind `runtimeClassName` (`gvisor` | omitted for `runc`). Nested virt / Kata / Firecracker are **not** product paths. Revisit only under a deliberate compliance requirement — never as install prerequisite or marketing claim.
+Isolation is always `runtimeClassName: gvisor`. Nested virt / Kata / Firecracker are **not** product paths.
 
 ---
 
@@ -178,8 +184,8 @@ Docker-agent remotes and the hetzner-k3s CLI path are **removed**. Builds may st
 
 ## Acceptance criteria
 
-- [ ] User app pods get `runtimeClassName: gvisor` when `DEPLOW_APP_RUNTIME=runsc`
-- [ ] Missing RuntimeClass → clear deploy error when required
+- [ ] User app pods always get `runtimeClassName: gvisor`
+- [ ] Missing RuntimeClass → clear deploy error (no runc fallback)
 - [ ] Pod/container securityContext + resource limits applied
 - [ ] Project namespaces get NetworkPolicy + LimitRange + PSS labels
 - [ ] Hetzner cloud-init installs runsc; BYO script documented

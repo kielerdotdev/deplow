@@ -22,7 +22,7 @@ describe("groupEvent", () => {
         values: [{ type: "Error", value: "timeout after 9999ms" }],
       },
     })
-    expect(g.mechanism).toBe("deplow-v1")
+    expect(g.mechanism).toBe("hostrig-v1")
     expect(g.groupingKey).toContain("Error:")
     expect(g.groupingKey).toContain("<num>")
     expect(g.title).toContain("Error:")

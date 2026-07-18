@@ -2,7 +2,7 @@ import type {
   DatabaseCredentials,
   RedisCredentials,
   ResourceCredentials,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import type { DataServiceDriver } from "./data-services"
 import { StorageProvisioner } from "./infra/storage"
@@ -79,7 +79,7 @@ export class BackupService {
   }
 
   static retainCount(): number {
-    const raw = process.env.DEPLOW_BACKUP_RETAIN
+    const raw = process.env.HOSTRIG_BACKUP_RETAIN
     if (raw) {
       const n = Number(raw)
       if (Number.isFinite(n) && n >= 1) return Math.floor(n)
@@ -283,7 +283,7 @@ export class BackupService {
     let intervalMs = 24 * 60 * 60 * 1000
     if (cronOrInterval === "daily") {
       intervalMs = Number(
-        process.env.DEPLOW_BACKUP_DEFAULT_INTERVAL_MS ?? intervalMs,
+        process.env.HOSTRIG_BACKUP_DEFAULT_INTERVAL_MS ?? intervalMs,
       )
     } else if (/^\d+$/.test(cronOrInterval)) {
       intervalMs = Number(cronOrInterval)

@@ -40,7 +40,7 @@ install control plane (Docker Compose)
   → scheduled Postgres backups → platform S3
 ```
 
-![Hostrig project overview with web, worker, postgres, and redis](/screenshots/dashboard.jpeg)
+![Hostrig project overview with web, worker, postgres, and redis](/screenshots/dashboard.svg)
 
 ## Start here
 
@@ -78,7 +78,7 @@ install control plane (Docker Compose)
 - **No custom domains** — every web service is under `*.{baseDomain}` (custom domains are v2)
 - **TLS at the edge** — Traefik in-cluster is HTTP; terminate TLS at Cloudflare / NetBird / Tailscale
 - **No MicroVMs** — gVisor only; we do not claim unbreakable or Dirty Pipe immortality
-- **gVisor is the default, not a slogan** — `DEPLOW_APP_RUNTIME=runc` is a temporary escape hatch
+- **gVisor is required, not optional** — user apps always use RuntimeClass `gvisor`
 - **MCP does not auto-provision Postgres** — `deploy_from_git` ships a web service from a repo; data services and bindings are separate steps
 - **Observe is optional** — Deploy works without ClickHouse; Observability is an addon
 

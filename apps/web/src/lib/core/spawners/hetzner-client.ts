@@ -53,7 +53,7 @@ export function createHetznerCloudClient(
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
-    "User-Agent": "deplow",
+    "User-Agent": "hostrig",
   }
 
   return {
@@ -126,7 +126,7 @@ export function createHetznerCloudClient(
 export function createUnconfiguredHetznerCloudClient(): HetznerCloudClient {
   const fail = async (): Promise<never> => {
     throw new Error(
-      "Hetzner is not configured. Set DEPLOW_HETZNER_API_TOKEN to spawn servers.",
+      "Hetzner is not configured. Set HOSTRIG_HETZNER_API_TOKEN to spawn servers.",
     )
   }
   return {

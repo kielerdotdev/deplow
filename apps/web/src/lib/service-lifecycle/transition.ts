@@ -2,7 +2,7 @@
  * Single writer for services.status. All lifetime mutations go through here.
  */
 
-import { eq, db, services } from "@deplow/db"
+import { eq, db, services } from "@hostrig/db"
 
 export type ServiceStatus =
   | "queued"

@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools"
 
-import { analyzeSourceInputSchema } from "@deplow/shared"
+import { analyzeSourceInputSchema } from "@hostrig/shared"
 
 import { analyzeSource } from "@/orpc/services"
 

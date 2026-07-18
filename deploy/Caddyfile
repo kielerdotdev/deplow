@@ -1,12 +1,13 @@
 {
 	auto_https off
-	# admin used by `caddy reload` from the control plane after route changes
-	admin 0.0.0.0:2019
+	# Admin API: localhost only. Control plane reloads via docker exec / shared network
+	# to 127.0.0.1 inside this container — never expose admin on the compose network.
+	admin 127.0.0.1:2019
 }
 :80 {
-	handle /deplow-health {
+	handle /hostrig-health {
 		respond "ok" 200
 	}
 	import /etc/caddy/routes/*.caddy
-	respond "deplow proxy — no matching project route" 404
+	respond "hostrig proxy — no matching project route" 404
 }

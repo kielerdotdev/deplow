@@ -1,16 +1,16 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { and, eq } from "@deplow/db"
+import { and, eq } from "@hostrig/db"
 import {
   createProjectInputSchema,
   deriveProjectStatus,
     type ProjectStatus,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 import {
   listProjectEnvSecretsInputSchema,
   saveProjectEnvSecretsInputSchema,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import {
   assertProjectAccess,
@@ -42,7 +42,7 @@ import {
   saveProjectEnvSecrets,
   services,
 } from "@/lib/services"
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 import {
   maskProjectEnvEntries,
   recordToEntries,
@@ -100,7 +100,9 @@ function serviceSummary(row: typeof services.$inferSelect) {
     errorMessage: row.errorMessage,
     errorCode: row.errorCode,
     lastOperationId: row.lastOperationId,
-    env: row.envJson ? (JSON.parse(row.envJson) as Record<string, string>) : {},
+    env: maskServiceEnv(
+      row.envJson ? (JSON.parse(row.envJson) as Record<string, string>) : {},
+    ),
     rootDirectory: row.rootDirectory,
     buildStrategyOverride: row.buildStrategyOverride,
     dockerfilePath: row.dockerfilePath,
@@ -191,9 +193,8 @@ async function detail(row: typeof projects.$inferSelect) {
     backupIntervalMs: row.backupIntervalMs,
     lastBackupAt: row.lastBackupAt?.toISOString() ?? null,
     hasCredentials: Boolean(credentials),
-    secretsYaml: credentials
-      ? new SecretsService().generateSecretsYaml(credentials)
-      : null,
+    // Never embed plaintext secrets in list/get — use projects.secrets({ reveal: true }).
+    secretsYaml: null,
     secretsMasked: credentials
       ? maskSecretsYaml(new SecretsService().generateSecretsYaml(credentials))
       : null,
@@ -211,6 +212,28 @@ function maskSecretsYaml(yaml: string): string {
       return `${line.slice(0, idx + 1)} ********`
     },
   )
+}
+
+/** Mask env values in service summaries (keys visible, values redacted). */
+function maskServiceEnv(
+  env: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(env)) {
+    out[k] = v ? "********" : ""
+  }
+  return out
+}
+
+function redactConnectionUrl(url: string | undefined | null): string | null {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    if (u.password) u.password = "********"
+    return u.toString()
+  } catch {
+    return "********"
+  }
 }
 
 export const list = authedProcedure.handler(async ({ context }) => {
@@ -231,7 +254,7 @@ export const get = authedProcedure
     detail(await loadAccessibleProject(input.id, context.session!)),
   )
 
-export const create = authedProcedure
+export const create = writeProcedure
   .input(createProjectInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -295,7 +318,7 @@ export const create = authedProcedure
   })
 
 
-export const destroy = authedProcedure
+export const destroy = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     const project = await assertProjectAccess(
@@ -312,7 +335,7 @@ export const destroy = authedProcedure
     return { ok: true as const }
   })
 
-export const secrets = authedProcedure
+export const secrets = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -320,7 +343,8 @@ export const secrets = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    await loadAccessibleProject(input.id, context.session!)
+    const minRole = input.reveal ? "owner" : "member"
+    await assertProjectAccess(input.id, context.session!, minRole)
     const credentials = await getProjectCredentials(input.id)
     const yaml = credentials
       ? new SecretsService().generateSecretsYaml(credentials)
@@ -332,22 +356,16 @@ export const secrets = authedProcedure
       return { secretsYaml: yaml, masked: false }
     }
     return {
-      secretsYaml: yaml.replace(
-        /(password|secret|key|token|DATABASE_URL|REDIS_URL)\s*[:=]\s*.+$/gim,
-        (line) => {
-          const idx = line.search(/[:=]/)
-          if (idx < 0) return line
-          return `${line.slice(0, idx + 1)} ********`
-        },
-      ),
+      secretsYaml: yaml ? maskSecretsYaml(yaml) : "",
       masked: true,
     }
   })
 
-export const envSecrets = authedProcedure
+export const envSecrets = writeProcedure
   .input(listProjectEnvSecretsInputSchema)
   .handler(async ({ context, input }) => {
-    await loadAccessibleProject(input.id, context.session!)
+    const minRole = input.reveal ? "owner" : "member"
+    await assertProjectAccess(input.id, context.session!, minRole)
     const record = await getProjectEnvSecrets(input.id)
     const entries = recordToEntries(record)
     if (input.reveal) {
@@ -359,10 +377,10 @@ export const envSecrets = authedProcedure
     return { entries: maskProjectEnvEntries(entries), masked: true }
   })
 
-export const saveEnvSecrets = authedProcedure
+export const saveEnvSecrets = writeProcedure
   .input(saveProjectEnvSecretsInputSchema)
   .handler(async ({ context, input }) => {
-    await loadAccessibleProject(input.id, context.session!)
+    await assertProjectAccess(input.id, context.session!, "owner")
     try {
       const record = await saveProjectEnvSecrets(input.id, input.entries)
       console.info(
@@ -379,7 +397,7 @@ export const saveEnvSecrets = authedProcedure
     }
   })
 
-export const backup = authedProcedure
+export const backup = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -387,7 +405,7 @@ export const backup = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    await loadAccessibleProject(input.id, context.session!)
+    await assertProjectAccess(input.id, context.session!, "owner")
     try {
       if (input.resourceLinkId) {
         const target = await getResourceTarget(input.id, input.resourceLinkId)
@@ -436,7 +454,7 @@ export const backupSchedule = authedProcedure
     }
   })
 
-export const restoreBackup = authedProcedure
+export const restoreBackup = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -446,7 +464,11 @@ export const restoreBackup = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     if (input.confirmName !== project.name) {
       throw new ORPCError("BAD_REQUEST", {
         message: "Type the project name to confirm restore",
@@ -479,10 +501,10 @@ export const restoreBackup = authedProcedure
     }
   })
 
-export const downloadBackup = authedProcedure
+export const downloadBackup = writeProcedure
   .input(z.object({ id: z.string().min(1), backupId: z.string().min(1) }))
   .handler(async ({ context, input }) => {
-    await loadAccessibleProject(input.id, context.session!)
+    await assertProjectAccess(input.id, context.session!, "owner")
     try {
       const file = await backupService.download(input.id, input.backupId)
       return {
@@ -531,7 +553,7 @@ export const pitrStatus = authedProcedure
     })
   })
 
-export const restorePitr = authedProcedure
+export const restorePitr = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -541,7 +563,11 @@ export const restorePitr = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     if (input.confirmName !== project.name) {
       throw new ORPCError("BAD_REQUEST", {
         message: "Type the project name to confirm restore",
@@ -579,7 +605,7 @@ export const listPostgresRoles = authedProcedure
     return postgresProvisioner.listRoles(project.slug, pg.credentials)
   })
 
-export const createPostgresRole = authedProcedure
+export const createPostgresRole = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -592,7 +618,11 @@ export const createPostgresRole = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const pg = await getPostgresCredentials(project.id)
     if (!pg) {
       throw new ORPCError("BAD_REQUEST", { message: "Postgres not ready" })
@@ -605,7 +635,7 @@ export const createPostgresRole = authedProcedure
     )
   })
 
-export const rotatePostgresRole = authedProcedure
+export const rotatePostgresRole = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -613,7 +643,11 @@ export const rotatePostgresRole = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const pg = await getPostgresCredentials(project.id)
     if (!pg) {
       throw new ORPCError("BAD_REQUEST", { message: "Postgres not ready" })
@@ -647,7 +681,7 @@ export const rotatePostgresRole = authedProcedure
     return rotated
   })
 
-export const dropPostgresRole = authedProcedure
+export const dropPostgresRole = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -655,7 +689,11 @@ export const dropPostgresRole = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const pg = await getPostgresCredentials(project.id)
     if (!pg) {
       throw new ORPCError("BAD_REQUEST", { message: "Postgres not ready" })
@@ -677,7 +715,7 @@ export const listRedisUsers = authedProcedure
     return redisProvisioner.listUsers(project.slug, redis.credentials)
   })
 
-export const createRedisUser = authedProcedure
+export const createRedisUser = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -689,7 +727,11 @@ export const createRedisUser = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const redis = await getRedisCredentials(project.id)
     if (!redis) {
       throw new ORPCError("BAD_REQUEST", { message: "Redis not ready" })
@@ -701,7 +743,7 @@ export const createRedisUser = authedProcedure
     )
   })
 
-export const rotateRedisUser = authedProcedure
+export const rotateRedisUser = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -709,7 +751,11 @@ export const rotateRedisUser = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const redis = await getRedisCredentials(project.id)
     if (!redis) {
       throw new ORPCError("BAD_REQUEST", { message: "Redis not ready" })
@@ -742,7 +788,7 @@ export const rotateRedisUser = authedProcedure
     return rotated
   })
 
-export const dropRedisUser = authedProcedure
+export const dropRedisUser = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -750,7 +796,11 @@ export const dropRedisUser = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const redis = await getRedisCredentials(project.id)
     if (!redis) {
       throw new ORPCError("BAD_REQUEST", { message: "Redis not ready" })
@@ -763,10 +813,14 @@ export const dropRedisUser = authedProcedure
     return { ok: true as const }
   })
 
-export const exportRedis = authedProcedure
+export const exportRedis = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const redis = await getRedisCredentials(project.id)
     if (!redis) {
       throw new ORPCError("BAD_REQUEST", { message: "Redis not ready" })
@@ -778,7 +832,7 @@ export const exportRedis = authedProcedure
     return { base64: body.toString("base64") }
   })
 
-export const importRedis = authedProcedure
+export const importRedis = writeProcedure
   .input(
     z.object({
       id: z.string().min(1),
@@ -786,7 +840,11 @@ export const importRedis = authedProcedure
     }),
   )
   .handler(async ({ context, input }) => {
-    const project = await loadAccessibleProject(input.id, context.session!)
+    const project = await assertProjectAccess(
+      input.id,
+      context.session!,
+      "owner",
+    )
     const redis = await getRedisCredentials(project.id)
     if (!redis) {
       throw new ORPCError("BAD_REQUEST", { message: "Redis not ready" })
@@ -882,7 +940,7 @@ export const databaseOverview = authedProcedure
             port: credentials.database.port,
             database: credentials.database.database,
             user: credentials.database.user,
-            url: credentials.database.url,
+            url: redactConnectionUrl(credentials.database.url),
             resourceLinkId: pg?.linkId ?? null,
           }
         : null,
@@ -891,7 +949,7 @@ export const databaseOverview = authedProcedure
             host: credentials.redis.host,
             port: credentials.redis.port,
             namespace: credentials.redis.namespace,
-            url: credentials.redis.url,
+            url: redactConnectionUrl(credentials.redis.url),
             resourceLinkId: redis?.linkId ?? null,
           }
         : null,

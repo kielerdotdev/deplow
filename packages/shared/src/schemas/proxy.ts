@@ -71,17 +71,31 @@ export const ingressSettingsSchema = z.object({
 
 export type IngressSettings = z.infer<typeof ingressSettingsSchema>
 
+/** DNS hostname / base domain: labels only (blocks Caddy injection via spaces/newlines). */
+const baseDomainInputSchema = z
+  .string()
+  .max(253)
+  .transform((s) =>
+    s
+      .trim()
+      .toLowerCase()
+      .replace(/^\.+/, "")
+      .replace(/\.$/, ""),
+  )
+  .refine(
+    (s) =>
+      s.length === 0 ||
+      s === "localhost" ||
+      (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(
+        s,
+      ) &&
+        !s.includes(" ") &&
+        !/[\r\n\t]/.test(s)),
+    { message: "baseDomain must be a valid DNS hostname" },
+  )
+
 export const updateIngressSettingsInputSchema = z.object({
-  baseDomain: z
-    .string()
-    .max(253)
-    .transform((s) =>
-      s
-        .trim()
-        .toLowerCase()
-        .replace(/^\.+/, "")
-        .replace(/\.$/, ""),
-    ),
+  baseDomain: baseDomainInputSchema,
   publicProtocol: z.enum(["https", "http"]),
   autoDomainsEnabled: z.boolean(),
   edgeMode: platformEdgeModeSchema,

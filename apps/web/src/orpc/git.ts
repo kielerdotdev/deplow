@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { startGitOAuthInputSchema } from "@deplow/shared"
+import { startGitOAuthInputSchema } from "@hostrig/shared"
 
 import {
   buildGitHubAppManifest,
@@ -32,7 +32,7 @@ import {
 } from "@/lib/git-auth"
 import { assertInstanceAdmin } from "@/lib/access"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 export const connectionStatus = authedProcedure.handler(async ({ context }) => {
   const userId = context.session!.user.id
@@ -46,7 +46,7 @@ export const connectionStatus = authedProcedure.handler(async ({ context }) => {
 
   return {
     githubAppConfigured: Boolean(app),
-    /** database = can remove fully; env = only from DEPLOW_GITHUB_APP_* */
+    /** database = can remove fully; env = only from HOSTRIG_GITHUB_APP_* */
     githubAppSource: app
       ? appInDb
         ? ("database" as const)
@@ -70,7 +70,7 @@ export const connectionStatus = authedProcedure.handler(async ({ context }) => {
   }
 })
 
-export const startOAuth = authedProcedure
+export const startOAuth = writeProcedure
   .input(startGitOAuthInputSchema)
   .handler(async ({ context, input }) => {
     const userId = context.session!.user.id
@@ -106,7 +106,7 @@ export const startOAuth = authedProcedure
     if (!gl) {
       throw new ORPCError("BAD_REQUEST", {
         message:
-          "GitLab OAuth isn’t configured. Set DEPLOW_GITLAB_OAUTH_CLIENT_ID/SECRET (or save under Integrations), or use a PAT under Advanced.",
+          "GitLab OAuth isn’t configured. Set HOSTRIG_GITLAB_OAUTH_CLIENT_ID/SECRET (or save under Integrations), or use a PAT under Advanced.",
       })
     }
     await createOAuthState({
@@ -124,14 +124,14 @@ export const startOAuth = authedProcedure
     return { url, state }
   })
 
-export const disconnectProvider = authedProcedure
+export const disconnectProvider = writeProcedure
   .input(z.object({ provider: z.enum(["github", "gitlab"]) }))
   .handler(async ({ context, input }) => {
     await deleteUserGitLink(context.session!.user.id, input.provider)
     return { ok: true as const }
   })
 
-export const githubAppManifestStart = authedProcedure
+export const githubAppManifestStart = writeProcedure
   .input(
     z
       .object({
@@ -172,11 +172,11 @@ export const githubAppManifestStart = authedProcedure
       appWebhookIncluded: publicNet,
       warning: publicNet
         ? null
-        : `DEPLOW_PUBLIC_URL / browser origin is "${publicUrl}" (not on the public Internet). GitHub rejects App webhook URLs on localhost — the manifest omits the App webhook. You can still create the App for OAuth/install tokens. For push-to-deploy from GitHub to a local machine, set DEPLOW_PUBLIC_URL to a tunnel (cloudflared, ngrok) and recreate, or add repo webhooks manually.`,
+        : `HOSTRIG_PUBLIC_URL / browser origin is "${publicUrl}" (not on the public Internet). GitHub rejects App webhook URLs on localhost — the manifest omits the App webhook. You can still create the App for OAuth/install tokens. For push-to-deploy from GitHub to a local machine, set HOSTRIG_PUBLIC_URL to a tunnel (cloudflared, ngrok) and recreate, or add repo webhooks manually.`,
     }
   })
 
-export const saveGitLabOAuth = authedProcedure
+export const saveGitLabOAuth = writeProcedure
   .input(
     z.object({
       clientId: z.string().min(1),
@@ -201,7 +201,7 @@ export const saveGitLabOAuth = authedProcedure
  * We uninstall all installations, clear local credentials, and return a URL
  * to Advanced → Delete GitHub App on github.com.
  */
-export const removeGitHubApp = authedProcedure
+export const removeGitHubApp = writeProcedure
   .input(
     z
       .object({
@@ -266,12 +266,12 @@ export const removeGitHubApp = authedProcedure
       appName,
       stillConfiguredFromEnv: stillFromEnv,
       message: stillFromEnv
-        ? "Cleared stored App credentials, but DEPLOW_GITHUB_APP_* env vars are still set — unset them and restart to fully remove."
+        ? "Cleared stored App credentials, but HOSTRIG_GITHUB_APP_* env vars are still set — unset them and restart to fully remove."
         : "GitHub App removed from Hostrig. Finish by deleting the App registration on GitHub (link provided).",
     }
   })
 
-export const removeGitLabOAuth = authedProcedure.handler(async ({ context }) => {
+export const removeGitLabOAuth = writeProcedure.handler(async ({ context }) => {
   await assertInstanceAdmin(context.session!)
   await clearGitLabOAuthLocalState()
   return { ok: true as const }

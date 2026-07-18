@@ -15,23 +15,26 @@ import {
   ObserveEmptyState,
   ObservePageLayout,
   ObserveProjectShell,
+  ResourceRow,
+  ResourceTable,
+  ResourceTableBody,
+  ResourceTableHead,
+  ResourceTh,
   Sparkline,
   filterIssuesByContext,
 } from "@/components/observe"
 import {
   hasStructuredIssueFilters,
 } from "@/components/observe/issues-filter-sidebar"
+import {
+  formatIssueCulprit,
+  issueLevelBadgeClass,
+  issueLevelTone,
+  issueTitlePreview,
+} from "@/components/observe/issue-list-utils"
 import { resolveIssuesEmptyState } from "@/components/observe/issues-empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { getSession } from "@/lib/auth.functions"
 import {
   applyColdDefaults,
@@ -397,7 +400,7 @@ function IssuesPage() {
         })
       }}
     >
-      <ObservePageLayout.Root>
+      <ObservePageLayout.Root className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <IssuesToolbar
             tabs={TABS.map((t) => ({
@@ -414,10 +417,11 @@ function IssuesPage() {
             totalCount={filteredIssues.length}
             trailing={
               selected.size > 0 ? (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-8"
                     onClick={() => void bulk("resolved")}
                   >
                     Resolve ({selected.size})
@@ -425,6 +429,7 @@ function IssuesPage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-8"
                     onClick={() => void bulk("muted")}
                   >
                     Ignore
@@ -432,6 +437,7 @@ function IssuesPage() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="h-8"
                     onClick={() => void bulk("unresolved")}
                   >
                     Reopen
@@ -451,7 +457,7 @@ function IssuesPage() {
               onChange={setContext}
             />
           </ObservePageLayout.FilterSidebar>
-          <ObservePageLayout.Content>
+          <ObservePageLayout.Content className="space-y-0">
             {filteredIssues.length === 0 && emptyDecision ? (
               <ObserveEmptyState
                 variant={emptyDecision.variant}
@@ -467,125 +473,146 @@ function IssuesPage() {
                 description="No grouped errors to show."
               />
             ) : (
-              <div className="surface-panel overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="data-table-head data-table-cell w-10 pl-4">
-                        <Checkbox
-                          checked={allSelected}
-                          onCheckedChange={(v) => {
-                            if (v) {
-                              setSelected(
-                                new Set(filteredIssues.map((i) => i.id)),
-                              )
-                            } else setSelected(new Set())
-                          }}
-                          aria-label="Select all"
-                        />
-                      </TableHead>
-                      <TableHead className="data-table-head data-table-cell">
-                        Issue
-                      </TableHead>
-                      <TableHead className="data-table-head data-table-cell w-28">
-                        Trend
-                      </TableHead>
-                      <TableHead className="data-table-head data-table-cell w-20">
-                        Events
-                      </TableHead>
-                      <TableHead className="data-table-head data-table-cell w-28">
-                        First
-                      </TableHead>
-                      <TableHead className="data-table-head data-table-cell w-28 pr-4">
-                        Last
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredIssues.map((issue, idx) => (
-                      <TableRow
+              <ResourceTable>
+                <ResourceTableHead>
+                  <ResourceTh className="w-10 pl-3.5">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(v) => {
+                        if (v) {
+                          setSelected(
+                            new Set(filteredIssues.map((i) => i.id)),
+                          )
+                        } else setSelected(new Set())
+                      }}
+                      aria-label="Select all"
+                    />
+                  </ResourceTh>
+                  <ResourceTh>Issue</ResourceTh>
+                  <ResourceTh className="w-[5.5rem] text-right">
+                    Trend
+                  </ResourceTh>
+                  <ResourceTh className="w-16 text-right">Events</ResourceTh>
+                  <ResourceTh className="hidden w-20 sm:table-cell">
+                    First
+                  </ResourceTh>
+                  <ResourceTh className="w-20 pr-3.5">Last</ResourceTh>
+                </ResourceTableHead>
+                <ResourceTableBody>
+                  {filteredIssues.map((issue, idx) => {
+                    const tone = issueLevelTone(issue.level)
+                    const culprit = formatIssueCulprit(issue.culprit)
+                    const title = issueTitlePreview(issue.title)
+                    const selectedRow = selected.has(issue.id)
+                    const focused = focusIdx === idx
+                    return (
+                      <ResourceRow
                         key={issue.id}
                         className={cn(
-                          "data-table-row",
-                          selected.has(issue.id) && "bg-muted/40",
-                          focusIdx === idx && "ring-1 ring-inset ring-ring/40",
+                          "group/issue align-top",
+                          selectedRow && "bg-foreground/[0.04]",
+                          focused && "bg-foreground/[0.05] ring-1 ring-inset ring-ring/35",
                         )}
                       >
-                        <TableCell className="data-table-cell pl-4">
+                        <td className="w-10 px-3.5 py-3 align-top">
                           <Checkbox
-                            checked={selected.has(issue.id)}
+                            checked={selectedRow}
                             onCheckedChange={() => toggle(issue.id)}
                             aria-label={`Select ${issue.title}`}
+                            className="mt-0.5"
                           />
-                        </TableCell>
-                        <TableCell className="data-table-cell whitespace-normal">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Link
-                              to="/observe/projects/$projectId/issues/$issueId"
-                              params={{ projectId, issueId: issue.id }}
-                              search={serializeIssueSearch(context)}
-                              className="font-medium hover:underline"
-                            >
-                              {issue.title}
-                            </Link>
-                            {issue.level ? (
-                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                {issue.level}
-                              </span>
-                            ) : null}
-                          </div>
-                          {issue.culprit ? (
-                            <div className="text-xs text-muted-foreground">
-                              {issue.culprit}
-                            </div>
-                          ) : null}
-                          <div className="mt-1 flex gap-2">
-                            <button
-                              type="button"
-                              className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                              onClick={() => setDrawerIssueId(issue.id)}
-                            >
-                              Inspect
-                            </button>
-                            {issue.lastTraceId ? (
+                        </td>
+                        <td className="min-w-0 px-3 py-3 align-top">
+                          <div className="flex min-w-0 flex-col gap-1">
+                            <div className="flex min-w-0 items-start gap-2">
+                              {issue.level ? (
+                                <span
+                                  className={cn(
+                                    "mt-0.5 shrink-0 rounded px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide",
+                                    issueLevelBadgeClass[tone],
+                                  )}
+                                >
+                                  {issue.level}
+                                </span>
+                              ) : null}
                               <Link
-                                to="/observe/projects/$projectId/traces/$traceId"
-                                params={{
-                                  projectId,
-                                  traceId: issue.lastTraceId,
-                                }}
-                                search={serializeTraceSearch(context)}
-                                className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                to="/observe/projects/$projectId/issues/$issueId"
+                                params={{ projectId, issueId: issue.id }}
+                                search={serializeIssueSearch(context)}
+                                title={issue.title}
+                                className="min-w-0 text-[13px] font-medium leading-snug text-foreground text-pretty line-clamp-2 transition-colors hover:text-foreground/90"
                               >
-                                Trace
+                                {title}
                               </Link>
-                            ) : null}
+                            </div>
+                            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                              {culprit ? (
+                                <span
+                                  title={issue.culprit ?? undefined}
+                                  className="max-w-[min(100%,28rem)] truncate font-mono text-[11px] leading-none text-muted-foreground/85"
+                                >
+                                  {culprit}
+                                </span>
+                              ) : null}
+                              <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/50 max-sm:opacity-100 sm:opacity-0 sm:transition-opacity sm:duration-150 sm:group-hover/issue:opacity-100 sm:group-focus-within/issue:opacity-100">
+                                <button
+                                  type="button"
+                                  className="font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                  onClick={() => setDrawerIssueId(issue.id)}
+                                >
+                                  Inspect
+                                </button>
+                                {issue.lastTraceId ? (
+                                  <>
+                                    <span aria-hidden>·</span>
+                                    <Link
+                                      to="/observe/projects/$projectId/traces/$traceId"
+                                      params={{
+                                        projectId,
+                                        traceId: issue.lastTraceId,
+                                      }}
+                                      search={serializeTraceSearch(context)}
+                                      className="font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                    >
+                                      Trace
+                                    </Link>
+                                  </>
+                                ) : null}
+                              </span>
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="data-table-cell">
-                          <Sparkline buckets={trends[issue.id] ?? []} />
-                        </TableCell>
-                        <TableCell className="data-table-cell">
+                        </td>
+                        <td className="px-3 py-3 align-middle">
+                          <div className="flex justify-end">
+                            <Sparkline
+                              buckets={trends[issue.id] ?? []}
+                              tone="danger"
+                              width={72}
+                              height={22}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right align-middle">
                           <Link
                             to="/observe/projects/$projectId/issues/$issueId"
                             params={{ projectId, issueId: issue.id }}
                             search={serializeIssueSearch(context)}
-                            className="tabular-nums hover:underline"
+                            className="text-[13px] font-medium tabular-nums text-foreground/90 transition-colors hover:text-foreground"
                           >
                             {issue.count}
                           </Link>
-                        </TableCell>
-                        <TableCell className="data-table-cell text-muted-foreground">
+                        </td>
+                        <td className="hidden px-3 py-3 align-middle text-[12px] tabular-nums text-muted-foreground sm:table-cell">
                           {formatRelativeTime(issue.firstSeen)}
-                        </TableCell>
-                        <TableCell className="data-table-cell pr-4 text-muted-foreground">
+                        </td>
+                        <td className="px-3.5 py-3 pr-3.5 text-right align-middle text-[12px] tabular-nums text-muted-foreground">
                           {formatRelativeTime(issue.lastSeen)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                        </td>
+                      </ResourceRow>
+                    )
+                  })}
+                </ResourceTableBody>
+              </ResourceTable>
             )}
 
             <DetailDrawer

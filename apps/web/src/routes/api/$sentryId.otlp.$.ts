@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { extractSentryKey } from "@deplow/observe"
+import { extractSentryKey } from "@hostrig/observe"
 
 import { env } from "@/lib/env"
 import { injectProjectIdIntoOtlpJson } from "@/lib/observe/otlp-inject"
@@ -69,8 +69,8 @@ export const Route = createFileRoute("/api/$sentryId/otlp/$")({
         headers.delete("content-length")
         // Body is fully buffered; chunked TE must not be forwarded with Content-Length.
         headers.delete("transfer-encoding")
-        headers.set("X-Deplow-Project-Id", observeProject.projectId)
-        headers.set("X-Deplow-Sentry-Id", String(sentryId))
+        headers.set("X-Hostrig-Project-Id", observeProject.projectId)
+        headers.set("X-Hostrig-Sentry-Id", String(sentryId))
         headers.set("Content-Length", String(body.byteLength))
 
         try {

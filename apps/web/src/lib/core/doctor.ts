@@ -59,7 +59,7 @@ export function evaluateDoctorChecks(
     detail: probes.runscOk
       ? (probes.runscDetail ?? "runsc runtime registered")
       : (probes.runscDetail ??
-        "runsc missing. Install gVisor or set DEPLOW_APP_RUNTIME=runc (insecure escape hatch)."),
+        "runsc missing. Install gVisor on every k3s node (scripts/install-gvisor-k3s.sh). User apps require gVisor."),
   })
 
   rows.push({
@@ -99,8 +99,8 @@ export function evaluateDoctorChecks(
     label: "Base domain",
     status: domain ? "ok" : "warn",
     detail: domain
-      ? `DEPLOW_BASE_DOMAIN=${domain}`
-      : "DEPLOW_BASE_DOMAIN empty — public URL features off until set (or use apps.localhost in dev).",
+      ? `HOSTRIG_BASE_DOMAIN=${domain}`
+      : "HOSTRIG_BASE_DOMAIN empty — public URL features off until set (or use apps.localhost in dev).",
   })
 
   const prod = probes.nodeEnv === "production"
@@ -109,8 +109,8 @@ export function evaluateDoctorChecks(
     label: "Auth / secrets keys",
     status: probes.secretsConfigured ? "ok" : prod ? "fail" : "warn",
     detail: probes.secretsConfigured
-      ? "BETTER_AUTH_SECRET / DEPLOW_SECRETS_KEY configured"
-      : "Set BETTER_AUTH_SECRET and DEPLOW_SECRETS_KEY before production use.",
+      ? "BETTER_AUTH_SECRET / HOSTRIG_SECRETS_KEY configured"
+      : "Set BETTER_AUTH_SECRET and HOSTRIG_SECRETS_KEY before production use.",
   })
 
   if (probes.observeEnabled) {
@@ -128,7 +128,7 @@ export function evaluateDoctorChecks(
       id: "observe-clickhouse",
       label: "Observe ClickHouse",
       status: "skip",
-      detail: "DEPLOW_OBSERVE_ENABLED is off",
+      detail: "HOSTRIG_OBSERVE_ENABLED is off",
     })
   }
 

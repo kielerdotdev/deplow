@@ -2,13 +2,13 @@
  * Server-side wiring for git OAuth / App credentials (uses DB + platform config).
  */
 
-import { and, eq } from "@deplow/db"
+import { and, eq } from "@hostrig/db"
 import {
   gitProviderLinks,
   githubAppInstallations,
   oauthStates,
   platformIntegrations,
-} from "@deplow/db"
+} from "@hostrig/db"
 
 import {
   decryptString,
@@ -106,7 +106,20 @@ async function upsertIntegration(
 
 // ── credential resolution ────────────────────────────────────────
 
+/**
+ * Platform env PATs (HOSTRIG_GITHUB_TOKEN / HOSTRIG_GITLAB_TOKEN) are only shared
+ * with end-user list/clone when HOSTRIG_GIT_PLATFORM_TOKEN_SHARED=1.
+ * Default off so multi-user instances cannot borrow a privileged bot token.
+ */
+function platformTokenSharedEnabled(): boolean {
+  const raw = (process.env.HOSTRIG_GIT_PLATFORM_TOKEN_SHARED ?? "")
+    .trim()
+    .toLowerCase()
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on"
+}
+
 export function createResolveGitAuthDeps(): ResolveGitAuthDeps {
+  const sharePlatform = platformTokenSharedEnabled()
   return {
     decrypt: (p) => decryptString(p, secretKey()),
     encrypt: (p) => encryptString(p, secretKey()),
@@ -114,8 +127,12 @@ export function createResolveGitAuthDeps(): ResolveGitAuthDeps {
     loadGitLabOAuthConfig,
     loadUserLink,
     updateUserLinkTokens,
-    platformGithubToken: platformConfig.githubToken || undefined,
-    platformGitlabToken: platformConfig.gitlabToken || undefined,
+    platformGithubToken: sharePlatform
+      ? platformConfig.githubToken || undefined
+      : undefined,
+    platformGitlabToken: sharePlatform
+      ? platformConfig.gitlabToken || undefined
+      : undefined,
   }
 }
 

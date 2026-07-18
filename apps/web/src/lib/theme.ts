@@ -1,11 +1,14 @@
 export type ThemeMode = "light" | "dark"
 
-const STORAGE_KEY = "deplow.theme"
+const STORAGE_KEY = "hostrig.theme"
+const LEGACY_STORAGE_KEY = "deplow.theme"
 
 export function getStoredTheme(): ThemeMode | null {
   if (typeof window === "undefined") return null
   try {
-    const v = localStorage.getItem(STORAGE_KEY)
+    const v =
+      localStorage.getItem(STORAGE_KEY) ??
+      localStorage.getItem(LEGACY_STORAGE_KEY)
     if (v === "light" || v === "dark") return v
   } catch {
     /* ignore */

@@ -10,11 +10,11 @@ afterEach(() => {
 
 describe("loadPlatformConfig runtime + edge", () => {
   it("defaults app runtime to runsc with limits and docker-network hosts", () => {
-    process.env.DEPLOW_APP_RUNTIME = "runsc"
-    process.env.DEPLOW_APP_RUNTIME_REQUIRED = "true"
-    delete process.env.DEPLOW_BASE_DOMAIN
+    process.env.HOSTRIG_APP_RUNTIME = "runsc"
+    process.env.HOSTRIG_APP_RUNTIME_REQUIRED = "true"
+    delete process.env.HOSTRIG_BASE_DOMAIN
     delete process.env.NODE_ENV
-    delete process.env.DEPLOW_S3_PROVIDER
+    delete process.env.HOSTRIG_S3_PROVIDER
     const cfg = loadPlatformConfig()
     expect(cfg.appRuntime).toBe("runsc")
     expect(cfg.appRuntimeRequired).toBe(true)
@@ -27,12 +27,12 @@ describe("loadPlatformConfig runtime + edge", () => {
   })
 
   it("resolves R2 from account id", () => {
-    process.env.DEPLOW_S3_PROVIDER = "r2"
-    process.env.DEPLOW_R2_ACCOUNT_ID = "abc123account"
-    process.env.DEPLOW_S3_ACCESS_KEY = "r2key"
-    process.env.DEPLOW_S3_SECRET_KEY = "r2secret"
-    delete process.env.DEPLOW_S3_ENDPOINT
-    delete process.env.DEPLOW_MINIO_ENDPOINT
+    process.env.HOSTRIG_S3_PROVIDER = "r2"
+    process.env.HOSTRIG_R2_ACCOUNT_ID = "abc123account"
+    process.env.HOSTRIG_S3_ACCESS_KEY = "r2key"
+    process.env.HOSTRIG_S3_SECRET_KEY = "r2secret"
+    delete process.env.HOSTRIG_S3_ENDPOINT
+    delete process.env.HOSTRIG_MINIO_ENDPOINT
     const cfg = loadPlatformConfig()
     expect(cfg.s3.provider).toBe("r2")
     expect(cfg.s3.endpoint).toBe(
@@ -41,17 +41,17 @@ describe("loadPlatformConfig runtime + edge", () => {
     expect(cfg.s3.region).toBe("auto")
   })
 
-  it("reads base domain and runtime overrides from env", () => {
-    process.env.DEPLOW_APP_RUNTIME = "runc"
-    process.env.DEPLOW_APP_RUNTIME_REQUIRED = "false"
-    process.env.DEPLOW_BASE_DOMAIN = "apps.example.com"
-    process.env.DEPLOW_PUBLIC_URL_PROTOCOL = "https"
-    process.env.DEPLOW_APP_MEMORY_MB = "256"
-    process.env.DEPLOW_APP_CPUS = "0.5"
+  it("forces gVisor even if runc is set; still reads limits and domain", () => {
+    process.env.HOSTRIG_APP_RUNTIME = "runc"
+    process.env.HOSTRIG_APP_RUNTIME_REQUIRED = "false"
+    process.env.HOSTRIG_BASE_DOMAIN = "apps.example.com"
+    process.env.HOSTRIG_PUBLIC_URL_PROTOCOL = "https"
+    process.env.HOSTRIG_APP_MEMORY_MB = "256"
+    process.env.HOSTRIG_APP_CPUS = "0.5"
     delete process.env.NODE_ENV
     const cfg = loadPlatformConfig()
-    expect(cfg.appRuntime).toBe("runc")
-    expect(cfg.appRuntimeRequired).toBe(false)
+    expect(cfg.appRuntime).toBe("runsc")
+    expect(cfg.appRuntimeRequired).toBe(true)
     expect(cfg.baseDomain).toBe("apps.example.com")
     expect(cfg.publicUrlProtocol).toBe("https")
     expect(cfg.appMemoryBytes).toBe(256 * 1024 * 1024)
@@ -71,7 +71,7 @@ describe("assertProductionSecrets", () => {
       assertProductionSecrets({
         NODE_ENV: "production",
         BETTER_AUTH_SECRET: "",
-        DEPLOW_SECRETS_KEY: "",
+        HOSTRIG_SECRETS_KEY: "",
       }),
     ).toThrow(/Missing required secrets/)
   })
@@ -80,7 +80,7 @@ describe("assertProductionSecrets", () => {
     expect(() =>
       assertProductionSecrets({
         NODE_ENV: "production",
-        DEPLOW_SECRETS_KEY: "dev-only-change-me-deplow-secrets",
+        HOSTRIG_SECRETS_KEY: "dev-only-change-me-hostrig-secrets",
       }),
     ).toThrow(/dev-only/)
   })
@@ -90,10 +90,10 @@ describe("assertProductionSecrets", () => {
       assertProductionSecrets({
         NODE_ENV: "production",
         BETTER_AUTH_SECRET: "super-secret-key-with-enough-length",
-        DEPLOW_S3_PROVIDER: "minio",
-        DEPLOW_S3_ENDPOINT: "https://minio.example.com",
-        DEPLOW_S3_ACCESS_KEY: "AKIA_STRONG_KEY_NOT_DEFAULT",
-        DEPLOW_S3_SECRET_KEY: "super-secret-s3-key-not-default",
+        HOSTRIG_S3_PROVIDER: "minio",
+        HOSTRIG_S3_ENDPOINT: "https://minio.example.com",
+        HOSTRIG_S3_ACCESS_KEY: "AKIA_STRONG_KEY_NOT_DEFAULT",
+        HOSTRIG_S3_SECRET_KEY: "super-secret-s3-key-not-default",
       }),
     ).not.toThrow()
   })

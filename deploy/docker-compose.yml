@@ -1,61 +1,77 @@
 # Production platform stack — pull-only (no local image build).
-# Install via: curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | sudo bash
+# Install via: curl -sSL https://raw.githubusercontent.com/kielerdotdev/hostrig/main/deploy/install.sh | sudo bash
 #
-# Project name must be `deplow` so the default network is `deplow_default`
-# (install.sh always passes `-p deplow`).
+# Project name must be `hostrig` so the default network is `hostrig_default`
+# (install.sh always passes `-p hostrig`).
 #
 # Object storage: bundled MinIO by default (profile `bundled-s3`).
-# Set DEPLOW_BUNDLE_MINIO=0 and point DEPLOW_S3_* at your own MinIO/R2 to skip it.
+# Set HOSTRIG_BUNDLE_MINIO=0 and point HOSTRIG_S3_* at your own MinIO/R2 to skip it.
 
 services:
   platform-redis:
     image: redis:7-alpine
-    container_name: deplow-platform-redis
+    container_name: hostrig-platform-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${HOSTRIG_REDIS_PASSWORD:?set HOSTRIG_REDIS_PASSWORD}",
+      ]
+    # Loopback only — BullMQ is internal to the compose network.
     ports:
-      - "56380:6379"
+      - "127.0.0.1:56380:6379"
     volumes:
-      - deplow_platform_redis_data:/data
+      - hostrig_platform_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-a",
+          "${HOSTRIG_REDIS_PASSWORD}",
+          "ping",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
 
   minio:
     image: minio/minio:latest
-    container_name: deplow-minio
+    container_name: hostrig-minio
     restart: unless-stopped
     profiles: ["bundled-s3"]
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${DEPLOW_S3_ACCESS_KEY:-deplow}
-      MINIO_ROOT_PASSWORD: ${DEPLOW_S3_SECRET_KEY:-deplowsecret}
+      MINIO_ROOT_USER: ${HOSTRIG_S3_ACCESS_KEY:?set HOSTRIG_S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${HOSTRIG_S3_SECRET_KEY:?set HOSTRIG_S3_SECRET_KEY}
+    # Loopback only — apps reach MinIO via Docker DNS (minio:9000).
     ports:
-      - "${DEPLOW_MINIO_API_PORT:-9000}:9000"
-      - "${DEPLOW_MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${HOSTRIG_MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${HOSTRIG_MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
-      - deplow_minio_data:/data
+      - hostrig_minio_data:/data
 
   caddy:
     image: caddy:2.8-alpine
-    container_name: deplow-caddy
+    container_name: hostrig-caddy
     restart: unless-stopped
     ports:
       - "8088:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - deplow_caddy_routes:/etc/caddy/routes
+      - hostrig_caddy_routes:/etc/caddy/routes
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/deplow-health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/hostrig-health"]
       interval: 10s
       timeout: 3s
       retries: 5
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: deplow-cloudflared
+    container_name: hostrig-cloudflared
     restart: unless-stopped
     profiles: ["edge"]
     command: tunnel --no-autoupdate run
@@ -66,7 +82,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${DEPLOW_IMAGE:-ghcr.io/kielerdotdev/deplow:latest}
+    image: ${HOSTRIG_IMAGE:-ghcr.io/kielerdotdev/hostrig:latest}
     working_dir: /app/apps/web
     command:
       [
@@ -81,32 +97,33 @@ services:
         "--entry",
         "dist/server/server.js",
       ]
-    container_name: deplow-web
+    container_name: hostrig-web
     restart: unless-stopped
     ports:
-      - "${DEPLOW_WEB_PORT:-3000}:3000"
+      - "${HOSTRIG_WEB_PORT:-3000}:3000"
     env_file:
       - .env
     environment:
       NODE_ENV: production
       PORT: "3000"
-      DATABASE_URL: /data/deplow.db
-      DEPLOW_GIT_CLONE_ROOT: /data/git-clones
-      DEPLOW_PROXY_ROUTES_DIR: /etc/caddy/routes
-      DEPLOW_QUEUE_REDIS_URL: redis://platform-redis:6379
-      DEPLOW_DOCKER_NETWORK: ${DEPLOW_DOCKER_NETWORK:-deplow_default}
-      DEPLOW_CADDY_CONTAINER: deplow-caddy
+      DATABASE_URL: /data/hostrig.db
+      HOSTRIG_GIT_CLONE_ROOT: /data/git-clones
+      HOSTRIG_PROXY_ROUTES_DIR: /etc/caddy/routes
+      HOSTRIG_QUEUE_REDIS_URL: redis://:${HOSTRIG_REDIS_PASSWORD}@platform-redis:6379
+      HOSTRIG_DOCKER_NETWORK: ${HOSTRIG_DOCKER_NETWORK:-hostrig_default}
+      HOSTRIG_CADDY_CONTAINER: hostrig-caddy
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      DEPLOW_PUBLIC_URL: ${DEPLOW_PUBLIC_URL:-http://localhost:3000}
-      DEPLOW_BASE_DOMAIN: ${DEPLOW_BASE_DOMAIN:-apps.localhost}
-      DEPLOW_PUBLIC_URL_PROTOCOL: ${DEPLOW_PUBLIC_URL_PROTOCOL:-http}
-      DEPLOW_APP_RUNTIME: ${DEPLOW_APP_RUNTIME:-runsc}
-      DEPLOW_APP_RUNTIME_REQUIRED: ${DEPLOW_APP_RUNTIME_REQUIRED:-true}
+      HOSTRIG_PUBLIC_URL: ${HOSTRIG_PUBLIC_URL:-http://localhost:3000}
+      HOSTRIG_BASE_DOMAIN: ${HOSTRIG_BASE_DOMAIN:-apps.localhost}
+      HOSTRIG_PUBLIC_URL_PROTOCOL: ${HOSTRIG_PUBLIC_URL_PROTOCOL:-http}
+      # User apps always require gVisor — do not set HOSTRIG_APP_RUNTIME=runc
+      HOSTRIG_APP_RUNTIME: runsc
+      HOSTRIG_APP_RUNTIME_REQUIRED: "true"
       BUILDKIT_HOST: ${BUILDKIT_HOST:-docker-container://buildkit}
       RAILPACK_BIN: /usr/local/bin/railpack
     volumes:
-      - deplow_web_data:/data
-      - deplow_caddy_routes:/etc/caddy/routes
+      - hostrig_web_data:/data
+      - hostrig_caddy_routes:/etc/caddy/routes
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       platform-redis:
@@ -116,11 +133,11 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
-    container_name: deplow-clickhouse
+    container_name: hostrig-clickhouse
     profiles: ["observe"]
     restart: unless-stopped
     volumes:
-      - deplow_observe_ch:/var/lib/clickhouse
+      - hostrig_observe_ch:/var/lib/clickhouse
       - ../infra/clickhouse/config.d:/etc/clickhouse-server/config.d:ro
     ulimits:
       nofile:
@@ -135,7 +152,7 @@ services:
 
   otelcol:
     image: otel/opentelemetry-collector-contrib:0.114.0
-    container_name: deplow-otelcol
+    container_name: hostrig-otelcol
     profiles: ["observe"]
     restart: unless-stopped
     command: ["--config=/etc/otelcol/config.yaml"]
@@ -146,8 +163,8 @@ services:
         condition: service_healthy
 
 volumes:
-  deplow_web_data:
-  deplow_caddy_routes:
-  deplow_platform_redis_data:
-  deplow_minio_data:
-  deplow_observe_ch:
+  hostrig_web_data:
+  hostrig_caddy_routes:
+  hostrig_platform_redis_data:
+  hostrig_minio_data:
+  hostrig_observe_ch:

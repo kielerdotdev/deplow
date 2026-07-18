@@ -1,4 +1,4 @@
-import { eq, db, services } from "@deplow/db"
+import { eq, db, services } from "@hostrig/db"
 
 import { decryptString, encryptString } from "@/lib/core"
 import {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end smoke against running deplow web + docker-compose infra.
+# End-to-end smoke against running hostrig web + docker-compose infra.
 # Requires: pnpm infra:up && pnpm dev (control plane on :3000)
 # Optional: DEPLOY_SOURCE_DOCKERFILE / DEPLOY_SOURCE_RAILPACK absolute paths
 set -euo pipefail
@@ -11,7 +11,7 @@ ORIGIN="$BASE"
 EMAIL="e2e-$(date +%s)@example.com"
 PASS="testpass123"
 PROJECT="demo$(date +%s | tail -c 6)"
-SCRATCH="${SCRATCH_DIR:-/tmp/deplow-e2e}"
+SCRATCH="${SCRATCH_DIR:-/tmp/hostrig-e2e}"
 mkdir -p "$SCRATCH"
 
 cleanup() {
@@ -157,7 +157,7 @@ echo "$SCHED" | tee -a "$SCRATCH/backup.log"
 echo "$SCHED" | grep -q '"scheduled":true\|"scheduled": true'
 
 echo "==> Deploy prebuilt image" | tee "$SCRATCH/deploy-image.log"
-DEPLOY=$(rpc "deployments/create" "{\"json\":{\"serviceId\":\"$WEB_ID\",\"image\":\"hashicorp/http-echo:1.0\",\"options\":{\"image\":\"hashicorp/http-echo:1.0\",\"containerPort\":5678,\"command\":[\"-text=deplow-e2e\",\"-listen=:5678\"]}}}")
+DEPLOY=$(rpc "deployments/create" "{\"json\":{\"serviceId\":\"$WEB_ID\",\"image\":\"hashicorp/http-echo:1.0\",\"options\":{\"image\":\"hashicorp/http-echo:1.0\",\"containerPort\":5678,\"command\":[\"-text=hostrig-e2e\",\"-listen=:5678\"]}}}")
 echo "$DEPLOY" | tee -a "$SCRATCH/deploy-image.log"
 DEPLOY_ID=$(echo "$DEPLOY" | json_field "id")
 test -n "$DEPLOY_ID"
@@ -173,7 +173,7 @@ docker inspect "$CID" --format '{{range .Config.Env}}{{println .}}{{end}}' \
   | grep -q 'REDIS_URL='
 CAPDROP=$(docker inspect "$CID" --format '{{json .HostConfig.CapDrop}}')
 echo "capDrop=$CAPDROP" | tee -a "$SCRATCH/deploy-image.log"
-RUNTIME="${DEPLOW_APP_RUNTIME:-runsc}"
+RUNTIME="${HOSTRIG_APP_RUNTIME:-runsc}"
 if [ "$RUNTIME" = "runsc" ] || [ "$RUNTIME" = "gvisor" ]; then
   echo "$CAPDROP" | grep -q 'ALL'
 else
@@ -191,12 +191,12 @@ fi
 
 HOST_HEADER="${PROJECT_SLUG}.apps.localhost"
 echo "==> Caddy Host route Host=$HOST_HEADER via :8088" | tee -a "$SCRATCH/deploy-image.log"
-docker exec deplow-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1 \
+docker exec hostrig-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1 \
   | tee -a "$SCRATCH/deploy-image.log" || true
 sleep 1
 PROXY_BODY=$(curl -sS -H "Host: $HOST_HEADER" "http://127.0.0.1:8088/" || true)
 echo "proxy_body=$PROXY_BODY" | tee -a "$SCRATCH/deploy-image.log"
-echo "$PROXY_BODY" | grep -q 'deplow-e2e'
+echo "$PROXY_BODY" | grep -q 'hostrig-e2e'
 
 echo "==> List projects" | tee -a "$SCRATCH/provision.log"
 LIST=$(rpc "projects/list")
@@ -208,7 +208,7 @@ DESTROY=$(rpc "projects/destroy" "{\"json\":{\"id\":\"$PROJECT_ID\"}}")
 echo "$DESTROY" | tee -a "$SCRATCH/destroy.log"
 echo "$DESTROY" | grep -q 'ok\|true'
 
-REMAINING=$(docker ps -aq --filter "label=deplow.projectId=$PROJECT_ID" | wc -l | tr -d ' ')
+REMAINING=$(docker ps -aq --filter "label=hostrig.projectId=$PROJECT_ID" | wc -l | tr -d ' ')
 echo "remaining_containers=$REMAINING" | tee -a "$SCRATCH/destroy.log"
 test "$REMAINING" = "0"
 
@@ -220,7 +220,7 @@ echo "proxy_route_removed=ok" | tee -a "$SCRATCH/destroy.log"
 
 PROXY_AFTER=$(curl -sS -H "Host: $HOST_HEADER" "http://127.0.0.1:8088/" || true)
 echo "proxy_after=$PROXY_AFTER" | tee -a "$SCRATCH/destroy.log"
-if echo "$PROXY_AFTER" | grep -q 'deplow-e2e'; then
+if echo "$PROXY_AFTER" | grep -q 'hostrig-e2e'; then
   echo "ERROR: Caddy still serving destroyed app" | tee -a "$SCRATCH/destroy.log"
   exit 1
 fi

@@ -4,17 +4,17 @@
 # Usage:
 #   ./infra/pgbackrest/ensure-stanza.sh <project-id> <project-slug> [pg-user]
 #
-# Requires: docker, MinIO up (compose), DEPLOW_PITR_ENABLED=1 on the control plane.
+# Requires: docker, MinIO up (compose), HOSTRIG_PITR_ENABLED=1 on the control plane.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CONF="${PGBACKREST_CONFIG:-$ROOT/infra/pgbackrest/pgbackrest.conf}"
-IMAGE="${DEPLOW_PGBACKREST_IMAGE:-woblerr/pgbackrest:2.58.0-alpine}"
+IMAGE="${HOSTRIG_PGBACKREST_IMAGE:-woblerr/pgbackrest:2.58.0-alpine}"
 PROJECT_ID="${1:?project id required}"
 PROJECT_SLUG="${2:?project slug required}"
 PG_USER="${3:-p_${PROJECT_SLUG}}"
-VOLUME="deplow-pg-${PROJECT_SLUG}-data"
-CONTAINER="deplow-pg-${PROJECT_SLUG}"
+VOLUME="hostrig-pg-${PROJECT_SLUG}-data"
+CONTAINER="hostrig-pg-${PROJECT_SLUG}"
 
 if [[ ! -f "$CONF" ]]; then
   echo "missing config: $CONF" >&2

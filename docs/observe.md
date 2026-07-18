@@ -6,8 +6,8 @@ Optional observability module: Sentry-SDK-compatible **errors**, OTLP **traces/m
 
 ```bash
 # .env
-DEPLOW_OBSERVE_ENABLED=1
-DEPLOW_CLICKHOUSE_URL=http://127.0.0.1:8123
+HOSTRIG_OBSERVE_ENABLED=1
+HOSTRIG_CLICKHOUSE_URL=http://127.0.0.1:8123
 
 pnpm infra:observe   # clickhouse + otelcol
 pnpm dev
@@ -29,30 +29,30 @@ DSN from Observe → project Setup, or auto-injected on deploy as `SENTRY_DSN` +
 
 ## Dogfood (dev, on by default)
 
-With `DEPLOW_OBSERVE_ENABLED=1`, development mode **automatically**:
+With `HOSTRIG_OBSERVE_ENABLED=1`, development mode **automatically**:
 
-1. Creates a Deploy project `deplow-dogfood` (after you have an org — sign up once)
+1. Creates a Deploy project `hostrig-dogfood` (after you have an org — sign up once)
 2. Enables Observe on it and mints a DSN
 3. Initializes browser + Node Sentry SDKs against that DSN
 
-No extra env vars required. Opt out with `DEPLOW_OBSERVE_DOGFOOD=0`.
+No extra env vars required. Opt out with `HOSTRIG_OBSERVE_DOGFOOD=0`.
 
 Optional overrides:
 
 ```bash
-DEPLOW_OBSERVE_DOGFOOD_DSN=http://…@localhost:9565/1   # skip auto-mint
-DEPLOW_OBSERVE_DOGFOOD_PROJECT_ID=<uuid>                 # use an existing project
+HOSTRIG_OBSERVE_DOGFOOD_DSN=http://…@localhost:9565/1   # skip auto-mint
+HOSTRIG_OBSERVE_DOGFOOD_PROJECT_ID=<uuid>                 # use an existing project
 ```
 
-Node dogfood OTEL/Sentry always export to `http://127.0.0.1:$PORT` (vite default **9565**), not `DEPLOW_OBSERVE_INGEST_URL` — that env is for browser/external SDKs and a stale LAN port will silently drop all telemetry.
+Node dogfood OTEL/Sentry always export to `http://127.0.0.1:$PORT` (vite default **9565**), not `HOSTRIG_OBSERVE_INGEST_URL` — that env is for browser/external SDKs and a stale LAN port will silently drop all telemetry.
 
-Look for `[observe-dogfood] … otel=http://127.0.0.1:9565/api/…/otlp` in the server console. Open Observe → project **deplow-dogfood**.
+Look for `[observe-dogfood] … otel=http://127.0.0.1:9565/api/…/otlp` in the server console. Open Observe → project **hostrig-dogfood**.
 
 ## Architecture
 
 - **SQLite**: observe projects, keys, issues, groupings, rollups
 - **ClickHouse**: event/span/metric/log payloads only
-- **BullMQ** `deplow-observe-digest`: stage → group → CH insert
+- **BullMQ** `hostrig-observe-digest`: stage → group → CH insert
 - **otelcol**: OTLP → ClickHouse (same tables)
 
 Inspired by BugSink (errors pipeline), SigNoz/ClickStack (OTel→CH), Sentry DSN/OTLP auth — reimplemented; no vendored code.
@@ -67,6 +67,6 @@ Sidebar **Deploy | Observe**. Observe → Home / Issues / Setup.
 pnpm test:observe          # unit + structure + CH integration (skips if CH down)
 pnpm smoke:observe-ch      # force ClickHouse migrate/insert smoke
 pnpm infra:observe
-DEPLOW_OBSERVE_ENABLED=1 pnpm dev
+HOSTRIG_OBSERVE_ENABLED=1 pnpm dev
 pnpm e2e:observe           # signup → ingest → digest → SSR + Playwright UI
 ```

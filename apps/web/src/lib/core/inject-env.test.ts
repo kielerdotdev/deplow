@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { ProjectCredentials } from "@deplow/shared"
+import type { ProjectCredentials } from "@hostrig/shared"
 
 import { injectDeployEnv, injectDeployEnvFromBindings } from "./inject-env"
 import { loadPlatformConfig } from "./platform-config"
@@ -11,7 +11,7 @@ describe("injectDeployEnv", () => {
     const env = injectDeployEnv(
       {
         database: {
-          host: "deplow-pg-demo",
+          host: "hostrig-pg-demo",
           port: 5432,
           database: "d_demo",
           user: "p_demo",
@@ -19,7 +19,7 @@ describe("injectDeployEnv", () => {
           url: "postgres://p_demo:secret@127.0.0.1:40123/d_demo",
         },
         redis: {
-          host: "deplow-redis-demo",
+          host: "hostrig-redis-demo",
           port: 6379,
           password: "rpass",
           namespace: "u_demo",
@@ -36,9 +36,9 @@ describe("injectDeployEnv", () => {
       config,
     )
 
-    expect(env.DATABASE_URL).toContain("@deplow-pg-demo:5432/")
+    expect(env.DATABASE_URL).toContain("@hostrig-pg-demo:5432/")
     expect(env.DATABASE_URL).not.toContain("127.0.0.1")
-    expect(env.REDIS_URL).toContain("@deplow-redis-demo:6379")
+    expect(env.REDIS_URL).toContain("@hostrig-redis-demo:6379")
     expect(env.REDIS_URL).not.toContain("127.0.0.1")
     expect(env.S3_ENDPOINT).toBe(config.s3.appEndpoint)
     expect(env.S3_BUCKET).toBe("prj-demo")
@@ -59,7 +59,7 @@ describe("injectDeployEnvFromBindings", () => {
         bindings: [
           {
             envKey: "REDIS_URL",
-            url: "redis://:x@deplow-redis-demo:6379",
+            url: "redis://:x@hostrig-redis-demo:6379",
           },
         ],
         storage: null,
@@ -67,7 +67,7 @@ describe("injectDeployEnvFromBindings", () => {
       config,
       { SERVICE_NAME: "api" },
     )
-    expect(env.REDIS_URL).toContain("deplow-redis-demo")
+    expect(env.REDIS_URL).toContain("hostrig-redis-demo")
     expect(env.DATABASE_URL).toBeUndefined()
     expect(env.SERVICE_NAME).toBe("api")
   })

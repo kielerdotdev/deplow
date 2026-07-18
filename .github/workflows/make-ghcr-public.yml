@@ -21,7 +21,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/user/packages/container/deplow/visibility" \
+            "https://api.github.com/user/packages/container/hostrig/visibility" \
             -d '{"visibility":"public"}'
           echo
           echo "OK: package visibility request sent"

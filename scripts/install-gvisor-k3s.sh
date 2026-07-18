@@ -57,4 +57,4 @@ RC
 fi
 
 echo "[hostrig] Done. Verify: kubectl get runtimeclass gvisor"
-echo "User app pods use runtimeClassName=gvisor when DEPLOW_APP_RUNTIME=runsc (default)."
+echo "User app pods always use runtimeClassName=gvisor (runc is not allowed)."

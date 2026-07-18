@@ -1,4 +1,4 @@
-export { db } from "./client"
+export { db, getSqlite } from "./client"
 export * from "./schema"
 export {
   ensureAgentNodesSchema,

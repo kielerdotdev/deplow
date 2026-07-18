@@ -1,4 +1,4 @@
-import type { ClusterSource } from "@deplow/shared"
+import type { ClusterSource } from "@hostrig/shared"
 
 import { getClusterRow } from "../cluster-store"
 import { HetznerCloudInitProvider } from "./hetzner"

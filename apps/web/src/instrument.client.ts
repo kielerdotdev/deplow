@@ -10,12 +10,12 @@ let initialized = false
 
 function readEmbeddedDsn(): string {
   if (typeof window !== "undefined") {
-    const w = window as Window & { __DEPLOW_DOGFOOD_DSN__?: string }
-    if (w.__DEPLOW_DOGFOOD_DSN__) return w.__DEPLOW_DOGFOOD_DSN__
+    const w = window as Window & { __HOSTRIG_DOGFOOD_DSN__?: string }
+    if (w.__HOSTRIG_DOGFOOD_DSN__) return w.__HOSTRIG_DOGFOOD_DSN__
   }
   if (typeof import.meta !== "undefined") {
     const v = (import.meta as ImportMeta & { env?: Record<string, string> }).env
-      ?.VITE_DEPLOW_OBSERVE_DOGFOOD_DSN
+      ?.VITE_HOSTRIG_OBSERVE_DOGFOOD_DSN
     if (v) return v
   }
   return ""
@@ -44,8 +44,8 @@ export async function initDogfoodBrowser(): Promise<void> {
         dsn = body.dsn ?? ""
         if (dsn) {
           ;(
-            window as Window & { __DEPLOW_DOGFOOD_DSN__?: string }
-          ).__DEPLOW_DOGFOOD_DSN__ = dsn
+            window as Window & { __HOSTRIG_DOGFOOD_DSN__?: string }
+          ).__HOSTRIG_DOGFOOD_DSN__ = dsn
         }
       }
     } catch {

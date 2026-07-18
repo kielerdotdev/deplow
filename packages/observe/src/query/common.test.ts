@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { esc, spanWhere } from "./common"
+import { esc, safeAttrKey, spanWhere } from "./common"
 
 describe("observe query helpers", () => {
   it("escapes quotes in literals", () => {
@@ -44,5 +44,18 @@ describe("observe query helpers", () => {
     expect(sql).toContain("SPAN_KIND_SERVER")
     expect(sql).toContain("SPAN_KIND_CONSUMER")
     expect(sql).toContain("STATUS_CODE_ERROR")
+  })
+
+  it("rejects unsafe attribute keys", () => {
+    expect(() => safeAttrKey("x'] OR 1=1")).toThrow(/Invalid attribute key/)
+    expect(
+      () =>
+        spanWhere({
+          projectId: "p1",
+          from: new Date("2026-07-15T00:00:00Z"),
+          to: new Date("2026-07-15T01:00:00Z"),
+          attributeFilters: [{ key: "x'] OR 1=1", op: "eq", value: "1" }],
+        }),
+    ).toThrow(/Invalid attribute key/)
   })
 })

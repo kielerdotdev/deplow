@@ -1,6 +1,6 @@
 import type { S3Client } from "@aws-sdk/client-s3"
 
-import type { StorageCredentials } from "@deplow/shared"
+import type { StorageCredentials } from "@hostrig/shared"
 
 import {
   createS3Client,
@@ -33,6 +33,12 @@ export class R2S3Adapter implements S3Adapter {
   async createBucket(projectSlug: string): Promise<StorageCredentials> {
     const bucket = projectBucketName(projectSlug)
     await ensureBucket(this.client, bucket)
+    // R2 has no MinIO-style per-bucket IAM; apps receive the platform keys.
+    // Prefer scoped MinIO users (HOSTRIG_S3_SCOPED_USERS=1) for multi-tenant isolation.
+    console.warn(
+      `[hostrig] SECURITY: R2 project bucket "${bucket}" uses shared platform S3 credentials ` +
+        "(R2 limitation). Compromised apps can access other buckets if the token allows.",
+    )
     return {
       endpoint: this.config.publicEndpoint,
       bucket,

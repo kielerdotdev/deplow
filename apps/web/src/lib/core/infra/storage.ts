@@ -1,4 +1,4 @@
-import type { StorageCredentials } from "@deplow/shared"
+import type { StorageCredentials } from "@hostrig/shared"
 
 import type { PlatformConfig } from "../platform-config"
 import { createS3Adapter, type S3Adapter } from "./s3"

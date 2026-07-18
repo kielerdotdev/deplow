@@ -1,4 +1,4 @@
-import type { IngressSettings, PlatformEdgeMode } from "@deplow/shared"
+import type { IngressSettings, PlatformEdgeMode } from "@hostrig/shared"
 
 import { NetbirdEdgeProvider } from "./netbird/provider"
 import { NoopEdgeProvider } from "./noop-provider"

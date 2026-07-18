@@ -2,6 +2,10 @@
  * Observe notification channel delivery drivers.
  */
 
+import { encryptString, decryptString } from "./core/crypto"
+import { safeOutboundFetch } from "./core/safe-fetch"
+import { assertSafeOutboundUrl } from "./core/safe-url"
+
 export type ChannelKind = "slack" | "discord" | "webhook" | "email"
 
 export type ChannelConfig = {
@@ -25,6 +29,7 @@ export class ChannelDeliverError extends Error {
 }
 
 const TIMEOUT_MS = 8_000
+const ENC_PREFIX = "enc:v1:"
 
 function testPayload(channelName: string) {
   return {
@@ -42,44 +47,48 @@ export interface MessageChannelDriver {
   }): Promise<DeliverResult>
 }
 
-async function postJson(
-  url: string,
-  body: string,
-): Promise<DeliverResult> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+async function postJson(url: string, body: string): Promise<DeliverResult> {
   try {
-    const res = await fetch(url, {
+    // Synchronous policy check first (scheme / hostname shape)
+    assertSafeOutboundUrl(url, { allowHttp: false, blockPrivate: true })
+  } catch (e) {
+    throw new ChannelDeliverError(
+      e instanceof Error ? e.message : "Invalid webhook URL",
+      "bad_config",
+    )
+  }
+  try {
+    // DNS resolve + connect to public IP only (anti DNS-rebinding)
+    const res = await safeOutboundFetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "deplow-message-channel/1",
+        "User-Agent": "hostrig-message-channel/1",
       },
       body,
-      signal: controller.signal,
+      timeoutMs: TIMEOUT_MS,
+      policy: { allowHttp: false, blockPrivate: true },
     })
     if (!res.ok) {
-      const snippet = (await res.text().catch(() => "")).slice(0, 160)
       throw new ChannelDeliverError(
-        `Webhook returned HTTP ${res.status}${snippet ? `: ${snippet}` : ""}`,
+        `Webhook returned HTTP ${res.status}`,
         "http",
       )
     }
     return { ok: true, status: res.status }
   } catch (error) {
     if (error instanceof ChannelDeliverError) throw error
-    if (error instanceof Error && error.name === "AbortError") {
+    const msg = error instanceof Error ? error.message : "Webhook request failed"
+    if (/timed out/i.test(msg)) {
       throw new ChannelDeliverError(
         "Webhook timed out after 8s. Check the URL and network path.",
         "network",
       )
     }
-    throw new ChannelDeliverError(
-      error instanceof Error ? error.message : "Webhook request failed",
-      "network",
-    )
-  } finally {
-    clearTimeout(timer)
+    if (/private|local network|resolve/i.test(msg)) {
+      throw new ChannelDeliverError(msg, "bad_config")
+    }
+    throw new ChannelDeliverError(msg, "network")
   }
 }
 
@@ -101,7 +110,10 @@ export class SlackChannelDriver implements MessageChannelDriver {
   }): Promise<DeliverResult> {
     const url = input.config.url?.trim()
     if (!url) {
-      throw new ChannelDeliverError("Channel is missing a webhook URL.", "bad_config")
+      throw new ChannelDeliverError(
+        "Channel is missing a webhook URL.",
+        "bad_config",
+      )
     }
     const payload = testPayload(input.name)
     return postJson(url, JSON.stringify({ text: payload.message }))
@@ -116,7 +128,10 @@ export class DiscordChannelDriver implements MessageChannelDriver {
   }): Promise<DeliverResult> {
     const url = input.config.url?.trim()
     if (!url) {
-      throw new ChannelDeliverError("Channel is missing a webhook URL.", "bad_config")
+      throw new ChannelDeliverError(
+        "Channel is missing a webhook URL.",
+        "bad_config",
+      )
     }
     const payload = testPayload(input.name)
     return postJson(url, JSON.stringify({ content: payload.message }))
@@ -131,7 +146,10 @@ export class WebhookChannelDriver implements MessageChannelDriver {
   }): Promise<DeliverResult> {
     const url = input.config.url?.trim()
     if (!url) {
-      throw new ChannelDeliverError("Channel is missing a webhook URL.", "bad_config")
+      throw new ChannelDeliverError(
+        "Channel is missing a webhook URL.",
+        "bad_config",
+      )
     }
     return postJson(url, JSON.stringify(testPayload(input.name)))
   }
@@ -152,7 +170,11 @@ export class MessageChannelRegistry {
 
   get(kind: ChannelKind): MessageChannelDriver {
     const d = this.drivers.get(kind)
-    if (!d) throw new ChannelDeliverError(`Unsupported channel kind: ${kind}`, "unsupported")
+    if (!d)
+      throw new ChannelDeliverError(
+        `Unsupported channel kind: ${kind}`,
+        "unsupported",
+      )
     return d
   }
 }
@@ -162,4 +184,28 @@ let singleton: MessageChannelRegistry | null = null
 export function messageChannelRegistry(): MessageChannelRegistry {
   if (!singleton) singleton = new MessageChannelRegistry()
   return singleton
+}
+
+/** Encrypt channel config JSON for at-rest storage. */
+export function encryptChannelConfigJson(
+  config: ChannelConfig,
+  secret: string,
+): string {
+  return ENC_PREFIX + encryptString(JSON.stringify(config), secret)
+}
+
+/** Decrypt channel config; supports legacy plaintext JSON. */
+export function decryptChannelConfigJson(
+  raw: string,
+  secret: string,
+): ChannelConfig {
+  try {
+    if (raw.startsWith(ENC_PREFIX)) {
+      const plain = decryptString(raw.slice(ENC_PREFIX.length), secret)
+      return JSON.parse(plain) as ChannelConfig
+    }
+    return JSON.parse(raw || "{}") as ChannelConfig
+  } catch {
+    return {}
+  }
 }

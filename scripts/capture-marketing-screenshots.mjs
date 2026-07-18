@@ -1,5 +1,5 @@
 /**
- * Capture marketing screenshots from a running deplow control plane.
+ * Capture marketing screenshots from a running hostrig control plane.
  *
  * Requires: web on BASE_URL (default http://localhost:3000) + infra up.
  *
@@ -13,7 +13,7 @@ import { chromium } from "playwright"
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const OUT_DIR = path.join(ROOT, "apps/site/public/screenshots")
 const BASE = process.env.BASE_URL ?? "http://localhost:3000"
-const EMAIL = process.env.SCREENSHOT_EMAIL ?? "marketing@deplow.local"
+const EMAIL = process.env.SCREENSHOT_EMAIL ?? "marketing@hostrig.local"
 const PASS = process.env.SCREENSHOT_PASSWORD ?? "marketing-screenshots-1"
 const PROJECT_NAME = process.env.SCREENSHOT_PROJECT ?? "acme-shop"
 
@@ -196,7 +196,7 @@ async function ensureDemoProject() {
         options: {
           image: "hashicorp/http-echo:1.0",
           containerPort: 5678,
-          command: ["-text=deplow", "-listen=:5678"],
+          command: ["-text=hostrig", "-listen=:5678"],
         },
       })
       for (let i = 0; i < 60; i++) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end Observe: enable project → ingest envelope → digest → UI routes.
-# Requires: DEPLOW_OBSERVE_ENABLED=1, ClickHouse up, Redis, `pnpm dev` on :3000
+# Requires: HOSTRIG_OBSERVE_ENABLED=1, ClickHouse up, Redis, `pnpm dev` on :3000
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -10,7 +10,7 @@ ORIGIN="$BASE"
 EMAIL="observe-e2e-$(date +%s)@example.com"
 PASS="testpass123"
 PROJECT="obs$(date +%s | tail -c 6)"
-SCRATCH="${SCRATCH_DIR:-/tmp/deplow-observe-e2e}"
+SCRATCH="${SCRATCH_DIR:-/tmp/hostrig-observe-e2e}"
 mkdir -p "$SCRATCH"
 
 cleanup() {
@@ -59,7 +59,7 @@ echo "==> Observe status" | tee -a "$SCRATCH/observe.log"
 STATUS=$(rpc "observe/status")
 echo "$STATUS" | tee -a "$SCRATCH/observe.log"
 echo "$STATUS" | grep -q '"enabled":true\|"enabled": true' || {
-  echo "ERROR: Observe not enabled. Set DEPLOW_OBSERVE_ENABLED=1 and restart web."
+  echo "ERROR: Observe not enabled. Set HOSTRIG_OBSERVE_ENABLED=1 and restart web."
   exit 1
 }
 echo "$STATUS" | grep -q '"clickhouseOk":true\|"clickhouseOk": true' || {
@@ -175,13 +175,13 @@ do
     */issues/*)
       echo "$HTML" | grep -qi 'Recommended\|Resolve\|lifetime\|Observe\|observe-e2e' || {
         echo "WARN: issue detail HTML may be client-hydrated; checking shell"
-        echo "$HTML" | grep -qi 'Observe\|deplow' || exit 1
+        echo "$HTML" | grep -qi 'Observe\|hostrig' || exit 1
       }
       ;;
     */traces)
       echo "$HTML" | grep -qi 'Trace\|Observe\|volume' || {
         echo "WARN: traces HTML may be client-hydrated; checking shell"
-        echo "$HTML" | grep -qi 'Observe\|deplow' || exit 1
+        echo "$HTML" | grep -qi 'Observe\|hostrig' || exit 1
       }
       ;;
     *)

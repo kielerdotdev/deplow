@@ -1,4 +1,4 @@
-import type { NetbirdEdgeStatus, NetbirdDomainMode, NetbirdStatus } from "@deplow/shared"
+import type { NetbirdEdgeStatus, NetbirdDomainMode, NetbirdStatus } from "@hostrig/shared"
 
 import { getClusterSummary } from "@/lib/k8s/cluster-store"
 

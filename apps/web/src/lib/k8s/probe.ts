@@ -1,4 +1,4 @@
-import type { ClusterNode } from "@deplow/shared"
+import type { ClusterNode } from "@hostrig/shared"
 
 import { resolveTraefikPeerPort } from "./edge/netbird/traefik-port"
 import { defaultTraefikOrigin } from "./public-host"
@@ -11,6 +11,12 @@ export type ClusterProbe = {
   traefikReady: boolean
   /** Origin edges should hit on the k3s server (loopback Traefik, not public IP) */
   traefikOrigin: string
+  /** gVisor RuntimeClass present (required for user apps) */
+  gvisorRuntimeClass: boolean
+  /** Traefik Service exposes NodePort / LoadBalancer (public risk) */
+  traefikPubliclyExposed: boolean
+  /** Count of NetworkPolicy objects cluster-wide */
+  networkPolicyCount: number
   nodes: ClusterNode[]
   message?: string
 }
@@ -63,30 +69,66 @@ export async function probeCluster(kubeconfigYaml: string): Promise<ClusterProbe
     })
 
     let traefikReady = false
+    let traefikPubliclyExposed = false
     try {
       const svcs = await core.listNamespacedService({
         namespace: "kube-system",
       })
-      traefikReady = (svcs.items ?? []).some((s) =>
-        (s.metadata?.name ?? "").includes("traefik"),
+      const traefikSvc = (svcs.items ?? []).find((s) =>
+        (s.metadata?.name ?? "").toLowerCase().includes("traefik"),
       )
+      traefikReady = Boolean(traefikSvc)
       if (!traefikReady) {
         const allNs = await core.listServiceForAllNamespaces()
-        traefikReady = (allNs.items ?? []).some((s) =>
-          (s.metadata?.name ?? "").includes("traefik"),
+        const hit = (allNs.items ?? []).find((s) =>
+          (s.metadata?.name ?? "").toLowerCase().includes("traefik"),
         )
+        traefikReady = Boolean(hit)
+        if (hit) {
+          traefikPubliclyExposed =
+            hit.spec?.type === "LoadBalancer" ||
+            hit.spec?.type === "NodePort" ||
+            (hit.spec?.ports ?? []).some(
+              (p) => typeof p.nodePort === "number" && p.nodePort > 0,
+            )
+        }
+      } else if (traefikSvc) {
+        traefikPubliclyExposed =
+          traefikSvc.spec?.type === "LoadBalancer" ||
+          traefikSvc.spec?.type === "NodePort" ||
+          (traefikSvc.spec?.ports ?? []).some(
+            (p) => typeof p.nodePort === "number" && p.nodePort > 0,
+          )
       }
     } catch {
       traefikReady = false
     }
 
-    if (traefikReady && !process.env.DEPLOW_TRAEFIK_ORIGIN?.trim()) {
+    if (traefikReady && !process.env.HOSTRIG_TRAEFIK_ORIGIN?.trim()) {
       try {
         const resolved = await resolveTraefikPeerPort(kubeconfigYaml)
         traefikOrigin = resolved.origin
       } catch {
         // keep default
       }
+    }
+
+    let gvisorRuntimeClass = false
+    try {
+      const { node } = apiClients(kc)
+      await node.readRuntimeClass({ name: "gvisor" })
+      gvisorRuntimeClass = true
+    } catch {
+      gvisorRuntimeClass = false
+    }
+
+    let networkPolicyCount = 0
+    try {
+      const { networking } = apiClients(kc)
+      const nps = await networking.listNetworkPolicyForAllNamespaces()
+      networkPolicyCount = nps.items?.length ?? 0
+    } catch {
+      networkPolicyCount = 0
     }
 
     // Prefer IPv4 — bare IPv6 breaks URL construction (needs brackets).
@@ -107,6 +149,9 @@ export async function probeCluster(kubeconfigYaml: string): Promise<ClusterProbe
       externalIp,
       traefikReady,
       traefikOrigin,
+      gvisorRuntimeClass,
+      traefikPubliclyExposed,
+      networkPolicyCount,
       nodes,
     }
   } catch (e) {
@@ -116,6 +161,9 @@ export async function probeCluster(kubeconfigYaml: string): Promise<ClusterProbe
       externalIp: null,
       traefikReady: false,
       traefikOrigin,
+      gvisorRuntimeClass: false,
+      traefikPubliclyExposed: false,
+      networkPolicyCount: 0,
       nodes: [],
       message: e instanceof Error ? e.message : String(e),
     }

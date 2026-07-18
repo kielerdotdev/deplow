@@ -8,10 +8,13 @@ const POLICY_NAME = "hostrig-project-isolation"
 
 /**
  * Default-deny with allows for:
- * - ingress from kube-system (Traefik) and same namespace
- * - egress to same namespace, kube-system (DNS), and HTTPS/HTTP for S3/APIs
+ * - ingress from same namespace and Traefik (kube-system, app=traefik)
+ * - egress to same namespace (Postgres/Redis)
+ * - egress DNS to kube-system :53
+ * - egress HTTPS/HTTP to the public internet only (not link-local / not other cluster CIDRs)
  *
- * Cross-project (other proj-* namespaces) stays denied.
+ * Cross-project ClusterIP services stay denied (no cross-namespace pod access on 80/443).
+ * Cloud metadata (169.254.0.0/16) and RFC1918 are blocked on the open HTTP/S rule.
  */
 export function buildProjectNetworkPolicy(namespace: string): V1NetworkPolicy {
   return {
@@ -32,10 +35,23 @@ export function buildProjectNetworkPolicy(namespace: string): V1NetworkPolicy {
           _from: [{ podSelector: {} }],
         },
         {
+          // Traefik on k3s (kube-system) — not the entire kube-system namespace
           _from: [
             {
               namespaceSelector: {
                 matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+              },
+              podSelector: {
+                matchLabels: { "app.kubernetes.io/name": "traefik" },
+              },
+            },
+            // Fallback label used by some k3s Traefik charts
+            {
+              namespaceSelector: {
+                matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+              },
+              podSelector: {
+                matchLabels: { app: "traefik" },
               },
             },
           ],
@@ -59,7 +75,23 @@ export function buildProjectNetworkPolicy(namespace: string): V1NetworkPolicy {
           ],
         },
         {
-          // External HTTPS/HTTP (S3, webhooks, package registries)
+          // Public internet HTTP/S only — exclude link-local metadata and private ranges
+          // so cross-project ClusterIP and cloud metadata are not reachable on 80/443.
+          to: [
+            {
+              ipBlock: {
+                cidr: "0.0.0.0/0",
+                except: [
+                  "10.0.0.0/8",
+                  "172.16.0.0/12",
+                  "192.168.0.0/16",
+                  "169.254.0.0/16",
+                  "100.64.0.0/10",
+                  "127.0.0.0/8",
+                ],
+              },
+            },
+          ],
           ports: [
             { protocol: "TCP", port: 443 },
             { protocol: "TCP", port: 80 },

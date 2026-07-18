@@ -393,7 +393,7 @@ export function AddServiceDialog({
 
   const description =
     step === "pick"
-      ? "Start from a hello-world image, a database, or connect a Git repo."
+      ? "Connect a Git repo, add Postgres/Redis, or smoke-test with a hello-world image."
       : deploying
         ? "Deployment in progress."
         : step === "template"
@@ -496,38 +496,28 @@ export function AddServiceDialog({
         />
       ) : step === "pick" ? (
         <div className="space-y-5">
+          {/* Git first — product is push-to-deploy; hello-world is secondary smoke path. */}
           <section className="space-y-2">
             <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Hello world
+              From source
             </h3>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {imageTemplates.map((t) => {
-                const Icon = templateIcon(t)
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => pickTemplate(t)}
-                    className="flex flex-col items-start gap-2 rounded-xl border border-border bg-muted/15 p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out-ui hover:border-foreground/25 hover:bg-muted/40 active:scale-[0.98]"
-                  >
-                    <span className="flex size-8 items-center justify-center rounded-lg border bg-background">
-                      <Icon className="size-4" />
-                    </span>
-                    <span className="text-sm font-medium text-foreground">
-                      {t.title}
-                    </span>
-                    <span className="text-xs text-pretty text-muted-foreground">
-                      {t.description}
-                    </span>
-                    {t.kind === "image" ? (
-                      <span className="font-mono text-[10px] text-muted-foreground/80">
-                        {t.image}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
+            <button
+              type="button"
+              onClick={() => setStep("git")}
+              className="flex w-full items-start gap-3 rounded-xl border border-border bg-muted/15 p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out-ui hover:border-foreground/25 hover:bg-muted/40 active:scale-[0.98]"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+                <GitBranchIcon className="size-4" />
+              </span>
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Git repository
+                </span>
+                <span className="mt-0.5 block text-xs text-pretty text-muted-foreground">
+                  Connect a repo, detect Railpack or Dockerfile, then deploy.
+                </span>
+              </span>
+            </button>
           </section>
 
           <section className="space-y-2">
@@ -563,25 +553,36 @@ export function AddServiceDialog({
 
           <section className="space-y-2">
             <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              From source
+              Hello world
             </h3>
-            <button
-              type="button"
-              onClick={() => setStep("git")}
-              className="flex w-full items-start gap-3 rounded-xl border border-border bg-muted/15 p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out-ui hover:border-foreground/25 hover:bg-muted/40 active:scale-[0.98]"
-            >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
-                <GitBranchIcon className="size-4" />
-              </span>
-              <span>
-                <span className="block text-sm font-medium text-foreground">
-                  Git repository
-                </span>
-                <span className="mt-0.5 block text-xs text-pretty text-muted-foreground">
-                  Analyze a repo, then build with Railpack or Dockerfile.
-                </span>
-              </span>
-            </button>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {imageTemplates.map((t) => {
+                const Icon = templateIcon(t)
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => pickTemplate(t)}
+                    className="flex flex-col items-start gap-2 rounded-xl border border-border bg-muted/15 p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out-ui hover:border-foreground/25 hover:bg-muted/40 active:scale-[0.98]"
+                  >
+                    <span className="flex size-8 items-center justify-center rounded-lg border bg-background">
+                      <Icon className="size-4" />
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      {t.title}
+                    </span>
+                    <span className="text-xs text-pretty text-muted-foreground">
+                      {t.description}
+                    </span>
+                    {t.kind === "image" ? (
+                      <span className="font-mono text-[10px] text-muted-foreground/80">
+                        {t.image}
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
           </section>
         </div>
       ) : step === "template" && template ? (

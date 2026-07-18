@@ -18,7 +18,7 @@ const packageRoot = path.resolve(
   "..",
 )
 
-const databaseUrl = process.env.DATABASE_URL ?? "data/deplow.db"
+const databaseUrl = process.env.DATABASE_URL ?? "data/hostrig.db"
 
 function resolveDbPath(filePath: string) {
   if (path.isAbsolute(filePath)) {
@@ -46,3 +46,8 @@ function openSqlite(filePath: string) {
 const sqlite = openSqlite(databaseUrl)
 
 export const db = drizzle(sqlite, { schema })
+
+/** Raw better-sqlite3 handle for atomic SQL not expressible via drizzle. */
+export function getSqlite() {
+  return sqlite
+}

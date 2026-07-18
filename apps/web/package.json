@@ -1,5 +1,5 @@
 {
-  "name": "@deplow/web",
+  "name": "@hostrig/web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,9 +14,9 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1084.0",
     "@base-ui/react": "^1.6.0",
-    "@deplow/db": "workspace:*",
-    "@deplow/observe": "workspace:*",
-    "@deplow/shared": "workspace:*",
+    "@hostrig/db": "workspace:*",
+    "@hostrig/observe": "workspace:*",
+    "@hostrig/shared": "workspace:*",
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@kubernetes/client-node": "^1.4.0",

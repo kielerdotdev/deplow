@@ -35,7 +35,7 @@ function githubHeaders(token: string): HeadersInit {
     Authorization: `Bearer ${token}`,
     Accept: GITHUB_ACCEPT,
     "X-GitHub-Api-Version": GITHUB_API_VERSION,
-    "User-Agent": "deplow",
+    "User-Agent": "hostrig",
   }
 }
 
@@ -98,7 +98,7 @@ export async function getInstallationAccessToken(input: {
         Authorization: `Bearer ${jwt}`,
         Accept: GITHUB_ACCEPT,
         "X-GitHub-Api-Version": GITHUB_API_VERSION,
-        "User-Agent": "deplow",
+        "User-Agent": "hostrig",
       },
     },
   )
@@ -231,7 +231,7 @@ export async function exchangeGitHubOAuthCode(input: {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
     body: JSON.stringify({
       client_id: input.config.clientId,
@@ -284,7 +284,7 @@ export async function refreshGitHubUserToken(input: {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
     body: JSON.stringify({
       client_id: input.config.clientId,
@@ -428,7 +428,7 @@ export async function uninstallAllGitHubAppInstallations(input: {
       Authorization: `Bearer ${jwt}`,
       Accept: GITHUB_ACCEPT,
       "X-GitHub-Api-Version": GITHUB_API_VERSION,
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
   })
   await assertOk(res, "GitHub list app installations failed")
@@ -450,7 +450,7 @@ export async function uninstallAllGitHubAppInstallations(input: {
           Authorization: `Bearer ${jwt}`,
           Accept: GITHUB_ACCEPT,
           "X-GitHub-Api-Version": GITHUB_API_VERSION,
-          "User-Agent": "deplow",
+          "User-Agent": "hostrig",
         },
       },
     )
@@ -512,7 +512,7 @@ export const GITHUB_OAUTH_CALLBACK_PATH = "/api/git/oauth/github/callback"
 export function buildGitHubAppManifest(input: {
   name: string
   publicUrl: string
-  /** Additional origins for OAuth callback_urls (e.g. configured DEPLOW_PUBLIC_URL). */
+  /** Additional origins for OAuth callback_urls (e.g. configured HOSTRIG_PUBLIC_URL). */
   extraCallbackOrigins?: string[]
   description?: string
 }): Record<string, unknown> {
@@ -581,7 +581,7 @@ export async function completeGitHubAppManifest(input: {
       headers: {
         Accept: GITHUB_ACCEPT,
         "X-GitHub-Api-Version": GITHUB_API_VERSION,
-        "User-Agent": "deplow",
+        "User-Agent": "hostrig",
       },
     },
   )
@@ -615,12 +615,12 @@ export function githubOAuthCallbackUrls(publicUrl: string): string[] {
 /**
  * Resolve the browser-facing origin for post-OAuth / post-manifest redirects.
  *
- * When DEPLOW_PUBLIC_URL is a public hostname (e.g. https://deplow.waitforit.cc),
+ * When HOSTRIG_PUBLIC_URL is a public hostname (e.g. https://hostrig.waitforit.cc),
  * always prefer it. Reverse proxies often present request.url as an internal
  * LAN bind address (http://192.168.x.x:3001) which must not leak into redirects.
  *
  * Priority:
- * 1. Configured public DEPLOW_PUBLIC_URL
+ * 1. Configured public HOSTRIG_PUBLIC_URL
  * 2. X-Forwarded-Host / Proto when public
  * 3. request.url origin when public
  * 4. request origin (dev / LAN)
@@ -711,7 +711,7 @@ export async function getAuthenticatedGitHubApp(input: {
       Authorization: `Bearer ${jwt}`,
       Accept: GITHUB_ACCEPT,
       "X-GitHub-Api-Version": GITHUB_API_VERSION,
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
   })
   await assertOk(res, "GitHub /app failed")
@@ -743,7 +743,7 @@ export async function listAppInstallations(input: {
       Authorization: `Bearer ${jwt}`,
       Accept: GITHUB_ACCEPT,
       "X-GitHub-Api-Version": GITHUB_API_VERSION,
-      "User-Agent": "deplow",
+      "User-Agent": "hostrig",
     },
   })
   await assertOk(res, "GitHub list app installations failed")

@@ -625,7 +625,7 @@ export const spawnedServers = sqliteTable("spawned_servers", {
 
 /**
  * Per-user git provider identity (GitHub App OAuth / GitLab OAuth).
- * Tokens encrypted with DEPLOW_SECRETS_KEY — never returned to clients.
+ * Tokens encrypted with HOSTRIG_SECRETS_KEY — never returned to clients.
  */
 export const gitProviderLinks = sqliteTable(
   "git_provider_links",
@@ -890,7 +890,7 @@ export const mcpTokens = sqliteTable(
     name: text("name").notNull(),
     /** SHA-256 hex of the full token */
     tokenHash: text("token_hash").notNull().unique(),
-    /** First 8 chars of token for display (e.g. deplow_ab12…) */
+    /** First 8 chars of token for display (e.g. hostrig_ab12…) */
     prefix: text("prefix").notNull(),
     /** JSON string array of scopes; `["*"]` means full account access. */
     scopesJson: text("scopes_json").notNull().default('["*"]'),
@@ -1102,7 +1102,7 @@ export const observeProjects = sqliteTable(
     quotaPer5m: integer("quota_per_5m").notNull().default(1000),
     quotaPerHour: integer("quota_per_hour").notNull().default(5000),
     quotaPerMonth: integer("quota_per_month").notNull().default(1_000_000),
-    groupingMechanism: text("grouping_mechanism").notNull().default("deplow-v1"),
+    groupingMechanism: text("grouping_mechanism").notNull().default("hostrig-v1"),
     digestCounter: integer("digest_counter").notNull().default(0),
     storedEventCount: integer("stored_event_count").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -1382,8 +1382,10 @@ export const messageChannels = sqliteTable("message_channels", {
   kind: text("kind", {
     enum: ["slack", "discord", "webhook", "email"],
   }).notNull(),
+  /** AES-GCM ciphertext when prefixed with enc:v1: ; legacy plaintext JSON otherwise */
   configJson: text("config_json").notNull().default("{}"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  organizationId: text("organization_id"),
   createdBy: text("created_by"),
   lastTestedAt: integer("last_tested_at", { mode: "timestamp_ms" }),
   lastTestOk: integer("last_test_ok", { mode: "boolean" }),

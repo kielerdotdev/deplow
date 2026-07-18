@@ -11,7 +11,7 @@ Hostrig has two machines-worth of requirements (they can be the same box):
 ## VPS / production
 
 ```bash
-curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
+curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash
 ```
 
 Private repo / before the release asset exists:
@@ -26,14 +26,14 @@ sudo bash deploy/install.sh
 | **k3s cluster** | BYO kubeconfig **or** create via Settings → Cluster (Hetzner cloud-init) |
 | **gVisor on nodes** | RuntimeClass `gvisor` for user apps — see below |
 | **BuildKit** | Started by the installer as the `buildkit` container |
-| **Object storage** | **Bundled MinIO** by default (`DEPLOW_BUNDLE_MINIO=1`). Or set `DEPLOW_BUNDLE_MINIO=0` and provide external `DEPLOW_S3_*` (MinIO/R2) |
+| **Object storage** | **Bundled MinIO** by default (`HOSTRIG_BUNDLE_MINIO=1`). Or set `HOSTRIG_BUNDLE_MINIO=0` and provide external `HOSTRIG_S3_*` (MinIO/R2) |
 | **Container registry** | Required for **git / Railpack / Dockerfile** builds — configure under Settings → Registries after install |
 
 You do **not** need Node, pnpm, or Railpack on the host for production (they ship in the control-plane image). Supported image architecture today: **linux/amd64**.
 
 ## gVisor setup (k3s nodes)
 
-User application **pods** run under **gVisor** by default (`DEPLOW_APP_RUNTIME=runsc` → Kubernetes RuntimeClass `gvisor`). Postgres/Redis and system workloads stay on the default containerd runtime.
+User application **pods** always run under **gVisor** (Kubernetes RuntimeClass `gvisor`). Postgres/Redis and system workloads stay on the default containerd runtime.
 
 | Cluster path | gVisor install |
 | --- | --- |
@@ -46,7 +46,7 @@ sudo bash scripts/install-gvisor-k3s.sh
 kubectl get runtimeclass gvisor
 ```
 
-If the RuntimeClass is missing and `DEPLOW_APP_RUNTIME_REQUIRED` is true (default), deploys **fail with a clear error** rather than silently falling back. Escape hatch: `DEPLOW_APP_RUNTIME=runc` (not sandboxed — not for production defaults).
+If the RuntimeClass is missing, deploys **fail with a clear error**. There is no runc escape hatch for user apps.
 
 ## Public URLs (Traefik + edge)
 

@@ -14,12 +14,12 @@ export function ResourceTable({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-sm border border-border bg-card",
+        "surface-panel rounded-lg",
         className,
       )}
       data-testid="resource-table"
     >
-      <table className="w-full text-sm">{children}</table>
+      <table className="w-full text-left text-sm">{children}</table>
     </div>
   )
 }

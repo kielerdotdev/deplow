@@ -27,9 +27,9 @@ const SCENE_HTML = path.join(ROOT, "scripts/demo-scenes/agent-native.html")
 
 await loadEnvFile(path.join(ROOT, ".env.demo"))
 
-const BASE = process.env.BASE_URL ?? "https://deplow.waitforit.cc"
+const BASE = process.env.BASE_URL ?? "https://hostrig.waitforit.cc"
 const SITE = process.env.SITE_URL ?? "https://hostrig.com"
-const EMAIL = process.env.SCREENSHOT_EMAIL ?? "marketing@deplow.local"
+const EMAIL = process.env.SCREENSHOT_EMAIL ?? "marketing@hostrig.local"
 const PASS = process.env.SCREENSHOT_PASSWORD ?? "marketing-screenshots-1"
 const PROJECT_NAME = process.env.SCREENSHOT_PROJECT ?? "showcase"
 const OR_KEY = process.env.OPENROUTER_API_KEY

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { CheckIcon, ContainerIcon, Loader2Icon } from "lucide-react"
-import type { ContainerRegistry, RegistryKind } from "@deplow/shared"
+import type { ContainerRegistry, RegistryKind } from "@hostrig/shared"
 
 import { ActionDialog } from "@/components/action-dialog"
 import { Button } from "@/components/ui/button"

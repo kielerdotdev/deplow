@@ -1,4 +1,4 @@
-import type { PlatformEdgeMode } from "@deplow/shared"
+import type { PlatformEdgeMode } from "@hostrig/shared"
 
 export type EdgeMode = PlatformEdgeMode
 

@@ -1,8 +1,8 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { and, eq } from "@deplow/db"
-import { createBindingInputSchema } from "@deplow/shared"
+import { and, eq } from "@hostrig/db"
+import { createBindingInputSchema } from "@hostrig/shared"
 
 import { assertProjectAccess } from "@/lib/access"
 import {
@@ -11,7 +11,7 @@ import {
   services,
 } from "@/lib/services"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 async function accessibleService(id: string, session: Parameters<typeof assertProjectAccess>[1]) {
   const [service] = await db.select().from(services).where(eq(services.id, id))
@@ -56,7 +56,7 @@ export const list = authedProcedure
     )
   })
 
-export const create = authedProcedure
+export const create = writeProcedure
   .input(createBindingInputSchema)
   .handler(async ({ context, input }) => {
     const { service: consumer, project } = await accessibleService(
@@ -114,7 +114,7 @@ export const create = authedProcedure
     return bindingSummary(row!, provider)
   })
 
-export const destroy = authedProcedure
+export const destroy = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     const [row] = await db

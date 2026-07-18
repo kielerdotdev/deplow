@@ -1030,7 +1030,7 @@ const OBSERVE_STATEMENTS = [
     quota_per_5m integer NOT NULL DEFAULT 1000,
     quota_per_hour integer NOT NULL DEFAULT 5000,
     quota_per_month integer NOT NULL DEFAULT 1000000,
-    grouping_mechanism text NOT NULL DEFAULT 'deplow-v1',
+    grouping_mechanism text NOT NULL DEFAULT 'hostrig-v1',
     digest_counter integer NOT NULL DEFAULT 0,
     stored_event_count integer NOT NULL DEFAULT 0,
     created_at integer NOT NULL,
@@ -1168,6 +1168,7 @@ const OBSERVE_STATEMENTS = [
   `ALTER TABLE message_channels ADD COLUMN last_delivery_at integer`,
   `ALTER TABLE message_channels ADD COLUMN last_delivery_ok integer`,
   `ALTER TABLE message_channels ADD COLUMN last_error text`,
+  `ALTER TABLE message_channels ADD COLUMN organization_id text`,
   `CREATE TABLE IF NOT EXISTS observe_alert_history (
     id text PRIMARY KEY NOT NULL,
     alert_id text NOT NULL REFERENCES observe_alerts(id) ON DELETE cascade,

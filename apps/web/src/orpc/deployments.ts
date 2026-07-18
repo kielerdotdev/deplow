@@ -1,8 +1,8 @@
 import { ORPCError } from "@orpc/server"
 import * as z from "zod"
 
-import { and, desc, eq, inArray } from "@deplow/db"
-import { createDeploymentInputSchema } from "@deplow/shared"
+import { and, desc, eq, inArray } from "@hostrig/db"
+import { createDeploymentInputSchema } from "@hostrig/shared"
 
 import { assertProjectAccess } from "@/lib/access"
 import type { Session } from "@/lib/auth"
@@ -19,7 +19,7 @@ import {
   services,
 } from "@/lib/services"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 function lifecycleError(e: unknown): never {
   if (e instanceof ServiceLifecycleError) {
@@ -171,7 +171,7 @@ export const get = authedProcedure
     return { ...toSummary(row), failure }
   })
 
-export const create = authedProcedure
+export const create = writeProcedure
   .input(createDeploymentInputSchema)
   .handler(async ({ context, input }) => {
     await loadAccessibleService(input.serviceId, context.session!)
@@ -294,7 +294,7 @@ export const logs = authedProcedure
     }
   })
 
-export const stop = authedProcedure
+export const stop = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     const [row] = await db
@@ -314,7 +314,7 @@ export const stop = authedProcedure
     }
   })
 
-export const retry = authedProcedure
+export const retry = writeProcedure
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ context, input }) => {
     const [row] = await db
@@ -337,7 +337,7 @@ export const retry = authedProcedure
     })
   })
 
-export const rollback = authedProcedure
+export const rollback = writeProcedure
   .input(
     z.object({
       serviceId: z.string().min(1),

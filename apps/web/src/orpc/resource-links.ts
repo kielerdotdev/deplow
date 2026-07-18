@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { eq } from "@deplow/db"
+import { eq } from "@hostrig/db"
 
 import { assertProjectAccess } from "@/lib/access"
 import { db, resourceLinks } from "@/lib/services"

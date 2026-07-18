@@ -122,7 +122,7 @@ type DogfoodOtelGlobal = {
   started: boolean
 }
 
-const OTEL_GLOBAL_KEY = "__deplowDogfoodOtel"
+const OTEL_GLOBAL_KEY = "__hostrigDogfoodOtel"
 
 function otelState(): DogfoodOtelGlobal {
   const g = globalThis as typeof globalThis & {
@@ -141,9 +141,10 @@ export function initDogfoodOtel(target: DogfoodOtelTarget): void {
   const base = target.otelEndpoint.replace(/\/$/, "")
   const headers = parseOtelAuthHeaders(target.otelHeaders)
   const resource = resourceFromAttributes({
-    [ATTR_SERVICE_NAME]: "deplow-web",
+    [ATTR_SERVICE_NAME]: "hostrig-web",
     [ATTR_SERVICE_VERSION]: process.env.npm_package_version ?? "dev",
     "deployment.environment": env.isDev ? "development" : "dogfood",
+    "hostrig.project_id": target.projectId,
     "deplow.project_id": target.projectId,
   })
 
@@ -247,7 +248,7 @@ export function initDogfoodOtel(target: DogfoodOtelTarget): void {
     return
   }
 
-  dogfoodLog("deplow dogfood OpenTelemetry online", "info")
+  dogfoodLog("hostrig dogfood OpenTelemetry online", "info")
 
   console.info(
     "[observe-dogfood] OTEL →",
@@ -282,10 +283,10 @@ export function dogfoodLog(
         : severity === "debug"
           ? 5
           : 9
-  logs.getLogger("deplow.dogfood").emit({
+  logs.getLogger("hostrig.dogfood").emit({
     severityNumber,
     severityText: severity.toUpperCase(),
     body,
-    attributes: { "deplow.dogfood": "1" },
+    attributes: { "hostrig.dogfood": "1" },
   })
 }

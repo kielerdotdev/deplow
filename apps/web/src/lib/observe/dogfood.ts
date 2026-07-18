@@ -6,12 +6,12 @@ import {
   organizationMembers,
   projects,
   user,
-} from "@deplow/db"
+} from "@hostrig/db"
 
 import { env } from "@/lib/env"
 import { db } from "@/lib/services"
 
-import { buildDsn } from "@deplow/observe"
+import { buildDsn } from "@hostrig/observe"
 
 import {
   buildProjectDsn,
@@ -19,7 +19,7 @@ import {
   findObserveProjectBySentryId,
 } from "./store"
 
-export const DOGFOOD_PROJECT_SLUG = "deplow-dogfood"
+export const DOGFOOD_PROJECT_SLUG = "hostrig-dogfood"
 
 const INGEST_PATH =
   /\/api\/\d+\/(envelope|store|otlp)(?:\/|$)/i
@@ -42,13 +42,13 @@ export function isDogfoodMetaPath(pathname: string): boolean {
 
 /**
  * Base URL for in-process dogfood exporters (Node Sentry + OTEL).
- * Always loopback — never hairpin through DEPLOW_OBSERVE_INGEST_URL (LAN/public),
+ * Always loopback — never hairpin through HOSTRIG_OBSERVE_INGEST_URL (LAN/public),
  * which often points at a stale port (e.g. :3010 while vite listens on :9565).
  */
 export function dogfoodSelfBaseUrl(): string {
   const port = (
     process.env.PORT ||
-    process.env.DEPLOW_DEV_PORT ||
+    process.env.HOSTRIG_DEV_PORT ||
     "9565"
   ).trim()
   return `http://127.0.0.1:${port}`
@@ -77,7 +77,7 @@ export function dogfoodSentryOptions(dsn: string) {
     dsn,
     environment: env.isDev ? "development" : "dogfood",
     release: process.env.npm_package_version
-      ? `deplow@${process.env.npm_package_version}`
+      ? `hostrig@${process.env.npm_package_version}`
       : undefined,
     // OTEL owns traces; Sentry is errors-only for dogfood.
     tracesSampleRate: 0,
@@ -104,7 +104,7 @@ let cached: DogfoodBootstrap | undefined
 let bootstrapPromise: Promise<DogfoodBootstrap | null> | null = null
 
 /**
- * Ensure a `deplow-dogfood` Deploy project exists, Observe is enabled on it,
+ * Ensure a `hostrig-dogfood` Deploy project exists, Observe is enabled on it,
  * the project owner is an Observe member, and return project-scoped DSN + OTEL.
  */
 export async function ensureDogfoodBootstrap(): Promise<DogfoodBootstrap | null> {
@@ -288,7 +288,7 @@ function isTestEmail(email: string): boolean {
     e.startsWith("ui-") ||
     e.startsWith("fix-menu-") ||
     e.startsWith("skeptic-") ||
-    e === "marketing@deplow.local"
+    e === "marketing@hostrig.local"
   )
 }
 

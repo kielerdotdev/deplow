@@ -7,6 +7,7 @@ import {
   resolveProductionBuildCommand,
 } from "./normalize-start-command"
 import { resolveRailpackBin } from "./railpack-bin"
+import { resolveContainedPath, resolveRootDirectorySafe } from "./safe-path"
 
 export type BuildStrategy = "dockerfile" | "railpack" | "image"
 export type BuildStrategyOverride = "auto" | "railpack" | "dockerfile"
@@ -45,9 +46,8 @@ export function detectDockerfile(
   dockerfilePath?: string | null,
 ): boolean {
   if (dockerfilePath) {
-    const abs = path.isAbsolute(dockerfilePath)
-      ? dockerfilePath
-      : path.join(sourcePath, dockerfilePath)
+    if (path.isAbsolute(dockerfilePath)) return false
+    const abs = path.join(sourcePath, dockerfilePath)
     return existsSync(abs)
   }
   return (
@@ -112,7 +112,7 @@ export class BuildService {
   }
 
   imageTag(projectSlug: string, deploymentId: string): string {
-    return `deplow/${projectSlug}:${deploymentId}`
+    return `hostrig/${projectSlug}:${deploymentId}`
   }
 
   async buildFromSource(input: BuildFromSourceInput): Promise<BuildResult> {
@@ -252,26 +252,27 @@ export function resolveRootDirectory(
   repoRoot: string,
   rootDirectory?: string | null,
 ): string {
-  const root = (rootDirectory ?? ".").trim() || "."
-  if (root === "." || root === "") return repoRoot
-  const resolved = path.resolve(repoRoot, root)
-  if (!resolved.startsWith(path.resolve(repoRoot))) {
-    throw new Error(`Root directory escapes repository: ${rootDirectory}`)
-  }
-  return resolved
+  return resolveRootDirectorySafe(repoRoot, rootDirectory)
 }
 
-/** Resolve Dockerfile path relative to build context (or absolute). */
+/** Resolve Dockerfile path relative to build context only (no host absolute paths). */
 export function resolveDockerfilePath(
   contextPath: string,
   dockerfilePath: string,
 ): string | null {
-  if (path.isAbsolute(dockerfilePath) && existsSync(dockerfilePath)) {
-    return dockerfilePath
+  if (path.isAbsolute(dockerfilePath)) {
+    throw new Error("Dockerfile path must be relative to the repository")
   }
-  const underContext = path.join(contextPath, dockerfilePath)
-  if (existsSync(underContext)) return underContext
+  try {
+    const underContext = resolveContainedPath(contextPath, dockerfilePath)
+    if (existsSync(underContext)) return underContext
+  } catch {
+    /* try basename under context */
+  }
   const base = path.basename(dockerfilePath)
+  if (base !== dockerfilePath && (base.includes("..") || path.isAbsolute(base))) {
+    return null
+  }
   const nested = path.join(contextPath, base)
   if (existsSync(nested)) return nested
   return null
@@ -292,11 +293,21 @@ export function resolveDockerfileAbsolute(
     }
     return null
   }
-  if (path.isAbsolute(rel) && existsSync(rel)) return rel
-  const fromRepo = path.join(repoRoot, rel)
-  if (existsSync(fromRepo)) return fromRepo
-  const fromContext = path.join(contextPath, rel)
-  if (existsSync(fromContext)) return fromContext
+  if (path.isAbsolute(rel)) {
+    throw new Error("Dockerfile path must be relative to the repository")
+  }
+  try {
+    const fromRepo = resolveContainedPath(repoRoot, rel)
+    if (existsSync(fromRepo)) return fromRepo
+  } catch {
+    /* fall through */
+  }
+  try {
+    const fromContext = resolveContainedPath(contextPath, rel)
+    if (existsSync(fromContext)) return fromContext
+  } catch {
+    /* fall through */
+  }
   return null
 }
 
@@ -343,7 +354,7 @@ export function prepareRailpackNodeLockfiles(sourcePath: string): string[] {
   for (const name of ["bun.lock", "bun.lockb"] as const) {
     const lockPath = path.join(sourcePath, name)
     if (!existsSync(lockPath)) continue
-    const stashed = `${lockPath}.deplow-ignored`
+    const stashed = `${lockPath}.hostrig-ignored`
     try {
       if (existsSync(stashed)) {
         renameSync(stashed, `${stashed}.${Date.now()}`)

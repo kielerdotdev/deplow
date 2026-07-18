@@ -82,7 +82,7 @@ describe("git oauth e2e flow (mocked)", () => {
       clientId: "Iv1.client",
       clientSecret: "secret",
       privateKey,
-      slug: "deplow-test",
+      slug: "hostrig-test",
     }
 
     // JWT must be valid shape
@@ -243,7 +243,7 @@ describe("git oauth e2e flow (mocked)", () => {
 
     // GitService must pass auth env and never leak token in logs
     const calls: Array<{ args: string[]; env?: Record<string, string> }> = []
-    const cloneRoot = mkdtempSync(path.join(tmpdir(), "deplow-git-"))
+    const cloneRoot = mkdtempSync(path.join(tmpdir(), "hostrig-git-"))
     dirs.push(cloneRoot)
     const service = new GitService(cloneRoot, async (_cmd, args, _cwd, env) => {
       calls.push({ args, env })
@@ -394,7 +394,7 @@ describe("git oauth e2e flow (mocked)", () => {
     }
     await expect(
       resolveUserListToken({ userId: "u1", provider: "github" }, deps),
-    ).rejects.toThrow(/Connect GitHub|PAT|DEPLOW_GITHUB_TOKEN/)
+    ).rejects.toThrow(/Connect GitHub|PAT|HOSTRIG_GITHUB_TOKEN/)
   })
 
   it("fails gracefully when stored GitHub OAuth token cannot be decrypted", async () => {
@@ -640,7 +640,7 @@ describe("git oauth e2e flow (mocked)", () => {
   })
 
   it("real git clone of public repo (network)", async () => {
-    const cloneRoot = mkdtempSync(path.join(tmpdir(), "deplow-real-git-"))
+    const cloneRoot = mkdtempSync(path.join(tmpdir(), "hostrig-real-git-"))
     dirs.push(cloneRoot)
     const service = new GitService(cloneRoot)
     const result = await service.syncRepo({

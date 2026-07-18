@@ -25,7 +25,7 @@ export function resolveK8sPublicHost(input: {
 }
 
 export function defaultTraefikOrigin(): string {
-  return process.env.DEPLOW_TRAEFIK_ORIGIN?.trim() || "http://127.0.0.1:80"
+  return process.env.HOSTRIG_TRAEFIK_ORIGIN?.trim() || "http://127.0.0.1:80"
 }
 
 export function edgeSetupCommands(

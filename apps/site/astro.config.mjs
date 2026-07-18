@@ -27,7 +27,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/kielerdotdev/deplow",
+          href: "https://github.com/kielerdotdev/hostrig",
         },
       ],
       head: [
@@ -96,6 +96,7 @@ export default defineConfig({
             { label: "Git connect", slug: "docs/guides/git" },
             { label: "Backups", slug: "docs/guides/backups" },
             { label: "MCP for agents", slug: "docs/guides/mcp" },
+            { label: "CLI", slug: "docs/guides/cli" },
             { label: "Observe (optional)", slug: "docs/guides/observe" },
           ],
         },

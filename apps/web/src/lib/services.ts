@@ -13,14 +13,14 @@ import {
   resourceLinks,
   serviceBindings,
   services,
-} from "@deplow/db"
+} from "@hostrig/db"
 import type {
   DatabaseCredentials,
   ProjectCredentials,
   RedisCredentials,
   ResourceKind,
   StorageCredentials,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import {
   BackupScheduler,
@@ -244,13 +244,13 @@ export const postgresProvisioner = new PostgresProvisioner(config)
 export const redisProvisioner = new RedisProvisioner(config)
 
 const globalForBackups = globalThis as typeof globalThis & {
-  __deplowBackupScheduler?: BackupScheduler
+  __hostrigBackupScheduler?: BackupScheduler
 }
 
-if (globalForBackups.__deplowBackupScheduler) {
-  globalForBackups.__deplowBackupScheduler.stopAll()
+if (globalForBackups.__hostrigBackupScheduler) {
+  globalForBackups.__hostrigBackupScheduler.stopAll()
 }
-export const backupScheduler = (globalForBackups.__deplowBackupScheduler =
+export const backupScheduler = (globalForBackups.__hostrigBackupScheduler =
   new BackupScheduler(backupService))
 
 export const buildService = new BuildService({
@@ -263,7 +263,7 @@ export const proxyService = new ProxyService({
   publicProtocol: config.publicUrlProtocol,
   autoDomainsEnabled: true,
   onChange: createCaddyReloadOnChange({
-    containerName: process.env.DEPLOW_CADDY_CONTAINER ?? "deplow-caddy",
+    containerName: process.env.HOSTRIG_CADDY_CONTAINER ?? "hostrig-caddy",
   }),
 })
 
@@ -274,7 +274,7 @@ void import("@/lib/ingress-settings")
     proxyService.applySettings(settings)
   })
   .catch((err) => {
-    console.warn("[deplow] failed to load ingress settings:", err)
+    console.warn("[hostrig] failed to load ingress settings:", err)
     proxyService.applySettings({
       baseDomain: config.baseDomain,
       publicProtocol: config.publicUrlProtocol,
@@ -535,12 +535,12 @@ export async function enqueueServiceProvision(serviceId: string): Promise<{
     try {
       await enqueueProvision(job)
     } catch (error) {
-      console.error("[deplow] enqueue provision failed; in-process", error)
+      console.error("[hostrig] enqueue provision failed; in-process", error)
       const { processProvisionJob } = await import(
         "@/lib/core/queue/provision-processor"
       )
       void processProvisionJob(job).catch((err) =>
-        console.error("[deplow] provision crashed", err),
+        console.error("[hostrig] provision crashed", err),
       )
     }
   } else {
@@ -548,7 +548,7 @@ export async function enqueueServiceProvision(serviceId: string): Promise<{
       "@/lib/core/queue/provision-processor"
     )
     void processProvisionJob(job).catch((err) =>
-      console.error("[deplow] provision crashed", err),
+      console.error("[hostrig] provision crashed", err),
     )
   }
   return { operationId: operation.id }
@@ -905,15 +905,15 @@ if (typeof process !== "undefined" && process.env.VITEST !== "true") {
   })
   void reclaimStaleOperations()
     .then((n) => {
-      if (n > 0) console.info(`[deplow] reclaimed ${n} stale operations`)
+      if (n > 0) console.info(`[hostrig] reclaimed ${n} stale operations`)
     })
     .catch((err) => console.error("Failed to reclaim stale operations", err))
 
   const globalForQueue = globalThis as typeof globalThis & {
-    __deplowQueueStarted?: boolean
+    __hostrigQueueStarted?: boolean
   }
-  if (!globalForQueue.__deplowQueueStarted && env.useQueue) {
-    globalForQueue.__deplowQueueStarted = true
+  if (!globalForQueue.__hostrigQueueStarted && env.useQueue) {
+    globalForQueue.__hostrigQueueStarted = true
     startQueueWorkers({
       provision: async (job) => {
         const { processProvisionJob } = await import(

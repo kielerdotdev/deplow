@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# One-shot host bootstrap for deplow.
+# One-shot host bootstrap for hostrig.
 # Installs/verifies Docker deps (BuildKit, Railpack, gVisor), then platform services.
-# Security > easy install: runsc is required unless DEPLOW_APP_RUNTIME=runc.
+# Security > easy install: runsc/gVisor is required for user apps (no runc escape hatch).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -189,9 +189,9 @@ GVISOR_OK=0
 if ensure_gvisor; then
   GVISOR_OK=1
 else
-  warn "gVisor is not fully ready. User apps default to runsc."
+  warn "gVisor is not fully ready. User apps require gVisor — deploys will fail until runsc works."
   warn "See https://gvisor.dev/docs/user_guide/install/ and docs/secure-runtime.md"
-  warn "Local-only escape hatch: DEPLOW_APP_RUNTIME=runc (not sandboxed)."
+  warn "There is no HOSTRIG_APP_RUNTIME=runc escape hatch."
 fi
 
 say "Install JS dependencies"
@@ -259,8 +259,8 @@ Next steps:
 Docs: README.md · docs/gtm.md · docs/access.md · docs/secure-runtime.md
 EOF
 
-if [ "$GVISOR_OK" -ne 1 ] && [ "${DEPLOW_APP_RUNTIME:-runsc}" = "runsc" ]; then
+if [ "$GVISOR_OK" -ne 1 ]; then
   echo ""
-  warn "Install finished, but gVisor is not verified. Deploys will fail until runsc works (or set DEPLOW_APP_RUNTIME=runc)."
+  warn "Install finished, but gVisor is not verified. Deploys will fail until runsc works on every k3s node."
   exit 2
 fi

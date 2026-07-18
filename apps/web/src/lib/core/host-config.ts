@@ -4,7 +4,7 @@
  */
 
 export interface AppRuntimeLimits {
-  /** OCI runtime name, e.g. "runsc" or "runc" */
+  /** OCI runtime name — always runsc (gVisor) for user apps */
   runtime: string
   memoryBytes: number
   nanoCpus: number
@@ -60,13 +60,9 @@ export function buildUserAppHostConfig(input: UserAppHostConfigInput): {
 
 /** Actionable error when the configured runtime is missing from the daemon. */
 export function missingRuntimeError(runtime: string): Error {
-  if (runtime === "runsc" || runtime.startsWith("runsc")) {
-    return new Error(
-      `gVisor runtime "${runtime}" is not installed. Install runsc (see README / docs/secure-runtime.md), then: sudo runsc install && sudo systemctl restart docker. Verify with: docker run --rm --runtime=${runtime} hello-world. To temporarily use the unsecured default, set DEPLOW_APP_RUNTIME=runc.`,
-    )
-  }
   return new Error(
-    `Docker runtime "${runtime}" is not available on this host. Install it or set DEPLOW_APP_RUNTIME to a registered runtime (e.g. runc).`,
+    `gVisor runtime "${runtime || "runsc"}" is not installed. Install runsc (see README / docs/secure-runtime.md), then: sudo runsc install && sudo systemctl restart docker. ` +
+      `Verify with: docker run --rm --runtime=runsc hello-world. User apps cannot use runc — gVisor is required.`,
   )
 }
 
@@ -77,13 +73,18 @@ export function parseRuntimeLimits(env: {
   appCpus?: number
   appReadOnlyRootfs?: boolean
 }): AppRuntimeLimits & { required: boolean } {
-  const runtime = env.appRuntime?.trim() || "runsc"
+  const raw = env.appRuntime?.trim().toLowerCase() || "runsc"
+  if (raw === "runc" || raw === "default") {
+    console.warn(
+      "[hostrig] HOSTRIG_APP_RUNTIME=runc is disabled — forcing runsc (gVisor)",
+    )
+  }
   const memoryMb =
     env.appMemoryMb && env.appMemoryMb > 0 ? env.appMemoryMb : 512
   const cpus = env.appCpus && env.appCpus > 0 ? env.appCpus : 1
   return {
-    runtime,
-    required: env.appRuntimeRequired !== false,
+    runtime: "runsc",
+    required: true,
     memoryBytes: memoryMb * 1024 * 1024,
     nanoCpus: Math.round(cpus * 1e9),
     readOnlyRootfs: env.appReadOnlyRootfs !== false,

@@ -17,6 +17,19 @@ export function esc(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
 }
 
+/** Attribute / map keys safe for ClickHouse map subscript interpolation. */
+const SAFE_ATTR_KEY_RE = /^[a-zA-Z0-9_./:-]{1,128}$/
+
+export function safeAttrKey(key: string): string {
+  const k = key.trim()
+  if (!SAFE_ATTR_KEY_RE.test(k)) {
+    throw new Error(
+      `Invalid attribute key (allowed: letters, digits, _ . / : -): ${key.slice(0, 48)}`,
+    )
+  }
+  return k
+}
+
 export type SpanScope = "all" | "root" | "entrypoint"
 
 export type SpanFilter = {
@@ -96,7 +109,8 @@ export function spanWhere(f: SpanFilter): string {
     parts.push(`Duration <= ${Math.floor(f.durationMsMax * 1e6)}`)
   }
   for (const af of f.attributeFilters ?? []) {
-    const attr = `coalesce(SpanAttributes['${esc(af.key)}'], ResourceAttributes['${esc(af.key)}'])`
+    const key = safeAttrKey(af.key)
+    const attr = `coalesce(SpanAttributes['${esc(key)}'], ResourceAttributes['${esc(key)}'])`
     switch (af.op) {
       case "eq":
         parts.push(`${attr} = '${esc(af.value ?? "")}'`)

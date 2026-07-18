@@ -1,4 +1,4 @@
-import { eq, db, deployments, projects, services } from "@deplow/db"
+import { eq, db, deployments, projects, services } from "@hostrig/db"
 import type { BuildStrategyOverride } from "@/lib/core"
 
 import { markPriorDeploymentsStopped } from "@/lib/core/image-retain"
@@ -86,12 +86,35 @@ export async function runK8sDeploy(input: {
 
     if (!image) {
       throw new Error(
-        "No container image to deploy. Provide an image or enable git build with DEPLOW_BUILD_REGISTRY.",
+        "No container image to deploy. Provide an image or enable git build with HOSTRIG_BUILD_REGISTRY.",
       )
     }
 
     await markOperationRunning(operationId, "deploying")
     const kubeconfigYaml = await requireConnectedKubeconfig()
+
+    // Best-effort: keep Traefik off public NodePorts on every deploy.
+    try {
+      const { ensureTraefikNotPublic } = await import("./traefik-harden")
+      const hardened = await ensureTraefikNotPublic(kubeconfigYaml)
+      if (hardened.patched) {
+        console.info(`[hostrig] ${hardened.message}`)
+      }
+    } catch {
+      // non-fatal — deploy continues
+    }
+
+    // Fail closed if gVisor RuntimeClass is missing (no runc user-app path).
+    try {
+      const { loadKubeConfig, apiClients } = await import("./client")
+      const { ensureAppRuntimeClass } = await import("./runtime-class")
+      const { node } = apiClients(loadKubeConfig(kubeconfigYaml))
+      await ensureAppRuntimeClass({ node })
+    } catch (e) {
+      throw e instanceof Error
+        ? e
+        : new Error("gVisor RuntimeClass is required for user app deploys")
+    }
 
     const pullSecrets = await ensureRegistryPullSecrets({
       kubeconfigYaml,
@@ -156,7 +179,7 @@ export async function runK8sDeploy(input: {
       const msg = edgeErr instanceof Error ? edgeErr.message : String(edgeErr)
       edgeNote = `\n[edge] publish failed: ${msg}`
       console.warn(
-        `[deplow] edge publish failed after successful deploy (${input.serviceId}):`,
+        `[hostrig] edge publish failed after successful deploy (${input.serviceId}):`,
         msg,
       )
     }
@@ -237,7 +260,7 @@ async function buildImageFromGit(input: {
   if (!(await isBuildRegistryConfigured())) {
     throw new Error(
       "Git deploys need a container registry. Add one under Settings → Registries " +
-        "and mark it as the build default (or set DEPLOW_BUILD_REGISTRY to seed on first boot).",
+        "and mark it as the build default (or set HOSTRIG_BUILD_REGISTRY to seed on first boot).",
     )
   }
 

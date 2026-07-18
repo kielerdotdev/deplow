@@ -1,4 +1,4 @@
-import type { ProjectEnvSecretEntry } from "@deplow/shared"
+import type { ProjectEnvSecretEntry } from "@hostrig/shared"
 
 export const PROJECT_ENV_SECRET_MASK = "********"
 

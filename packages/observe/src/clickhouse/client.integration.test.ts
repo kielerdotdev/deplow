@@ -11,10 +11,10 @@ import { getEvent, insertEvent } from "./events"
 
 function configFromEnv(): ObserveClickHouseConfig {
   return {
-    url: process.env.DEPLOW_CLICKHOUSE_URL ?? "http://127.0.0.1:8123",
-    database: process.env.DEPLOW_CLICKHOUSE_DATABASE ?? "deplow_observe",
-    username: process.env.DEPLOW_CLICKHOUSE_USER ?? "deplow",
-    password: process.env.DEPLOW_CLICKHOUSE_PASSWORD ?? "deplow",
+    url: process.env.HOSTRIG_CLICKHOUSE_URL ?? "http://127.0.0.1:8123",
+    database: process.env.HOSTRIG_CLICKHOUSE_DATABASE ?? "hostrig_observe",
+    username: process.env.HOSTRIG_CLICKHOUSE_USER ?? "hostrig",
+    password: process.env.HOSTRIG_CLICKHOUSE_PASSWORD ?? "hostrig",
   }
 }
 

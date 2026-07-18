@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server"
 import {
   netbirdConnectInputSchema,
   netbirdListDomainsInputSchema,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 import { assertInstanceAdmin } from "@/lib/access"
 import { edgeRegistry } from "@/lib/k8s/edge"
@@ -11,7 +11,7 @@ import {
   listManagedDomains,
 } from "@/lib/k8s/edge/netbird"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 export const netbirdStatus = authedProcedure.handler(async ({ context }) => {
   await assertInstanceAdmin(context.session!)
@@ -31,7 +31,7 @@ export const netbirdListManagedDomains = authedProcedure
     }
   })
 
-export const netbirdConnect = authedProcedure
+export const netbirdConnect = writeProcedure
   .input(netbirdConnectInputSchema)
   .handler(async ({ context, input }) => {
     await assertInstanceAdmin(context.session!)
@@ -48,7 +48,7 @@ export const netbirdConnect = authedProcedure
     }
   })
 
-export const netbirdDisconnect = authedProcedure.handler(
+export const netbirdDisconnect = writeProcedure.handler(
   async ({ context }) => {
     await assertInstanceAdmin(context.session!)
     try {

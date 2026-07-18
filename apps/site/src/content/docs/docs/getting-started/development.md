@@ -10,9 +10,9 @@ description: Dev Container workflow for contributing to Hostrig.
 1. Host needs **Docker Engine**
 2. Open the repo in Cursor / VS Code → **Dev Containers: Reopen in Container**
 3. Wait for start — infra, DB, and the web app come up automatically
-4. Open **http://localhost:9565** (Vite dev port for `@deplow/web`)
+4. Open **http://localhost:9565** (Vite dev port for `@hostrig/web`)
 
-Details also live in [`.devcontainer/README.md`](https://github.com/kielerdotdev/deplow/blob/main/.devcontainer/README.md) in the repository.
+Details also live in [`.devcontainer/README.md`](https://github.com/kielerdotdev/hostrig/blob/main/.devcontainer/README.md) in the repository.
 
 ## Useful commands (inside the container)
 
@@ -29,7 +29,7 @@ Details also live in [`.devcontainer/README.md`](https://github.com/kielerdotdev
 
 ## Environment
 
-Copy from root `.env.example` / `apps/web` examples as needed. Day-to-day Domains settings live in the UI; `DEPLOW_BASE_DOMAIN` only seeds on first boot.
+Copy from root `.env.example` / `apps/web` examples as needed. Day-to-day Domains settings live in the UI; `HOSTRIG_BASE_DOMAIN` only seeds on first boot.
 
 For Observe dogfood in dev, see [Observe](/docs/guides/observe/).
 

@@ -8,7 +8,7 @@ import { normalizeProductionStartCommand, isDevOrientedDockerfile, resolveProduc
 
 describe("normalizeProductionStartCommand", () => {
   it("rewrites astro dev via package start script", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "deplow-astro-start-"))
+    const dir = mkdtempSync(path.join(tmpdir(), "hostrig-astro-start-"))
     try {
       writeFileSync(
         path.join(dir, "package.json"),
@@ -44,7 +44,7 @@ describe("normalizeProductionStartCommand", () => {
   })
 
   it("rewrites railpack caddy default to astro preview", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "deplow-astro-caddy-"))
+    const dir = mkdtempSync(path.join(tmpdir(), "hostrig-astro-caddy-"))
     try {
       writeFileSync(
         path.join(dir, "package.json"),
@@ -105,7 +105,7 @@ CMD ["next", "dev"]
   })
 
   it("infers npm run build for Next apps when Railpack omits buildCommand", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "deplow-next-build-"))
+    const dir = mkdtempSync(path.join(tmpdir(), "hostrig-next-build-"))
     try {
       writeFileSync(
         path.join(dir, "package.json"),

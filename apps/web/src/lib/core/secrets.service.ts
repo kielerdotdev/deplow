@@ -2,7 +2,7 @@ import type {
   DatabaseCredentials,
   RedisCredentials,
   StorageCredentials,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 export interface SecretsInput {
   database: DatabaseCredentials

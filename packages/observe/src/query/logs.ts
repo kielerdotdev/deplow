@@ -1,5 +1,5 @@
 import type { ObserveClickHouseConfig } from "../clickhouse/client"
-import { esc, iso, queryJson } from "./common"
+import { esc, iso, queryJson, safeAttrKey } from "./common"
 
 export type LogFilter = {
   projectId: string
@@ -48,7 +48,8 @@ export function logWhere(f: LogFilter): string {
   }
   if (f.q) parts.push(`positionCaseInsensitive(Body, '${esc(f.q)}') > 0`)
   for (const af of f.attributeFilters ?? []) {
-    const attr = `coalesce(LogAttributes['${esc(af.key)}'], ResourceAttributes['${esc(af.key)}'])`
+    const key = safeAttrKey(af.key)
+    const attr = `coalesce(LogAttributes['${esc(key)}'], ResourceAttributes['${esc(key)}'])`
     switch (af.op) {
       case "eq":
         parts.push(`${attr} = '${esc(af.value ?? "")}'`)

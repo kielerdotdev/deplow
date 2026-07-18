@@ -1,2 +1,2 @@
 # Default admin user (matches redis --requirepass)
-user default on >deplow ~* &* +@all
+user default on >hostrig ~* &* +@all

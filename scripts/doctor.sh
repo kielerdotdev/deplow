@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host preflight for deplow operators.
+# Host preflight for hostrig operators.
 # Mirrors evaluateDoctorChecks status rules in apps/web/src/lib/core/doctor.ts
 # Exit 0 when no fail checks; 1 when any fail.
 set -euo pipefail
@@ -14,7 +14,7 @@ fail() { printf '[FAIL] %s: %s\n' "$1" "$2"; FAILS=$((FAILS + 1)); }
 FAILS=0
 WARNS=0
 
-echo "deplow doctor"
+echo "hostrig doctor"
 echo "-------------"
 
 if docker info >/dev/null 2>&1; then
@@ -26,7 +26,7 @@ fi
 if docker info 2>/dev/null | grep -qi runsc || command -v runsc >/dev/null 2>&1; then
   ok "gVisor (runsc)" "runsc detected (verify: docker run --rm --runtime=runsc hello-world)"
 else
-  fail "gVisor (runsc)" "runsc missing — install gVisor or set DEPLOW_APP_RUNTIME=runc"
+  fail "gVisor (runsc)" "runsc missing — install gVisor on every k3s node (scripts/install-gvisor-k3s.sh); user apps require gVisor"
 fi
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^buildkit$' || [ -n "${BUILDKIT_HOST:-}" ]; then
@@ -42,27 +42,27 @@ else
 fi
 
 pg=0 redis=0 minio=0 caddy=0
-docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^deplow-postgres$' && pg=1 || true
-docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^deplow-redis$' && redis=1 || true
-docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^deplow-minio$' && minio=1 || true
-docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^deplow-caddy$' && caddy=1 || true
+docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^hostrig-postgres$' && pg=1 || true
+docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^hostrig-redis$' && redis=1 || true
+docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^hostrig-minio$' && minio=1 || true
+docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^hostrig-caddy$' && caddy=1 || true
 if [ "$pg" = 1 ] && [ "$redis" = 1 ] && [ "$minio" = 1 ] && [ "$caddy" = 1 ]; then
   ok "Platform compose" "Postgres, Redis, MinIO, Caddy running"
 else
   fail "Platform compose" "postgres=$pg redis=$redis minio=$minio caddy=$caddy — run pnpm infra:up"
 fi
 
-if [ -n "${DEPLOW_BASE_DOMAIN:-}" ]; then
-  ok "Base domain" "DEPLOW_BASE_DOMAIN=$DEPLOW_BASE_DOMAIN"
+if [ -n "${HOSTRIG_BASE_DOMAIN:-}" ]; then
+  ok "Base domain" "HOSTRIG_BASE_DOMAIN=$HOSTRIG_BASE_DOMAIN"
 else
-  warn "Base domain" "DEPLOW_BASE_DOMAIN empty — public URL features off"
+  warn "Base domain" "HOSTRIG_BASE_DOMAIN empty — public URL features off"
 fi
 
-if [ -n "${BETTER_AUTH_SECRET:-}" ] || [ -n "${DEPLOW_SECRETS_KEY:-}" ]; then
+if [ -n "${BETTER_AUTH_SECRET:-}" ] || [ -n "${HOSTRIG_SECRETS_KEY:-}" ]; then
   ok "Auth / secrets keys" "configured"
 else
   if [ "${NODE_ENV:-}" = "production" ]; then
-    fail "Auth / secrets keys" "set BETTER_AUTH_SECRET and DEPLOW_SECRETS_KEY"
+    fail "Auth / secrets keys" "set BETTER_AUTH_SECRET and HOSTRIG_SECRETS_KEY"
   else
     warn "Auth / secrets keys" "unset (dev fallback may be used)"
   fi

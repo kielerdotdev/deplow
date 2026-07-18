@@ -1,4 +1,4 @@
-import { eq, db, projects, resourceLinks, services } from "@deplow/db"
+import { eq, db, projects, resourceLinks, services } from "@hostrig/db"
 
 import { backupScheduler, resourceLinkService } from "@/lib/services"
 import { serviceLifecycle } from "@/lib/service-lifecycle"

@@ -9,18 +9,18 @@ cd "$ROOT"
 docker compose --profile observe up -d clickhouse
 echo "waiting for clickhouse..."
 for i in $(seq 1 40); do
-  if docker exec deplow-clickhouse wget -qO- 'http://127.0.0.1:8123/ping' 2>/dev/null | grep -q Ok; then
+  if docker exec hostrig-clickhouse wget -qO- 'http://127.0.0.1:8123/ping' 2>/dev/null | grep -q Ok; then
     break
   fi
   sleep 1
 done
 
-docker exec deplow-clickhouse wget -qO- 'http://127.0.0.1:8123/ping'
+docker exec hostrig-clickhouse wget -qO- 'http://127.0.0.1:8123/ping'
 echo
 
-CH_URL="${DEPLOW_CLICKHOUSE_URL:-}"
+CH_URL="${HOSTRIG_CLICKHOUSE_URL:-}"
 if [ -z "$CH_URL" ]; then
-  if curl -fsS -m 2 'http://deplow:deplow@127.0.0.1:8123/ping' >/dev/null 2>&1; then
+  if curl -fsS -m 2 'http://hostrig:hostrig@127.0.0.1:8123/ping' >/dev/null 2>&1; then
     CH_URL="http://127.0.0.1:8123"
   else
     CH_URL=""
@@ -29,10 +29,10 @@ fi
 
 run_node_smoke() {
   local url="$1"
-  DEPLOW_CLICKHOUSE_URL="$url" \
-  DEPLOW_CLICKHOUSE_DATABASE="${DEPLOW_CLICKHOUSE_DATABASE:-deplow_observe}" \
-  DEPLOW_CLICKHOUSE_USER="${DEPLOW_CLICKHOUSE_USER:-deplow}" \
-  DEPLOW_CLICKHOUSE_PASSWORD="${DEPLOW_CLICKHOUSE_PASSWORD:-deplow}" \
+  HOSTRIG_CLICKHOUSE_URL="$url" \
+  HOSTRIG_CLICKHOUSE_DATABASE="${HOSTRIG_CLICKHOUSE_DATABASE:-hostrig_observe}" \
+  HOSTRIG_CLICKHOUSE_USER="${HOSTRIG_CLICKHOUSE_USER:-hostrig}" \
+  HOSTRIG_CLICKHOUSE_PASSWORD="${HOSTRIG_CLICKHOUSE_PASSWORD:-hostrig}" \
   pnpm exec vp test packages/observe/src/clickhouse/client.integration.test.ts
 }
 
@@ -42,13 +42,13 @@ if [ -n "$CH_URL" ]; then
 else
   echo "host :8123 unreachable — running integration test on compose network"
   docker run --rm \
-    --network deplow_default \
+    --network hostrig_default \
     -v "$ROOT:/work" \
     -w /work \
-    -e DEPLOW_CLICKHOUSE_URL=http://clickhouse:8123 \
-    -e DEPLOW_CLICKHOUSE_DATABASE=deplow_observe \
-    -e DEPLOW_CLICKHOUSE_USER=deplow \
-    -e DEPLOW_CLICKHOUSE_PASSWORD=deplow \
+    -e HOSTRIG_CLICKHOUSE_URL=http://clickhouse:8123 \
+    -e HOSTRIG_CLICKHOUSE_DATABASE=hostrig_observe \
+    -e HOSTRIG_CLICKHOUSE_USER=hostrig \
+    -e HOSTRIG_CLICKHOUSE_PASSWORD=hostrig \
     -e CI=1 \
     node:22-bookworm bash -lc '
       set -euo pipefail
@@ -63,7 +63,7 @@ else
 fi
 
 # Native SQL proof via clickhouse-client inside the container
-docker exec deplow-clickhouse clickhouse-client --user deplow --password deplow -q \
-  "CREATE DATABASE IF NOT EXISTS deplow_observe; SELECT 'sql-ok'"
+docker exec hostrig-clickhouse clickhouse-client --user hostrig --password hostrig -q \
+  "CREATE DATABASE IF NOT EXISTS hostrig_observe; SELECT 'sql-ok'"
 
 echo "observe-ch-smoke: PASS"

@@ -6,7 +6,7 @@ description: Install the control plane, connect k3s, set Domains, and ship a fir
 ## 1. Install the control plane (VPS)
 
 ```bash
-curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
+curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash
 ```
 
 From a repo checkout:
@@ -20,28 +20,28 @@ The installer:
 
 - installs Docker (if missing) + Compose
 - starts BuildKit
-- bundles MinIO by default (`DEPLOW_BUNDLE_MINIO=0` for external S3 only)
+- bundles MinIO by default (`HOSTRIG_BUNDLE_MINIO=0` for external S3 only)
 - generates secrets and detects a public URL
-- pulls `ghcr.io/kielerdotdev/deplow` and starts the stack
+- pulls `ghcr.io/kielerdotdev/hostrig` and starts the stack
 
-Default install directory: `/opt/deplow` (`DEPLOW_HOME` to override). Control plane listens on port **3000** by default (`DEPLOW_WEB_PORT`).
+Default install directory: `/opt/hostrig` (`HOSTRIG_HOME` to override). Control plane listens on port **3000** by default (`HOSTRIG_WEB_PORT`).
 
 Open the printed URL, create the **first user** (instance admin).
 
 Upgrade later (preserves volumes + `.env`):
 
 ```bash
-curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash -s update
+curl -sSL https://github.com/kielerdotdev/hostrig/releases/download/install/install.sh | sudo bash -s update
 ```
 
-Pin a release: `DEPLOW_VERSION=v1.2.3 curl -sSL …/install.sh | sudo bash`.
+Pin a release: `HOSTRIG_VERSION=v1.2.3 curl -sSL …/install.sh | sudo bash`.
 
 ## 2. Connect a k3s cluster
 
 **Settings → Cluster** (instance admin):
 
 - **BYO** — paste a kubeconfig with rights to create namespaces, Deployments, StatefulSets, Services, Ingress, NetworkPolicy, RuntimeClass
-- **Create on Hetzner** — requires `DEPLOW_HETZNER_API_TOKEN`; cloud-init installs k3s + gVisor
+- **Create on Hetzner** — requires `HOSTRIG_HETZNER_API_TOKEN`; cloud-init installs k3s + gVisor
 - **Add workers** later — Hetzner cloud-init or self-hosted join script from the same page
 
 Confirm Traefik is detected. Install gVisor on BYO nodes (`scripts/install-gvisor-k3s.sh`). Details: [Connect a cluster](/docs/guides/cluster/).

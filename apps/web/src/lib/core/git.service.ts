@@ -62,6 +62,15 @@ export class GitService {
     branch: string
     auth?: GitSyncAuth
   }): Promise<GitCloneResult> {
+    const { assertSafeGitRemoteUrlResolved } = await import("./safe-url")
+    const repoUrl = await assertSafeGitRemoteUrlResolved(input.repoUrl, {
+      allowPrivateHosts: process.env.HOSTRIG_GIT_ALLOW_PRIVATE_HOSTS === "1",
+      allowHosts: (process.env.HOSTRIG_GIT_ALLOW_HOSTS ?? "")
+        .split(",")
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean),
+    })
+    input = { ...input, repoUrl }
     const dest = path.join(this.cloneRoot, input.projectId)
     const secrets = input.auth?.token ? [input.auth.token] : []
     const env = this.buildAuthEnv(input.repoUrl, input.auth)

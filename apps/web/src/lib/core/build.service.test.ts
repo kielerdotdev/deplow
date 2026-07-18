@@ -83,7 +83,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-build-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-build-"))
     fs.writeFileSync(path.join(dir, "Dockerfile"), "FROM alpine\n")
     fs.writeFileSync(
       path.join(dir, "package.json"),
@@ -96,7 +96,7 @@ describe("BuildService.buildFromSource", () => {
         deploymentId: "dep1",
       })
       expect(result.strategy).toBe("railpack")
-      expect(result.image).toBe("deplow/demo:dep1")
+      expect(result.image).toBe("hostrig/demo:dep1")
       expect(calls[0]?.[0]).toBe("railpack")
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
@@ -114,7 +114,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-custom-df-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-custom-df-"))
     fs.mkdirSync(path.join(dir, "docker"), { recursive: true })
     fs.writeFileSync(
       path.join(dir, "docker", "Dockerfile.app"),
@@ -149,7 +149,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-root-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-root-"))
     fs.mkdirSync(path.join(dir, "apps", "api"), { recursive: true })
     fs.writeFileSync(
       path.join(dir, "apps", "api", "package.json"),
@@ -184,7 +184,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-astro-build-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-astro-build-"))
     fs.writeFileSync(
       path.join(dir, "package.json"),
       JSON.stringify({
@@ -222,7 +222,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-rail-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-rail-"))
     fs.writeFileSync(path.join(dir, "package.json"), '{"name":"x"}')
     try {
       const result = await service.buildFromSource({
@@ -231,11 +231,11 @@ describe("BuildService.buildFromSource", () => {
         deploymentId: "dep2",
       })
       expect(result.strategy).toBe("railpack")
-      expect(result.image).toBe("deplow/demo:dep2")
+      expect(result.image).toBe("hostrig/demo:dep2")
       expect(calls[0]?.[0]).toBe("railpack")
       expect(calls[0]).toContain("build")
       expect(calls[0]).toContain("--name")
-      expect(calls[0]).toContain("deplow/demo:dep2")
+      expect(calls[0]).toContain("hostrig/demo:dep2")
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
@@ -255,7 +255,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-rail-fail-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-rail-fail-"))
     fs.writeFileSync(path.join(dir, "package.json"), '{"name":"x"}')
     try {
       await expect(
@@ -282,7 +282,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-dev-df-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-dev-df-"))
     fs.writeFileSync(
       path.join(dir, "Dockerfile"),
       "FROM node:14\nWORKDIR /app\nCOPY . .\nCMD npm run dev\n",
@@ -322,7 +322,7 @@ describe("BuildService.buildFromSource", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-force-df-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-force-df-"))
     fs.writeFileSync(
       path.join(dir, "Dockerfile"),
       "FROM node:14\nCMD npm run dev\n",
@@ -347,7 +347,7 @@ describe("prepareRailpackNodeLockfiles", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-locks-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-locks-"))
     fs.writeFileSync(path.join(dir, "package.json"), '{"name":"x"}')
     fs.writeFileSync(path.join(dir, "package-lock.json"), "{}")
     fs.writeFileSync(path.join(dir, "bun.lock"), "{}")
@@ -355,7 +355,7 @@ describe("prepareRailpackNodeLockfiles", () => {
       const notes = prepareRailpackNodeLockfiles(dir)
       expect(notes.join("\n")).toMatch(/Using npm for Railpack/)
       expect(fs.existsSync(path.join(dir, "bun.lock"))).toBe(false)
-      expect(fs.existsSync(path.join(dir, "bun.lock.deplow-ignored"))).toBe(
+      expect(fs.existsSync(path.join(dir, "bun.lock.hostrig-ignored"))).toBe(
         true,
       )
     } finally {
@@ -367,7 +367,7 @@ describe("prepareRailpackNodeLockfiles", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-locks-bun-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-locks-bun-"))
     fs.writeFileSync(
       path.join(dir, "package.json"),
       JSON.stringify({ name: "x", packageManager: "bun@1.1.0" }),
@@ -389,7 +389,7 @@ describe("prepareRailpackNodeVersion", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-nodepin-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-nodepin-"))
     fs.writeFileSync(
       path.join(dir, "package.json"),
       JSON.stringify({
@@ -411,7 +411,7 @@ describe("prepareRailpackNodeVersion", () => {
     const fs = await import("node:fs")
     const path = await import("node:path")
     const os = await import("node:os")
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "deplow-nvmrc-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hostrig-nvmrc-"))
     fs.writeFileSync(
       path.join(dir, "package.json"),
       JSON.stringify({ dependencies: { next: "10.0.9" } }),

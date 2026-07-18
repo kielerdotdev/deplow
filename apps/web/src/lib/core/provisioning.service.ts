@@ -1,4 +1,4 @@
-import type { CreateProjectInput, ProjectCredentials } from "@deplow/shared"
+import type { CreateProjectInput, ProjectCredentials } from "@hostrig/shared"
 
 import { encryptString } from "./crypto"
 import { DataServiceRegistry } from "./data-services"

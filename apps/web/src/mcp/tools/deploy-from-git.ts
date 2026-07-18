@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
 
-import { gitProviderSchema } from "@deplow/shared"
+import { gitProviderSchema } from "@hostrig/shared"
 
 import { get as getDeployment } from "@/orpc/deployments"
 import { create as createProject, get as getProject } from "@/orpc/projects"

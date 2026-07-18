@@ -1,394 +1,142 @@
+---
+/**
+ * Product mockup — Deploy project overview.
+ * Colors match apps/web dark Atlasflow shell (styles.css .dark).
+ */
+const font = "DM Sans, system-ui, sans-serif"
+const mono = "IBM Plex Mono, ui-monospace, monospace"
+---
+
 <svg
 	viewBox="0 0 1280 800"
 	fill="none"
 	xmlns="http://www.w3.org/2000/svg"
 	role="img"
-	aria-label="Hostrig project overview with nested chrome, horizontal tabs, and dense service rows"
+	aria-label="Hostrig project overview: nested dark chrome, horizontal tabs, service and resource rows"
 >
-	<!-- outer shell -->
-	<rect width="1280" height="800" fill="#0a0a0a" />
+	<!-- atmosphere / page bg -->
+	<rect width="1280" height="800" fill="#000000" />
 
-	<!-- crumb row -->
-	<rect x="0" y="0" width="1280" height="48" fill="#0a0a0a" />
-	<rect x="0" y="47" width="1280" height="1" fill="#262626" />
+	<!-- ── crumb chrome ── -->
+	<rect width="1280" height="48" fill="#0a0a0a" />
+	<rect y="47" width="1280" height="1" fill="#2e2e2e" />
 
-	<!-- logo mark -->
-	<rect x="16" y="12" width="24" height="24" rx="3" fill="#fafafa" />
-	<path
-		d="M22 24h12M34 24l-3.5 3.5M34 24l-3.5-3.5"
-		stroke="#0a0a0a"
-		stroke-width="1.8"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-	/>
+	<!-- logo mark (Hostrig) -->
+	<g transform="translate(14 10)">
+		<rect x="0.5" y="1.5" width="23" height="19" rx="4" stroke="#f2f2f2" stroke-width="1.6" fill="none" />
+		<path
+			d="M6 12h8.5M14.5 12l-3.5-3.2M14.5 12l-3.5 3.2"
+			stroke="#f2f2f2"
+			stroke-width="1.7"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
+		<rect x="17.5" y="7.5" width="3.5" height="7.5" rx="0.9" fill="#f2f2f2" opacity="0.9" />
+	</g>
 
-	<!-- crumbs -->
-	<circle cx="64" cy="24" r="10" fill="#262626" />
-	<text
-		x="64"
-		y="27"
-		fill="#a0a0a0"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="8"
-		font-weight="700"
-		text-anchor="middle">MA</text
-	>
-	<text
-		x="80"
-		y="28"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13"
-		font-weight="500">Marketing</text
-	>
-	<text
-		x="152"
-		y="28"
-		fill="#525252"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13">/</text
-	>
-	<circle cx="176" cy="24" r="10" fill="#262626" />
-	<text
-		x="176"
-		y="27"
-		fill="#a0a0a0"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="8"
-		font-weight="700"
-		text-anchor="middle">AC</text
-	>
-	<text
-		x="192"
-		y="28"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13"
-		font-weight="500">acme-shop</text
-	>
+	<!-- crumbs: org / project -->
+	<circle cx="62" cy="24" r="10" fill="#242424" />
+	<text x="62" y="27.5" fill="#b0b0b0" font-family={font} font-size="8" font-weight="700" text-anchor="middle">MA</text>
+	<text x="78" y="28" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">Marketing</text>
+	<text x="150" y="28" fill="#525252" font-family={font} font-size="13">/</text>
+	<circle cx="174" cy="24" r="10" fill="#242424" />
+	<text x="174" y="27.5" fill="#b0b0b0" font-family={font} font-size="8" font-weight="700" text-anchor="middle">SH</text>
+	<text x="190" y="28" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">showcase</text>
 
-	<!-- Deploy · Observe -->
-	<rect x="560" y="10" width="68" height="28" rx="3" fill="#262626" />
-	<text
-		x="594"
-		y="28"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Deploy</text
-	>
-	<text
-		x="668"
-		y="28"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Observe</text
-	>
+	<!-- search (command palette) -->
+	<rect x="1000" y="10" width="188" height="28" rx="4" fill="#1c1c1c" stroke="#333333" />
+	<text x="1014" y="28" fill="#8a8a8a" font-family={font} font-size="11">Search…</text>
+	<text x="1168" y="28" fill="#525252" font-family={mono} font-size="10" text-anchor="end">⌘K</text>
+	<circle cx="1236" cy="24" r="12" fill="#242424" stroke="rgb(255 255 255 / 0.1)" />
+	<text x="1236" y="27.5" fill="#b0b0b0" font-family={font} font-size="8" font-weight="700" text-anchor="middle">MA</text>
 
-	<!-- search + avatar -->
-	<rect x="980" y="10" width="200" height="28" rx="3" fill="#171717" stroke="#262626" />
-	<text
-		x="994"
-		y="28"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="11">Search…</text
-	>
-	<text
-		x="1155"
-		y="28"
-		fill="#525252"
-		font-family="IBM Plex Mono, ui-monospace, monospace"
-		font-size="10"
-		text-anchor="end">⌘P</text
-	>
-	<circle cx="1240" cy="24" r="12" fill="#262626" />
-	<text
-		x="1240"
-		y="27"
-		fill="#a0a0a0"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="8"
-		font-weight="700"
-		text-anchor="middle">MA</text
-	>
+	<!-- ── horizontal tab bar ── -->
+	<rect y="48" width="1280" height="44" fill="#0a0a0a" />
+	<rect y="91" width="1280" height="1" fill="#2e2e2e" />
 
-	<!-- tab bar -->
-	<rect x="0" y="48" width="1280" height="48" fill="#0a0a0a" />
-	<rect x="12" y="58" width="88" height="28" rx="3" fill="#262626" />
-	<text
-		x="56"
-		y="76"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Overview</text
-	>
-	<text
-		x="148"
-		y="76"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Deployments</text
-	>
-	<text
-		x="240"
-		y="76"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Secrets</text
-	>
-	<text
-		x="312"
-		y="76"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Settings</text
-	>
-	<rect x="1148" y="58" width="116" height="28" rx="3" fill="#262626" />
-	<text
-		x="1206"
-		y="76"
-		fill="#d4d4d4"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">+ Add service</text
-	>
+	<!-- active tab -->
+	<rect x="12" y="56" width="84" height="28" rx="4" fill="#2a2a2a" />
+	<text x="54" y="74" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500" text-anchor="middle">Overview</text>
+	<text x="148" y="74" fill="#8a8a8a" font-family={font} font-size="12" font-weight="500" text-anchor="middle">Deployments</text>
+	<text x="248" y="74" fill="#8a8a8a" font-family={font} font-size="12" font-weight="500" text-anchor="middle">Secrets</text>
+	<text x="328" y="74" fill="#8a8a8a" font-family={font} font-size="12" font-weight="500" text-anchor="middle">Settings</text>
 
-	<!-- nested panel -->
-	<rect x="8" y="100" width="1264" height="692" rx="3" fill="#171717" />
+	<rect x="1136" y="56" width="128" height="28" rx="4" fill="#f2f2f2" />
+	<text x="1200" y="74" fill="#0a0a0a" font-family={font} font-size="12" font-weight="600" text-anchor="middle">+ Add service</text>
+
+	<!-- ── nested panel (shell-panel) ── -->
+	<rect x="10" y="100" width="1260" height="690" rx="6" fill="#121212" stroke="#2e2e2e" />
 
 	<!-- panel header -->
-	<text
-		x="28"
-		y="132"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="14"
-		font-weight="500">Overview</text
-	>
-	<text
-		x="100"
-		y="132"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13">2 services · 2 resources</text
-	>
-	<rect x="8" y="148" width="1264" height="1" fill="#262626" />
+	<text x="28" y="132" fill="#f2f2f2" font-family={font} font-size="14" font-weight="500">Overview</text>
+	<text x="104" y="132" fill="#8a8a8a" font-family={font} font-size="13">2 services · 2 data</text>
+	<rect x="10" y="148" width="1260" height="1" fill="#333333" />
 
-	<!-- Services section -->
-	<text
-		x="28"
-		y="180"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="14"
-		font-weight="500">Services</text
-	>
-	<text
-		x="1248"
-		y="180"
-		fill="#a0a0a0"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="end">+ Add service</text
-	>
-	<rect x="8" y="196" width="1264" height="1" fill="#262626" />
+	<!-- Services -->
+	<text x="28" y="178" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">Services</text>
+	<text x="1248" y="178" fill="#b0b0b0" font-family={font} font-size="12" font-weight="500" text-anchor="end">+ Add</text>
+	<rect x="10" y="192" width="1260" height="1" fill="#333333" />
 
-	<!-- row: web -->
-	<circle cx="36" cy="220" r="7" fill="#22c55e" fill-opacity="0.25" />
-	<circle cx="36" cy="220" r="4" fill="#22c55e" />
-	<text
-		x="52"
-		y="224"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13"
-		font-weight="500">web</text
-	>
-	<text
-		x="90"
-		y="224"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">Web</text
-	>
-	<text
-		x="420"
-		y="224"
-		fill="#707070"
-		font-family="IBM Plex Mono, ui-monospace, monospace"
-		font-size="12">web.acme-shop.apps.localhost</text
-	>
-	<text
-		x="820"
-		y="224"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">a3f91c · Running · 2m ago</text
-	>
-	<rect x="1160" y="206" width="72" height="28" rx="3" fill="#262626" />
-	<text
-		x="1196"
-		y="224"
-		fill="#d4d4d4"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Deploy</text
-	>
-	<rect x="8" y="244" width="1264" height="1" fill="#262626" fill-opacity="0.7" />
+	<!-- row web -->
+	<circle cx="36" cy="220" r="5" fill="#22c55e" fill-opacity="0.28" />
+	<circle cx="36" cy="220" r="3" fill="#22c55e" />
+	<text x="52" y="224" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">web</text>
+	<rect x="88" y="211" width="36" height="18" rx="3" fill="#242424" />
+	<text x="106" y="223" fill="#8a8a8a" font-family={font} font-size="10" text-anchor="middle">Web</text>
+	<text x="380" y="224" fill="#8a8a8a" font-family={mono} font-size="12">https://showcase.apps.example.com</text>
+	<text x="780" y="224" fill="#8a8a8a" font-family={font} font-size="12">a3f91c · Running · 2m</text>
+	<rect x="1148" y="206" width="88" height="28" rx="4" fill="#2a2a2a" />
+	<text x="1192" y="224" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500" text-anchor="middle">Deploy</text>
+	<rect x="20" y="244" width="1240" height="1" fill="#333333" opacity="0.7" />
 
-	<!-- row: worker -->
-	<circle cx="36" cy="268" r="7" fill="#22c55e" fill-opacity="0.25" />
-	<circle cx="36" cy="268" r="4" fill="#22c55e" />
-	<text
-		x="52"
-		y="272"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13"
-		font-weight="500">worker</text
-	>
-	<text
-		x="108"
-		y="272"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">Worker</text
-	>
-	<text
-		x="420"
-		y="272"
-		fill="#707070"
-		font-family="IBM Plex Mono, ui-monospace, monospace"
-		font-size="12">No public URL</text
-	>
-	<text
-		x="820"
-		y="272"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">b81e02 · Running · 2m ago</text
-	>
-	<rect x="1160" y="254" width="72" height="28" rx="3" fill="#262626" />
-	<text
-		x="1196"
-		y="272"
-		fill="#d4d4d4"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="middle">Deploy</text
-	>
-	<rect x="8" y="292" width="1264" height="1" fill="#262626" />
+	<!-- row worker -->
+	<circle cx="36" cy="272" r="5" fill="#22c55e" fill-opacity="0.28" />
+	<circle cx="36" cy="272" r="3" fill="#22c55e" />
+	<text x="52" y="276" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">worker</text>
+	<rect x="108" y="263" width="48" height="18" rx="3" fill="#242424" />
+	<text x="132" y="275" fill="#8a8a8a" font-family={font} font-size="10" text-anchor="middle">Worker</text>
+	<text x="380" y="276" fill="#8a8a8a" font-family={mono} font-size="12">private · no Ingress</text>
+	<text x="780" y="276" fill="#8a8a8a" font-family={font} font-size="12">b81e02 · Running · 2m</text>
+	<rect x="1148" y="258" width="88" height="28" rx="4" fill="#2a2a2a" />
+	<text x="1192" y="276" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500" text-anchor="middle">Deploy</text>
+	<rect x="10" y="296" width="1260" height="1" fill="#333333" />
 
-	<!-- Resources section -->
-	<text
-		x="28"
-		y="324"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="14"
-		font-weight="500">Resources</text
-	>
-	<text
-		x="1248"
-		y="324"
-		fill="#a0a0a0"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12"
-		font-weight="500"
-		text-anchor="end">Add resource</text
-	>
-	<rect x="8" y="340" width="1264" height="1" fill="#262626" />
+	<!-- Data services -->
+	<text x="28" y="328" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">Data</text>
+	<text x="1248" y="328" fill="#b0b0b0" font-family={font} font-size="12" font-weight="500" text-anchor="end">+ Add</text>
+	<rect x="10" y="342" width="1260" height="1" fill="#333333" />
 
-	<!-- row: postgres -->
-	<circle cx="36" cy="364" r="7" fill="#22c55e" fill-opacity="0.25" />
-	<circle cx="36" cy="364" r="4" fill="#22c55e" />
-	<text
-		x="52"
-		y="368"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13"
-		font-weight="500">postgres</text
-	>
-	<text
-		x="120"
-		y="368"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">PostgreSQL</text
-	>
-	<text
-		x="420"
-		y="368"
-		fill="#707070"
-		font-family="IBM Plex Mono, ui-monospace, monospace"
-		font-size="12">bound → web.DATABASE_URL</text
-	>
-	<text
-		x="820"
-		y="368"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">Ready</text
-	>
-	<rect x="8" y="388" width="1264" height="1" fill="#262626" fill-opacity="0.7" />
+	<!-- postgres -->
+	<circle cx="36" cy="370" r="5" fill="#22c55e" fill-opacity="0.28" />
+	<circle cx="36" cy="370" r="3" fill="#22c55e" />
+	<text x="52" y="374" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">postgres</text>
+	<rect x="124" y="361" width="64" height="18" rx="3" fill="#242424" />
+	<text x="156" y="373" fill="#8a8a8a" font-family={font} font-size="10" text-anchor="middle">Postgres</text>
+	<text x="380" y="374" fill="#8a8a8a" font-family={mono} font-size="12">bound → web.DATABASE_URL</text>
+	<text x="780" y="374" fill="#8a8a8a" font-family={font} font-size="12">Ready · k3s</text>
+	<rect x="20" y="394" width="1240" height="1" fill="#333333" opacity="0.7" />
 
-	<!-- row: redis -->
-	<circle cx="36" cy="412" r="7" fill="#22c55e" fill-opacity="0.25" />
-	<circle cx="36" cy="412" r="4" fill="#22c55e" />
-	<text
-		x="52"
-		y="416"
-		fill="#fafafa"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="13"
-		font-weight="500">redis</text
-	>
-	<text
-		x="100"
-		y="416"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">Redis</text
-	>
-	<text
-		x="420"
-		y="416"
-		fill="#707070"
-		font-family="IBM Plex Mono, ui-monospace, monospace"
-		font-size="12">bound → web.REDIS_URL</text
-	>
-	<text
-		x="820"
-		y="416"
-		fill="#707070"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">Ready</text
-	>
-	<rect x="8" y="436" width="1264" height="1" fill="#262626" />
+	<!-- redis -->
+	<circle cx="36" cy="422" r="5" fill="#22c55e" fill-opacity="0.28" />
+	<circle cx="36" cy="422" r="3" fill="#22c55e" />
+	<text x="52" y="426" fill="#f2f2f2" font-family={font} font-size="13" font-weight="500">redis</text>
+	<rect x="100" y="413" width="44" height="18" rx="3" fill="#242424" />
+	<text x="122" y="425" fill="#8a8a8a" font-family={font} font-size="10" text-anchor="middle">Redis</text>
+	<text x="380" y="426" fill="#8a8a8a" font-family={mono} font-size="12">bound → web.REDIS_URL</text>
+	<text x="780" y="426" fill="#8a8a8a" font-family={font} font-size="12">Ready · k3s</text>
+	<rect x="10" y="446" width="1260" height="1" fill="#333333" />
 
-	<!-- empty breathing room hint -->
-	<text
-		x="28"
-		y="480"
-		fill="#525252"
-		font-family="DM Sans, system-ui, sans-serif"
-		font-size="12">gVisor sandbox · Traefik ingress · git push-to-deploy</text
-	>
+	<!-- footer meta row -->
+	<rect x="22" y="470" width="1236" height="72" rx="4" fill="#1c1c1c" stroke="#333333" />
+	<text x="40" y="500" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500">Runtime</text>
+	<text x="40" y="520" fill="#8a8a8a" font-family={font} font-size="12">gVisor · RuntimeClass gvisor · proj-showcase</text>
+	<text x="420" y="500" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500">Ingress</text>
+	<text x="420" y="520" fill="#8a8a8a" font-family={font} font-size="12">Traefik · edge TLS · *.apps.example.com</text>
+	<text x="820" y="500" fill="#f2f2f2" font-family={font} font-size="12" font-weight="500">Git</text>
+	<text x="820" y="520" fill="#8a8a8a" font-family={font} font-size="12">github.com/org/showcase · main</text>
+
+	<!-- quiet note -->
+	<text x="28" y="580" fill="#525252" font-family={font} font-size="12">
+		Service-first stack · explicit bindings · no Compose
+	</text>
 </svg>

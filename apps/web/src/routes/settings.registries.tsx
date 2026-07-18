@@ -8,7 +8,7 @@ import {
   StarIcon,
   TrashIcon,
 } from "lucide-react"
-import type { ContainerRegistry } from "@deplow/shared"
+import type { ContainerRegistry } from "@hostrig/shared"
 
 import { EmptyState } from "@/components/empty-state"
 import { SettingsPage, SettingsPanel } from "@/components/page-layout"

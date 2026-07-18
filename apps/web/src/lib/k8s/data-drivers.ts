@@ -3,7 +3,7 @@
  * Backup/principals delegate to the Docker-era drivers (credentials-based).
  */
 
-import type { ResourceCredentials, ResourceKind } from "@deplow/shared"
+import type { ResourceCredentials, ResourceKind } from "@hostrig/shared"
 
 import {
   PostgresContainerDriver,

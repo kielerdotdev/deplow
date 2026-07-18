@@ -1,10 +1,10 @@
 /**
  * App-managed platform ingress settings.
- * DB is source of truth; DEPLOW_BASE_DOMAIN / protocol seed once when no row exists.
+ * DB is source of truth; HOSTRIG_BASE_DOMAIN / protocol seed once when no row exists.
  */
 
-import { eq, db, platformIngress } from "@deplow/db"
-import type { IngressSettings, PlatformEdgeMode } from "@deplow/shared"
+import { eq, db, platformIngress } from "@hostrig/db"
+import type { IngressSettings, PlatformEdgeMode } from "@hostrig/shared"
 
 import { env } from "@/lib/env"
 

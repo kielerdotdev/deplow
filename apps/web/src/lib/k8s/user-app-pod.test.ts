@@ -4,29 +4,27 @@ import {
   buildUserAppPodHardening,
   isGvisorRuntime,
   resolveRuntimeClassName,
+  USER_APP_RUNTIME_CLASS,
 } from "./user-app-pod"
 
 describe("resolveRuntimeClassName", () => {
-  it("maps runsc/gvisor to gvisor RuntimeClass", () => {
+  it("always maps to gvisor RuntimeClass", () => {
     expect(resolveRuntimeClassName("runsc")).toBe("gvisor")
     expect(resolveRuntimeClassName("runsc-kvm")).toBe("gvisor")
     expect(resolveRuntimeClassName("gvisor")).toBe("gvisor")
+    expect(resolveRuntimeClassName("")).toBe("gvisor")
+    expect(resolveRuntimeClassName(undefined)).toBe("gvisor")
   })
 
-  it("omits RuntimeClass for runc escape hatch", () => {
-    expect(resolveRuntimeClassName("runc")).toBeUndefined()
-    expect(resolveRuntimeClassName("")).toBeUndefined()
-  })
-
-  it("passes through future/custom class names", () => {
-    expect(resolveRuntimeClassName("kata")).toBe("kata")
+  it("rejects runc escape hatch — still returns gvisor", () => {
+    expect(resolveRuntimeClassName("runc")).toBe(USER_APP_RUNTIME_CLASS)
+    expect(resolveRuntimeClassName("default")).toBe(USER_APP_RUNTIME_CLASS)
   })
 })
 
 describe("buildUserAppPodHardening", () => {
-  it("mirrors Docker host-config intent: gVisor, drop ALL, RO rootfs, limits, tmp", () => {
+  it("always sets gVisor, drop ALL, RO rootfs, limits, tmp", () => {
     const h = buildUserAppPodHardening({
-      appRuntime: "runsc",
       memoryBytes: 512 * 1024 * 1024,
       nanoCpus: 1e9,
     })
@@ -40,17 +38,17 @@ describe("buildUserAppPodHardening", () => {
     expect(h.resources.limits.memory).toBe("512Mi")
     expect(h.resources.limits.cpu).toBe("1")
     expect(h.volumeMounts).toEqual([{ name: "tmp", mountPath: "/tmp" }])
-    expect(isGvisorRuntime("runsc")).toBe(true)
+    expect(isGvisorRuntime()).toBe(true)
   })
 
-  it("honors readOnlyRootfs opt-out and omits runtime for runc", () => {
+  it("honors readOnlyRootfs opt-out but never omits gVisor", () => {
     const h = buildUserAppPodHardening({
       appRuntime: "runc",
       memoryBytes: 256 * 1024 * 1024,
       nanoCpus: 500_000_000,
       readOnlyRootfs: false,
     })
-    expect(h.runtimeClassName).toBeUndefined()
+    expect(h.runtimeClassName).toBe("gvisor")
     expect(h.containerSecurityContext.readOnlyRootFilesystem).toBe(false)
     expect(h.resources.limits.memory).toBe("256Mi")
     expect(h.resources.limits.cpu).toBe("500m")

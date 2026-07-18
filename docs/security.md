@@ -10,7 +10,7 @@ This document is the **stance**. Implementation of the app sandbox is [secure-ru
 security  >  easy install  >  decent performance
 ```
 
-Escape hatches (e.g. `DEPLOW_APP_RUNTIME=runc`) exist for broken images. They are temporary and must log warnings. Defaults stay secure.
+User apps **always** use gVisor. There is **no** `HOSTRIG_APP_RUNTIME=runc` escape hatch. Images that cannot run under gVisor must be fixed (or use a writable rootfs only via `HOSTRIG_APP_READONLY_ROOTFS=false` where needed).
 
 ## Threat model (v1, k3s)
 
@@ -28,14 +28,16 @@ We do **not** claim: multi-tenant hostile SaaS isolation, formal certification, 
 
 | Rule | Detail |
 | --- | --- |
-| **User apps → gVisor (`runtimeClassName: gvisor`)** | Default when `DEPLOW_APP_RUNTIME=runsc` |
+| **User apps → gVisor (`runtimeClassName: gvisor`)** | **Always** — runc is not allowed for user apps |
 | **Platform / data → default runtime** | Postgres, Redis, Traefik stay on runc/containerd |
 | **Builds → runc** | Railpack / BuildKit / `docker build` are not forced under gVisor |
 | **No Docker socket in user apps** | Never mount docker.sock (or host paths) into project pods |
 | **No host network for user apps** | Cluster networking only |
 | **Hardened pod/container securityContext** | Non-root, drop ALL caps, no privilege escalation, RuntimeDefault seccomp, RO rootfs (+ `/tmp` emptyDir), memory/CPU limits |
-| **NetworkPolicy per project namespace** | Default-deny east-west across projects; Traefik + same-ns + DNS allowed |
-| **Secrets encrypted at rest** | Project credentials via AES-GCM (`DEPLOW_SECRETS_KEY` / auth secret) |
+| **NetworkPolicy per project namespace** | Default-deny east-west; Traefik ingress only; DNS + same-ns; public HTTP/S egress excludes link-local/RFC1918 |
+| **No SA token on user apps** | `automountServiceAccountToken: false` on web/worker pods |
+| **ResourceQuota per project namespace** | Caps pods/CPU/memory/PVCs (tunable via `HOSTRIG_NS_QUOTA_*`) |
+| **Secrets encrypted at rest** | Project credentials via AES-GCM (`HOSTRIG_SECRETS_KEY` / auth secret) |
 | **Data plane not public by default** | Postgres / Redis are for the app + private operator access — not internet listeners as a product feature |
 | **Proxy is platform; apps stay sandboxed** | Traefik / edge is trusted platform infra; user apps remain gVisor-isolated — [access.md](./access.md) |
 
@@ -69,7 +71,7 @@ Hostrig hardens the **app runtime** and owns **hostname → Service** ingress ro
 - Keep k3s nodes and the host patched
 - Install gVisor (`runsc`) on every node (`scripts/install-gvisor-k3s.sh` or managed cloud-init)
 - Protect kubeconfig and the control plane
-- Choose strong `BETTER_AUTH_SECRET` / `DEPLOW_SECRETS_KEY`
+- Choose strong `BETTER_AUTH_SECRET` / `HOSTRIG_SECRETS_KEY`
 - Treat the **cluster nodes** as the trust boundary
 - Configure DNS wildcard + edge TLS; keep Postgres/Redis off the public internet
 
@@ -80,4 +82,4 @@ Hostrig hardens the **app runtime** and owns **hostname → Service** ingress ro
 - Running builds under gVisor
 - Hostile multi-tenant SaaS guarantees
 
-When blocked on an image that cannot run under gVisor, document the runc escape hatch — do not weaken global defaults.
+When blocked on an image that cannot run under gVisor, fix the image (non-root, compatible syscalls). Do not disable gVisor.

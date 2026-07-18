@@ -6,7 +6,7 @@ import {
   extractSentryKey,
   gunzipIfNeeded,
   parseEnvelope,
-} from "@deplow/observe"
+} from "@hostrig/observe"
 
 import { env } from "@/lib/env"
 import { enqueueObserveDigest } from "@/lib/core/queue"

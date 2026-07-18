@@ -2,9 +2,9 @@ import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 
-import { db } from "@deplow/db"
-import * as schema from "@deplow/db/auth-schema"
-import { createPersonalOrganization } from "@/lib/access"
+import { db } from "@hostrig/db"
+import * as schema from "@hostrig/db/auth-schema"
+import { createPersonalOrganization, isSignupAllowed } from "@/lib/access"
 import { env } from "@/lib/env"
 
 const isDev = env.isDev
@@ -21,6 +21,8 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    // Runtime gate also in databaseHooks (first-admin / HOSTRIG_ALLOW_SIGNUP).
+    disableSignUp: false,
   },
   user: {
     additionalFields: {
@@ -35,6 +37,15 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        before: async (user) => {
+          const allowed = await isSignupAllowed()
+          if (!allowed) {
+            throw new Error(
+              "Sign-up is disabled. Ask an instance admin for an invite.",
+            )
+          }
+          return { data: user }
+        },
         after: async (created) => {
           await createPersonalOrganization({
             userId: created.id,
@@ -53,4 +64,7 @@ export const auth = betterAuth({
   plugins: [tanstackStartCookies()],
 })
 
-export type Session = typeof auth.$Infer.Session
+/** Better Auth session; MCP bearer sessions may carry mcpScopes. */
+export type Session = typeof auth.$Infer.Session & {
+  mcpScopes?: Array<"*" | "read">
+}

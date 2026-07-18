@@ -2,7 +2,7 @@
  * Shared deploy/provision completion helpers — single status writer for finalizers.
  */
 
-import { eq, db, services } from "@deplow/db"
+import { eq, db, services } from "@hostrig/db"
 
 import { transitionService, transitionServiceBestEffort } from "./transition"
 

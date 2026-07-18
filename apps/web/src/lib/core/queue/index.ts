@@ -3,11 +3,11 @@ import { Queue, Worker, type ConnectionOptions, type Job } from "bullmq"
 import { env } from "@/lib/env"
 
 export const QUEUE_NAMES = {
-  provision: "deplow-provision",
-  backup: "deplow-backup",
-  restore: "deplow-restore",
-  destroy: "deplow-destroy",
-  observeDigest: "deplow-observe-digest",
+  provision: "hostrig-provision",
+  backup: "hostrig-backup",
+  restore: "hostrig-restore",
+  destroy: "hostrig-destroy",
+  observeDigest: "hostrig-observe-digest",
 } as const
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES]
@@ -188,7 +188,7 @@ export function startQueueWorkers(processors: ProcessorMap): void {
   for (const w of workers) {
     w.on("failed", (job, err) => {
       console.error(
-        `[deplow] queue job failed ${job?.queueName}/${job?.id}`,
+        `[hostrig] queue job failed ${job?.queueName}/${job?.id}`,
         err,
       )
     })

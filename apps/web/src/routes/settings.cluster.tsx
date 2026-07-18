@@ -519,7 +519,7 @@ function ClusterPage() {
             <Alert>
               <AlertTitle>Hetzner not configured</AlertTitle>
               <AlertDescription>
-                Set <code className="font-mono text-xs">DEPLOW_HETZNER_API_TOKEN</code>{" "}
+                Set <code className="font-mono text-xs">HOSTRIG_HETZNER_API_TOKEN</code>{" "}
                 to create clusters and add Hetzner workers from the UI.
               </AlertDescription>
             </Alert>
@@ -535,12 +535,18 @@ function ClusterPage() {
                 variant="compact"
                 icon={ServerIcon}
                 title={
-                  provisioning ? "Waiting for nodes…" : "No nodes reported"
+                  provisioning
+                    ? "Waiting for nodes…"
+                    : cluster.status === "error"
+                      ? "Cluster not reachable"
+                      : "No nodes reported"
                 }
                 description={
                   provisioning
                     ? "The API may come up before workers finish joining. This list refreshes automatically."
-                    : "The API is reachable but no nodes were listed yet."
+                    : cluster.status === "error"
+                      ? "Fix the connection error above, then nodes will appear here."
+                      : "The API is reachable but no nodes were listed yet."
                 }
               />
             </SettingsPanel>

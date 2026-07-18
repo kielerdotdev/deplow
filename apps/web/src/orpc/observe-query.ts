@@ -12,7 +12,7 @@ import {
   observeMembers,
   observeProjects,
   observeSavedViews,
-} from "@deplow/db"
+} from "@hostrig/db"
 import {
   facetCounts,
   getTrace,
@@ -36,14 +36,23 @@ import {
   searchLogs,
   type SpanFilter,
   type TelemetryQuery as ObserveTelemetryQuery,
-} from "@deplow/observe"
+} from "@hostrig/observe"
 import { randomUUID } from "node:crypto"
 import * as z from "zod"
 
-import { assertProjectAccess } from "@/lib/access"
+import {
+  assertProjectAccess,
+  requireOrgRole,
+  resolveActiveOrganizationId,
+} from "@/lib/access"
 import { env } from "@/lib/env"
+import {
+  decryptChannelConfigJson,
+  encryptChannelConfigJson,
+} from "@/lib/message-channels"
+import { assertSafeOutboundUrl } from "@/lib/core/safe-url"
 import { maskEmail, maskSecret } from "@/lib/secret-display"
-import { db } from "@/lib/services"
+import { db, platformConfig } from "@/lib/services"
 import {
   ensureObserveReady,
   observeClickHouseConfig,
@@ -65,7 +74,7 @@ import {
 } from "@/lib/observe/trends"
 import { telemetryQuerySchema } from "@/lib/observe/telemetry"
 
-import { authedProcedure } from "./middleware"
+import { authedProcedure, writeProcedure } from "./middleware"
 
 function requireObserve() {
   if (!env.observeEnabled) {
@@ -146,13 +155,19 @@ async function getObserveProject(projectId: string) {
 
 const ROLE_RANK = { viewer: 1, editor: 2, admin: 3, owner: 4 } as const
 
+/**
+ * Unassigned project members inherit editor-equivalent (not admin).
+ * Never fail-open past minRole for missing membership rows.
+ */
+const DEFAULT_UNASSIGNED_OBSERVE_ROLE: keyof typeof ROLE_RANK = "editor"
+
 export async function assertObserveRole(
   projectId: string,
   userId: string,
   minRole: keyof typeof ROLE_RANK,
 ) {
   const op = await getObserveProject(projectId)
-  if (!op) return // project access already checked; no observe members yet → allow
+  if (!op) return // project access already checked; observe not enabled → allow reads via project access
   const [member] = await db
     .select()
     .from(observeMembers)
@@ -163,8 +178,10 @@ export async function assertObserveRole(
       ),
     )
     .limit(1)
-  if (!member) return // default: project members inherit editor-equivalent until assigned
-  if (ROLE_RANK[member.role] < ROLE_RANK[minRole]) {
+  const effectiveRole = member
+    ? (member.role as keyof typeof ROLE_RANK)
+    : DEFAULT_UNASSIGNED_OBSERVE_ROLE
+  if (ROLE_RANK[effectiveRole] < ROLE_RANK[minRole]) {
     throw new ORPCError("FORBIDDEN", {
       message: `Requires Observe role ${minRole} or higher`,
     })
@@ -367,7 +384,7 @@ export const savedViewsList = authedProcedure
     }))
   })
 
-export const savedViewsCreate = authedProcedure
+export const savedViewsCreate = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -394,7 +411,7 @@ export const savedViewsCreate = authedProcedure
     return { id }
   })
 
-export const savedViewsDelete = authedProcedure
+export const savedViewsDelete = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -533,7 +550,7 @@ async function migrateLegacyDashboardLayout(
   return layout
 }
 
-export const dashboardsCreate = authedProcedure
+export const dashboardsCreate = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -605,7 +622,7 @@ export const dashboardsGet = authedProcedure
     }
   })
 
-export const dashboardsUpdate = authedProcedure
+export const dashboardsUpdate = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -657,7 +674,7 @@ export const dashboardsUpdate = authedProcedure
     return { ok: true as const }
   })
 
-export const dashboardsDelete = authedProcedure
+export const dashboardsDelete = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -718,7 +735,7 @@ export const insightsGet = authedProcedure
     return mapInsightRow(row)
   })
 
-export const insightsCreate = authedProcedure
+export const insightsCreate = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -750,7 +767,7 @@ export const insightsCreate = authedProcedure
     return { id }
   })
 
-export const insightsUpdate = authedProcedure
+export const insightsUpdate = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -783,7 +800,7 @@ export const insightsUpdate = authedProcedure
     return { ok: true as const }
   })
 
-export const insightsDelete = authedProcedure
+export const insightsDelete = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -1015,7 +1032,7 @@ export const alertsList = authedProcedure
     })
   })
 
-export const alertsCreate = authedProcedure
+export const alertsCreate = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -1141,17 +1158,39 @@ function maskChannelConfig(config: Record<string, unknown>): {
   return out
 }
 
+async function loadOrgChannel(
+  channelId: string,
+  organizationId: string,
+): Promise<typeof messageChannels.$inferSelect | null> {
+  const [row] = await db
+    .select()
+    .from(messageChannels)
+    .where(eq(messageChannels.id, channelId))
+    .limit(1)
+  if (!row) return null
+  // Legacy rows without organizationId: only visible if createdBy matches later checks.
+  if (row.organizationId && row.organizationId !== organizationId) return null
+  if (!row.organizationId) return null
+  return row
+}
+
 export const messageChannelsList = authedProcedure.handler(
   async ({ context }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED")
-    const rows = await db.select().from(messageChannels)
+    const organizationId = await resolveActiveOrganizationId(
+      context.session,
+      context.headers,
+    )
+    const rows = await db
+      .select()
+      .from(messageChannels)
+      .where(eq(messageChannels.organizationId, organizationId))
+    const secret = platformConfig.secretsEncryptionKey
     return rows.map((r) => {
-      let config: Record<string, unknown> = {}
-      try {
-        config = JSON.parse(r.configJson) as Record<string, unknown>
-      } catch {
-        /* ignore */
-      }
+      const config = decryptChannelConfigJson(r.configJson, secret) as Record<
+        string,
+        unknown
+      >
       return {
         id: r.id,
         name: r.name,
@@ -1169,7 +1208,7 @@ export const messageChannelsList = authedProcedure.handler(
   },
 )
 
-export const messageChannelsCreate = authedProcedure
+export const messageChannelsCreate = writeProcedure
   .input(
     z.object({
       name: z.string().min(1).max(120),
@@ -1182,6 +1221,11 @@ export const messageChannelsCreate = authedProcedure
   )
   .handler(async ({ context, input }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED")
+    const organizationId = await resolveActiveOrganizationId(
+      context.session,
+      context.headers,
+    )
+    await requireOrgRole(organizationId, context.session, "owner")
     if (input.kind === "email") {
       if (!input.config.email) {
         throw new ORPCError("BAD_REQUEST", { message: "email required" })
@@ -1189,43 +1233,65 @@ export const messageChannelsCreate = authedProcedure
     } else if (!input.config.url) {
       throw new ORPCError("BAD_REQUEST", { message: "url required" })
     }
+    if (input.config.url) {
+      try {
+        assertSafeOutboundUrl(input.config.url, {
+          allowHttp: false,
+          blockPrivate: true,
+        })
+      } catch (e) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: e instanceof Error ? e.message : "Invalid webhook URL",
+        })
+      }
+    }
     const id = randomUUID()
+    const secret = platformConfig.secretsEncryptionKey
     await db.insert(messageChannels).values({
       id,
       name: input.name,
       kind: input.kind,
-      configJson: JSON.stringify(input.config),
+      configJson: encryptChannelConfigJson(input.config, secret),
+      organizationId,
       createdBy: context.session.user.id,
     })
     return { id }
   })
 
-export const messageChannelsDelete = authedProcedure
+export const messageChannelsDelete = writeProcedure
   .input(z.object({ id: z.string().uuid() }))
   .handler(async ({ context, input }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED")
+    const organizationId = await resolveActiveOrganizationId(
+      context.session,
+      context.headers,
+    )
+    await requireOrgRole(organizationId, context.session, "owner")
+    const row = await loadOrgChannel(input.id, organizationId)
+    if (!row) {
+      throw new ORPCError("NOT_FOUND", { message: "Channel not found" })
+    }
     await db.delete(messageChannels).where(eq(messageChannels.id, input.id))
     return { ok: true as const }
   })
 
-export const messageChannelsTest = authedProcedure
+export const messageChannelsTest = writeProcedure
   .input(z.object({ id: z.string().uuid() }))
   .handler(async ({ context, input }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED")
-    const [row] = await db
-      .select()
-      .from(messageChannels)
-      .where(eq(messageChannels.id, input.id))
-      .limit(1)
+    const organizationId = await resolveActiveOrganizationId(
+      context.session,
+      context.headers,
+    )
+    await requireOrgRole(organizationId, context.session, "owner")
+    const row = await loadOrgChannel(input.id, organizationId)
     if (!row) {
       throw new ORPCError("NOT_FOUND", { message: "Channel not found" })
     }
-    let config: { url?: string; email?: string } = {}
-    try {
-      config = JSON.parse(row.configJson) as { url?: string; email?: string }
-    } catch {
-      /* ignore */
-    }
+    const config = decryptChannelConfigJson(
+      row.configJson,
+      platformConfig.secretsEncryptionKey,
+    )
     const { deliverChannelTest, ChannelDeliverError } = await import(
       "@/lib/message-channel-deliver"
     )
@@ -1273,7 +1339,7 @@ export const messageChannelsTest = authedProcedure
     }
   })
 
-export const messageChannelsUpdate = authedProcedure
+export const messageChannelsUpdate = writeProcedure
   .input(
     z.object({
       id: z.string().uuid(),
@@ -1283,11 +1349,12 @@ export const messageChannelsUpdate = authedProcedure
   )
   .handler(async ({ context, input }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED")
-    const [row] = await db
-      .select()
-      .from(messageChannels)
-      .where(eq(messageChannels.id, input.id))
-      .limit(1)
+    const organizationId = await resolveActiveOrganizationId(
+      context.session,
+      context.headers,
+    )
+    await requireOrgRole(organizationId, context.session, "owner")
+    const row = await loadOrgChannel(input.id, organizationId)
     if (!row) {
       throw new ORPCError("NOT_FOUND", { message: "Channel not found" })
     }
@@ -1302,7 +1369,7 @@ export const messageChannelsUpdate = authedProcedure
     return { ok: true as const }
   })
 
-export const alertsUpdate = authedProcedure
+export const alertsUpdate = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -1388,7 +1455,7 @@ export const alertsHistory = authedProcedure
     }))
   })
 
-export const alertsEvaluateNow = authedProcedure
+export const alertsEvaluateNow = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -1415,7 +1482,7 @@ export const alertsEvaluateNow = authedProcedure
     return evaluateAlertById(input.alertId)
   })
 
-export const alertsDelete = authedProcedure
+export const alertsDelete = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -1460,7 +1527,7 @@ export const membersList = authedProcedure
     }))
   })
 
-export const membersUpsert = authedProcedure
+export const membersUpsert = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),
@@ -1501,7 +1568,7 @@ export const membersUpsert = authedProcedure
     return { id }
   })
 
-export const projectsUpdateRetention = authedProcedure
+export const projectsUpdateRetention = writeProcedure
   .input(
     z.object({
       projectId: z.string().uuid(),

@@ -2,7 +2,7 @@ import type {
   SpawnedServer,
   SpawnedServerStatus,
   SpawnOptions,
-} from "@deplow/shared"
+} from "@hostrig/shared"
 
 export type { SpawnedServer, SpawnedServerStatus, SpawnOptions }
 
