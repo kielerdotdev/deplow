@@ -45,17 +45,5 @@
     "vite-plus": "0.2.4",
     "wrangler": "^4.111.0"
   },
-  "packageManager": "pnpm@10.12.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "esbuild",
-      "sharp",
-      "unrs-resolver"
-    ],
-    "overrides": {
-      "vitest": "4.1.10",
-      "drizzle-orm": "0.45.2"
-    }
-  }
+  "packageManager": "pnpm@10.12.1"
 }
