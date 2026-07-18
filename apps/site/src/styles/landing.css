@@ -773,36 +773,44 @@ code {
 
 .cta {
   width: min(92vw, var(--wide));
-  margin: 6rem auto 0;
-  padding: 4rem 0 1rem;
-  border-top: 1px solid var(--border);
-  text-align: center;
+  margin: 5rem auto 0;
+  padding: 0;
 }
 
-.cta-mark {
-  font-size: clamp(1.75rem, 4vw, 2.75rem);
-  margin-bottom: 0.75rem;
-  opacity: 1;
-  animation: none;
+.cta-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1.75rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
 .cta h2 {
-  font-size: clamp(1.6rem, 3vw, 2.25rem);
-  font-weight: 550;
-  letter-spacing: -0.04em;
-  margin-bottom: 0.75rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
   text-wrap: balance;
+  max-width: 22ch;
 }
 
 .cta p {
   color: var(--fg-muted);
-  margin-bottom: 1.5rem;
+  font-size: 0.98rem;
+  max-width: 36rem;
+  margin: 0;
+  text-wrap: pretty;
 }
 
-.cta .hero-actions {
-  opacity: 1;
-  animation: none;
-  margin-bottom: 0;
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.15rem;
+  margin-top: 0.35rem;
 }
 
 /* ── Footer ── */
@@ -810,17 +818,31 @@ code {
 .footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 2rem 1.5rem;
-  margin-top: 2.5rem;
+  gap: 1.25rem;
+  padding: 1.35rem 1.5rem 1.75rem;
+  margin-top: 2rem;
   border-top: 1px solid var(--border-soft);
   font-size: 0.8rem;
   color: var(--fg-dim);
 }
 
+.footer-brand {
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: -0.03em;
+  color: var(--fg);
+  transition: color 0.2s var(--ease);
+}
+
+.footer-brand:hover {
+  color: var(--fg-muted);
+}
+
 .footer-links {
   display: flex;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem 1.15rem;
+  flex: 1;
 }
 
 .footer-links a {
@@ -830,6 +852,11 @@ code {
 
 .footer-links a:hover {
   color: var(--fg);
+}
+
+.footer-meta {
+  margin-inline-start: auto;
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -885,10 +912,19 @@ code {
     grid-template-columns: 2.5rem 1fr;
   }
 
+  .cta-panel {
+    padding: 1.4rem 1.15rem;
+  }
+
   .footer {
-    padding: 1.5rem 1.25rem;
+    padding: 1.25rem 1.15rem 1.5rem;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.65rem 1rem;
+  }
+
+  .footer-meta {
+    margin-inline-start: 0;
+    width: 100%;
   }
 
   .band {

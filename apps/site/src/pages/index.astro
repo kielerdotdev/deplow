@@ -308,26 +308,30 @@ const faqs = [
 			</div>
 		</section>
 
-		<section class="cta">
-			<p class="brand-mark cta-mark">Hostrig</p>
-			<h2>Own the cluster.<br />Ship the boring stack.</h2>
-			<p>Self-hosted PaaS on k3s. gVisor for apps. Git push. MCP when you want it.</p>
-			<div class="hero-actions">
-				<a class="hero-button" href={appUrl}>Open Hostrig</a>
-				<a class="secondary-link" href="/docs/getting-started/quick-start/">Quick start</a>
+		<section class="cta" aria-label="Get started">
+			<div class="cta-panel">
+				<h2>Ship the first URL on your cluster.</h2>
+				<p>Connect k3s, add a service, deploy. UI or MCP — same path.</p>
+				<div class="cta-actions">
+					<a class="hero-button" href={appUrl}>Open app</a>
+					<a class="secondary-link" href="/docs/getting-started/quick-start/">
+						Quick start →
+					</a>
+				</div>
 			</div>
 		</section>
 	</main>
 
 	<footer class="footer">
-		<span>&copy; {new Date().getFullYear()} Hostrig · MIT</span>
+		<a href="/" class="footer-brand" aria-label="Hostrig home">Hostrig</a>
 		<div class="footer-links">
 			<a href="#product">Product</a>
-			<a href="#loop">Loop</a>
+			<a href="#loop">How it works</a>
 			<a href="/docs/">Docs</a>
 			<a href={appUrl}>App</a>
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 		</div>
+		<span class="footer-meta">&copy; {new Date().getFullYear()} · MIT</span>
 	</footer>
 
 	<script>
