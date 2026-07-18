@@ -1,111 +1,95 @@
 ---
 title: Quick start
-description: Install Hostrig on a VPS (pull-only) or bootstrap a local development control plane.
+description: Install the control plane, connect k3s, set Domains, and ship a first service.
 ---
 
-## VPS / production (recommended)
-
-No git clone and no Node on the host — pull the published image and platform deps:
+## 1. Install the control plane (VPS)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | bash
+curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
 ```
 
-Open [http://localhost:3000](http://localhost:3000), create the first user, then configure **Domains**.
-
-Upgrade later (preserves SQLite / Redis volumes):
+From a repo checkout:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | bash -s update
+sudo bash deploy/install.sh
+# or: bash scripts/deploy.sh
 ```
 
-Pin a release: `DEPLOW_VERSION=v1.2.3 curl -sSL …/install.sh | bash`.
+The installer:
 
-Default install directory: `/opt/deplow` (`DEPLOW_HOME` to override). The script starts BuildKit and prints a gVisor checklist — user app deploys require `runsc` by default.
+- installs Docker (if missing) + Compose
+- starts BuildKit
+- bundles MinIO by default (`DEPLOW_BUNDLE_MINIO=0` for external S3 only)
+- generates secrets and detects a public URL
+- pulls `ghcr.io/kielerdotdev/deplow` and starts the stack
 
-Optional public HTTPS: set `CLOUDFLARE_TUNNEL_TOKEN` in `/opt/deplow/.env`, then:
+Default install directory: `/opt/deplow` (`DEPLOW_HOME` to override). Control plane listens on port **3000** by default (`DEPLOW_WEB_PORT`).
+
+Open the printed URL, create the **first user** (instance admin).
+
+Upgrade later (preserves volumes + `.env`):
 
 ```bash
-docker compose -p deplow --project-directory /opt/deplow --profile edge up -d
+curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash -s update
 ```
 
-## Development: host installer
+Pin a release: `DEPLOW_VERSION=v1.2.3 curl -sSL …/install.sh | sudo bash`.
 
-```bash
-git clone <your-repo-url> Hostrig
-cd Hostrig
-bash scripts/install.sh
-pnpm dev
-```
+## 2. Connect a k3s cluster
 
-The installer checks Docker/Node/pnpm, starts BuildKit, installs Railpack when missing, installs/verifies gVisor (`runsc`), runs `pnpm install`, starts compose services, and applies the control-plane schema. Open [http://localhost:3000](http://localhost:3000).
+**Settings → Cluster** (instance admin):
 
-If gVisor is not ready, the script exits non-zero and prints next steps — deploys require `runsc` by default (`DEPLOW_APP_RUNTIME=runc` is an unsandboxed escape hatch only).
+- **BYO** — paste a kubeconfig with rights to create namespaces, Deployments, StatefulSets, Services, Ingress, NetworkPolicy, RuntimeClass
+- **Create on Hetzner** — requires `DEPLOW_HETZNER_API_TOKEN`; cloud-init installs k3s + gVisor
+- **Add workers** later — Hetzner cloud-init or self-hosted join script from the same page
 
-## Development: manual path
+Confirm Traefik is detected. Install gVisor on BYO nodes (`scripts/install-gvisor-k3s.sh`). Details: [Connect a cluster](/docs/guides/cluster/).
 
-### 1. Clone and install
+## 3. Domains + edge
 
-```bash
-git clone <your-repo-url> Hostrig
-cd Hostrig
-pnpm install
-```
+**Settings → Networking & domains** (or Domains):
 
-### 2. Start platform services
+1. Set **base domain** (e.g. `apps.example.com`) — not `apps.localhost` for real HTTPS
+2. Protocol `https`, auto-assign subdomains on
+3. Point an edge at Traefik on the k3s server (usually `http://127.0.0.1:80`):
+   - **NetBird guided setup** in Networking, or
+   - Cloudflare Tunnel hostname `*.apps.example.com` → that origin, or
+   - Tailscale Serve on the k3s server
 
-```bash
-pnpm infra:up
-```
+Primary web URL shape: `https://{project}.{baseDomain}`. Extra web services: `https://{project}-{service}.{baseDomain}`.
 
-This starts Caddy, platform Redis, and related compose services. Configure `DEPLOW_S3_*` for MinIO or R2. App Postgres/Redis are created later as project services.
+Details: [Domains & URLs](/docs/guides/domains/).
 
-### 3. Apply control-plane schema
+## 4. Container registry (git builds)
 
-```bash
-pnpm db:push
-```
+**Settings → Registries** — add GHCR, Docker Hub, GitLab, or a generic registry and mark one as the **build default**.
 
-The control plane uses SQLite (`packages/db/data/deplow.db` by default).
+Git / Railpack / Dockerfile deploys **push** images here and k3s pulls them. Prebuilt public images can skip this; private pulls still need credentials. Details: [Container registries](/docs/guides/registries/).
 
-### 4. Configure environment
+## 5. First project
 
-```bash
-cp apps/web/.env.example apps/web/.env
-```
+1. **Create project** (empty — nothing auto-provisions)
+2. **Add a web service** — prebuilt image (e.g. a whoami image) is the fastest smoke test
+3. **Deploy** — wait until running
+4. Open `https://{project}.{baseDomain}` through your edge
 
-Set at minimum:
+Then add Postgres/Redis when the app needs them, create **bindings** (`DATABASE_URL` / `REDIS_URL`), and redeploy. See [Deploy an app](/docs/guides/deploy/) and [Bindings & secrets](/docs/guides/secrets/).
 
-- `BETTER_AUTH_SECRET` — auth signing and encryption fallback
-- `BUILDKIT_HOST=docker-container://buildkit` if you use the BuildKit container
+## Optional next steps
 
-### 5. Start the control plane
+| Step | Where |
+| --- | --- |
+| GitHub / GitLab + push-to-deploy | [Git connect](/docs/guides/git/) |
+| MCP for Cursor / agents | [MCP for agents](/docs/guides/mcp/) |
+| Postgres backups | [Backups](/docs/guides/backups/) |
+| Observe (errors / OTLP) | [Observe](/docs/guides/observe/) |
+| Local contribution setup | [Development](/docs/getting-started/development/) |
 
-```bash
-pnpm dev
-```
+## Smoke test (dev / CI)
 
-Open the dashboard at [http://localhost:3000](http://localhost:3000).
-
-## First deploy loop
-
-1. **Domains** — set base domain (e.g. `apps.localhost` or `apps.example.com`), enable auto subdomains. v1 URLs are platform wildcard only.
-2. **Create project** → add a web service (+ postgres/redis if needed) → bind → **Deploy**.
-3. Optional public HTTPS: Cloudflare Tunnel + compose `edge` profile (TLS at Cloudflare).
-
-## Smoke test (optional)
-
-With Docker and platform services running (dev):
+With Docker and platform services running against a checkout:
 
 ```bash
 pnpm e2e
 ```
-
-This exercises image deploy, backup, and project destroy against the live API.
-
-## Next steps
-
-- [Prerequisites](/docs/getting-started/prerequisites/)
-- [Create and deploy a project](/docs/guides/deploy/)
-- [Configure backups](/docs/guides/backups/)
-- [Environment variable reference](/docs/reference/environment/)

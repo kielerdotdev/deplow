@@ -1,11 +1,15 @@
 ---
 title: Introduction
-description: What Hostrig is, what makes it different from Coolify/Dokploy, and how to start.
+description: What Hostrig is, what it is not, and where to start.
 ---
 
 import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
-Hostrig is an **opinionated self-hosted project runtime** for one Docker host. Most apps need a **database**, **cache**, **object storage**, and a **runtime**. Hostrig runs that stack under your control — with **gVisor** for user apps — so you skip hosted Postgres/Redis/S3 tabs and hand-rolled backup cron.
+Hostrig is an **opinionated self-hosted PaaS on k3s**.
+
+Most apps need a **database**, **cache**, **object storage**, and a **runtime**. Hostrig runs that stack on infrastructure you control: typed **services** in a project, **explicit bindings** for credentials, **user apps under gVisor**, and a **platform wildcard URL** via Traefik plus your edge.
+
+It is **not** Coolify/Dokploy with a new coat of paint. It is not “Docker host + Caddy.” It is not a general Kubernetes control plane.
 
 ## Why not Coolify / Dokploy?
 
@@ -14,22 +18,26 @@ Those products win on **breadth**: Compose, templates, many databases, fleets. H
 | Hostrig | Coolify / Dokploy |
 | ------ | ----------------- |
 | Typed services + explicit bindings | Resource catalogs and Compose |
-| gVisor by default for user apps | Usually plain Docker / runc |
-| Postgres + Redis + MinIO only | MySQL, Mongo, and more |
+| gVisor by default for user apps on k3s | Usually plain Docker / runc |
+| Postgres + Redis + platform S3 only | MySQL, Mongo, and more |
 | Platform wildcard URLs in v1 | Custom domains / many ingress modes |
-| Dashboard-first (optional MCP) | Broader ops surface |
+| Dashboard + MCP for agents | Broader ops surface |
 
-If you need the kitchen sink, use them. If you want sandboxed **app + Postgres + Redis + S3** with git push on a box you already run, use us. Full list: [Scope](/docs/concepts/scope/).
+If you need the kitchen sink, use them. If you want sandboxed **app + Postgres + Redis + S3** with git push on k3s, use us. Full list: [Scope](/docs/concepts/scope/).
 
 ## The loop
 
 ```text
-create empty project
-  → add web / worker / postgres / redis services
+install control plane (Docker Compose)
+  → connect or create k3s cluster (+ gVisor on nodes)
+  → Domains: base domain + edge → Traefik
+  → Registries: default build registry (for git builds)
+  → create empty project
+  → add web / worker / postgres / redis as needed
   → bind apps to data (DATABASE_URL / REDIS_URL)
   → deploy (image | Dockerfile | Railpack) under gVisor
-  → URL on *.{baseDomain} via Caddy + cloudflared
-  → scheduled Postgres backups → platform MinIO
+  → URL on {project}.{baseDomain}
+  → scheduled Postgres backups → platform S3
 ```
 
 ![Hostrig project overview with web, worker, postgres, and redis](/screenshots/dashboard.jpeg)
@@ -37,36 +45,43 @@ create empty project
 ## Start here
 
 <CardGrid>
-  <LinkCard title="Prerequisites" href="/docs/getting-started/prerequisites/" description="Docker, gVisor, BuildKit, Railpack" />
-  <LinkCard title="Quick start" href="/docs/getting-started/quick-start/" description="install.sh, then open the dashboard" />
-  <LinkCard title="Domains & URLs" href="/docs/guides/domains/" description="Base domain + optional Cloudflare Tunnel" />
-  <LinkCard title="Deploy an app" href="/docs/guides/deploy/" description="Bind, build, and run under gVisor" />
+  <LinkCard title="Prerequisites" href="/docs/getting-started/prerequisites/" description="Control plane host, k3s, gVisor, BuildKit" />
+  <LinkCard title="Quick start" href="/docs/getting-started/quick-start/" description="Install, cluster, Domains, first deploy" />
+  <LinkCard title="Connect a cluster" href="/docs/guides/cluster/" description="BYO kubeconfig or Hetzner" />
+  <LinkCard title="Deploy an app" href="/docs/guides/deploy/" description="Image, git, bindings, gVisor" />
 </CardGrid>
 
 ## What you get
 
 <CardGrid stagger>
   <Card title="Service-first stack" icon="rocket">
-    Dedicated Postgres and Redis containers per service, shared MinIO with
-    per-project buckets — add what you need, bind explicitly.
+    Postgres and Redis as Kubernetes workloads in the project namespace,
+    shared platform S3 with per-project buckets — add what you need, bind explicitly.
   </Card>
-  <Card title="Build paths" icon="set-up">
-    Prebuilt image, Dockerfile, or Railpack from source. Compose deploys
-    are not supported.
+  <Card title="Three deploy paths" icon="set-up">
+    Prebuilt image, Dockerfile, or Railpack from source. Git builds push to a
+    registry you configure under Settings → Registries. Compose is not a deploy target.
   </Card>
-  <Card title="Secure by default" icon="approve-check">
-    User apps run under gVisor with hardened container defaults. Secrets
-    encrypted at rest. Docker socket never mounted into project containers.
+  <Card title="gVisor for user apps" icon="approve-check">
+    User apps use RuntimeClass <code>gvisor</code> with hardened pod defaults.
+    Secrets encrypted at rest. Not hostile multi-tenant cloud isolation — you
+    trust the cluster operator and patch nodes.
   </Card>
-  <Card title="Backups" icon="document">
-    On-demand and scheduled `pg_dump` to the platform backup bucket — no
-    separate backup product to wire up.
+  <Card title="Git + MCP" icon="document">
+    GitHub App / GitLab OAuth with push-to-deploy. Optional MCP at
+    <code>/api/mcp</code> for agents — same lifecycle as the UI, not a second product.
   </Card>
 </CardGrid>
 
 ## Honest limits (v1)
 
 - **No custom domains** — every web service is under `*.{baseDomain}` (custom domains are v2)
-- **TLS at Cloudflare** — Caddy on the host is HTTP-only; we do not claim Let’s Encrypt on Caddy
-- **No typed CLI / public REST API** — dashboard-first; MCP tokens are optional for agents
-- **Not a Coolify clone** — see [Scope](/docs/concepts/scope/)
+- **TLS at the edge** — Traefik in-cluster is HTTP; terminate TLS at Cloudflare / NetBird / Tailscale
+- **No MicroVMs** — gVisor only; we do not claim unbreakable or Dirty Pipe immortality
+- **gVisor is the default, not a slogan** — `DEPLOW_APP_RUNTIME=runc` is a temporary escape hatch
+- **MCP does not auto-provision Postgres** — `deploy_from_git` ships a web service from a repo; data services and bindings are separate steps
+- **Observe is optional** — Deploy works without ClickHouse; Observability is an addon
+
+## Canonical product docs
+
+Contributor / product truth lives in the repo under `docs/` (philosophy, product, GTM, security). This site is the **user-facing** surface and must match that truth.

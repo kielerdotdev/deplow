@@ -9,7 +9,7 @@ export default defineConfig({
     starlight({
       title: "Hostrig",
       description:
-        "Opinionated self-hosted project runtime — typed services, gVisor, Domains-managed URLs on your Docker host.",
+        "Opinionated self-hosted PaaS on k3s — typed services, gVisor for user apps, git push-to-deploy, platform wildcard URLs.",
       logo: {
         src: "./src/assets/logo.svg",
         replacesTitle: true,
@@ -27,7 +27,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/deplow/deplow",
+          href: "https://github.com/kielerdotdev/deplow",
         },
       ],
       head: [
@@ -69,6 +69,10 @@ export default defineConfig({
               slug: "docs/getting-started/prerequisites",
             },
             { label: "Quick start", slug: "docs/getting-started/quick-start" },
+            {
+              label: "Development",
+              slug: "docs/getting-started/development",
+            },
           ],
         },
         {
@@ -76,7 +80,7 @@ export default defineConfig({
           items: [
             { label: "Scope", slug: "docs/concepts/scope" },
             { label: "Architecture", slug: "docs/concepts/architecture" },
-            { label: "Projects", slug: "docs/concepts/projects" },
+            { label: "Projects & services", slug: "docs/concepts/projects" },
             { label: "Deploy modes", slug: "docs/concepts/deploy-modes" },
             { label: "Security", slug: "docs/concepts/security" },
           ],
@@ -84,11 +88,15 @@ export default defineConfig({
         {
           label: "Guides",
           items: [
-            { label: "Deploy an app", slug: "docs/guides/deploy" },
+            { label: "Connect a cluster", slug: "docs/guides/cluster" },
             { label: "Domains & URLs", slug: "docs/guides/domains" },
+            { label: "Container registries", slug: "docs/guides/registries" },
+            { label: "Deploy an app", slug: "docs/guides/deploy" },
+            { label: "Bindings & secrets", slug: "docs/guides/secrets" },
             { label: "Git connect", slug: "docs/guides/git" },
             { label: "Backups", slug: "docs/guides/backups" },
-            { label: "Secrets & env", slug: "docs/guides/secrets" },
+            { label: "MCP for agents", slug: "docs/guides/mcp" },
+            { label: "Observe (optional)", slug: "docs/guides/observe" },
           ],
         },
         {

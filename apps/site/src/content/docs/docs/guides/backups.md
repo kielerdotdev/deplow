@@ -1,40 +1,38 @@
 ---
 title: Backups
-description: Snapshots and PITR for project data services
+description: Snapshots for project Postgres and Redis to platform S3; optional PITR.
 ---
 
-Hostrig backs up **data services** (Postgres and Redis). Open a Postgres/Redis service and use its **Database** / **Backups** tabs — there is no project-level Database or Backups section.
-
-Drivers expose a shared `BackupCapable` interface so the same UI works for each kind.
+Hostrig backs up **data services** (Postgres and Redis). Open a Postgres/Redis service and use its **Backups** UI — there is no separate project-level “Database product” outside the service.
 
 ## Snapshots
 
 On-demand or scheduled backups call each backup-capable resource:
 
-- **Postgres** — `pg_dump -Fc` of the dedicated project instance → MinIO
-- **Redis** — full-instance key export → MinIO
+| Kind | Snapshot |
+| --- | --- |
+| **Postgres** | `pg_dump` custom format → platform backup bucket |
+| **Redis** | Full-instance export → platform backup bucket |
 
-Retention: `DEPLOW_BACKUP_RETAIN` (default 7) per resource link.
+Retention: `DEPLOW_BACKUP_RETAIN` (default 7) per resource.
+
+Platform object storage is MinIO (bundled by default) or external S3/R2 (`DEPLOW_S3_*`). Bucket name defaults via `DEPLOW_BACKUP_BUCKET` (`deplow-backups`).
 
 ## Point-in-time recovery (PITR)
 
-PITR applies to the project’s **dedicated Postgres container** only (stanza = project id).
+PITR is **optional** and gated:
 
 ```bash
 DEPLOW_PITR_ENABLED=1
 PGBACKREST_CONFIG=/absolute/path/to/infra/pgbackrest/pgbackrest.conf
 ```
 
-1. Copy `infra/pgbackrest/pgbackrest.conf.example` → `pgbackrest.conf` (or edit the checked-in local conf).
-2. Add a `[<project-id>]` stanza (user `p_<slug>`, database `d_<slug>`).
-3. Create the stanza against the data volume:
+It applies to **Postgres** only (not Redis). Setup involves a pgBackRest stanza and operator configuration — see repo `infra/pgbackrest/` and `docs/data-plane.md`. If PITR is not enabled, the UI will not offer a recoverable window.
 
-```bash
-./infra/pgbackrest/ensure-stanza.sh <project-id> <project-slug>
-```
+Redis does not support PITR in v1 (use snapshots).
 
-Restore stops that container, restores its data volume to the target time, and starts it again — the whole instance for that project, not a single DB carved out of a shared cluster.
+## What backups are not
 
-Redis does not support PITR in v1 (use snapshots / export-import).
-
-The service **Backups** tab shows the recoverable window when PITR is enabled and offers **Restore to point in time**.
+- Not a substitute for offsite disaster recovery you never test
+- Not continuous multi-region replication as a product feature
+- Not public Postgres/Redis endpoints for external dump tools (data plane stays private)

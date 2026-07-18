@@ -3,7 +3,7 @@
 	fill="none"
 	xmlns="http://www.w3.org/2000/svg"
 	role="img"
-	aria-label="User apps isolated under gVisor on a Docker host, separated from platform services"
+	aria-label="User apps isolated under gVisor on a k3s node, separated from platform services"
 >
 	<defs>
 		<linearGradient id="sb-sage" x1="0" y1="0" x2="0" y2="1">
@@ -16,7 +16,7 @@
 
 	<!-- host boundary -->
 	<rect x="28" y="28" width="504" height="364" rx="16" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
-	<text x="52" y="56" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" letter-spacing="2">DOCKER HOST</text>
+	<text x="52" y="56" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" letter-spacing="2">K3S NODE</text>
 
 	<!-- gVisor wall -->
 	<rect x="28" y="164" width="504" height="2" fill="#fb7185" opacity="0.5" />
@@ -34,8 +34,8 @@
 
 	<rect x="52" y="100" width="142" height="48" rx="9" fill="rgba(94,234,212,0.05)" stroke="rgba(94,234,212,0.18)" />
 	<rect x="52" y="100" width="4" height="48" rx="2" fill="url(#sb-sage)" />
-	<text x="72" y="122" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600">control-plane</text>
-	<text x="72" y="138" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">tanstack · oRPC · sqlite</text>
+	<text x="72" y="122" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600">traefik</text>
+	<text x="72" y="138" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="9">ingress · kube-system</text>
 
 	<rect x="206" y="100" width="100" height="48" rx="9" fill="rgba(94,234,212,0.05)" stroke="rgba(94,234,212,0.18)" />
 	<rect x="206" y="100" width="4" height="48" rx="2" fill="url(#sb-sage)" />
@@ -65,14 +65,6 @@
 	<rect x="216" y="298" width="54" height="14" rx="7" fill="rgba(251,113,133,0.14)" />
 	<text x="243" y="309" fill="#fb7185" font-family="IBM Plex Sans, sans-serif" font-size="8" font-weight="700" text-anchor="middle">SANDBOX</text>
 
-	<rect x="316" y="266" width="118" height="56" rx="9" fill="rgba(251,113,133,0.04)" stroke="rgba(251,113,133,0.18)" stroke-dasharray="4 4" />
-	<text x="375" y="288" fill="#eef1fb" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" text-anchor="middle">cron</text>
-	<rect x="348" y="298" width="54" height="14" rx="7" fill="rgba(251,113,133,0.14)" />
-	<text x="375" y="309" fill="#fb7185" font-family="IBM Plex Sans, sans-serif" font-size="8" font-weight="700" text-anchor="middle">SANDBOX</text>
-
-	<rect x="448" y="266" width="66" height="56" rx="9" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4 4" />
-	<text x="481" y="288" fill="#888fa8" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="600" text-anchor="middle">preview</text>
-	<text x="481" y="306" fill="#4d5480" font-family="IBM Plex Mono, monospace" font-size="8" text-anchor="middle">pr #42</text>
 
 	<!-- arrow: app syscall blocked at the gVisor wall -->
 	<path d="M111 244v-12" stroke="#fb7185" stroke-width="1.5" stroke-linecap="round" />

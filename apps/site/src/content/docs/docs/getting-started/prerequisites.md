@@ -1,122 +1,84 @@
 ---
 title: Prerequisites
-description: Docker, gVisor, BuildKit, and (for development) Node.js requirements before running Hostrig.
+description: What you need on the control-plane host and on every k3s node before running Hostrig.
 ---
+
+Hostrig has two machines-worth of requirements (they can be the same box):
+
+1. **Control plane host** — Docker Compose runs the web app, platform Redis, BuildKit, and (by default) MinIO.
+2. **k3s cluster** — apps and project Postgres/Redis schedule here. User apps need **gVisor** (`runsc`) on every node.
 
 ## VPS / production
 
-You only need Docker on the host. The install script pulls `ghcr.io/kielerdotdev/deplow` (control plane + Railpack + Docker CLI) and pinned platform images (Redis, Caddy). **Provide your own object storage** (MinIO or Cloudflare R2) via `DEPLOW_S3_*` — buckets are created on demand.
-
 ```bash
-curl -sSL https://raw.githubusercontent.com/kielerdotdev/deplow/main/deploy/install.sh | bash
+curl -sSL https://github.com/kielerdotdev/deplow/releases/download/install/install.sh | sudo bash
 ```
 
-| Requirement             | Notes                                                                                                |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Docker Engine**       | Compose v2 plugin; control plane mounts `docker.sock`                                                |
-| **gVisor (`runsc`)**    | Default OCI runtime for **user apps** — [install guide](https://gvisor.dev/docs/user_guide/install/) |
-| **BuildKit**            | Started by `deploy/install.sh` as the `buildkit` container                                           |
-
-You do **not** need Node, pnpm, or Railpack on the host for production (they are in the image). Supported image architecture today: **linux/amd64**.
-
-## Development
-
-Prefer the host bootstrap (installs/verifies BuildKit, Railpack, and gVisor, then starts platform services):
+Private repo / before the release asset exists:
 
 ```bash
-bash scripts/install.sh
+sudo bash deploy/install.sh
 ```
 
-Or satisfy the requirements below manually.
+| Requirement | Notes |
+| --- | --- |
+| **Docker Engine** | Compose v2 for the control plane; socket used for builds (BuildKit) and image pull |
+| **k3s cluster** | BYO kubeconfig **or** create via Settings → Cluster (Hetzner cloud-init) |
+| **gVisor on nodes** | RuntimeClass `gvisor` for user apps — see below |
+| **BuildKit** | Started by the installer as the `buildkit` container |
+| **Object storage** | **Bundled MinIO** by default (`DEPLOW_BUNDLE_MINIO=1`). Or set `DEPLOW_BUNDLE_MINIO=0` and provide external `DEPLOW_S3_*` (MinIO/R2) |
+| **Container registry** | Required for **git / Railpack / Dockerfile** builds — configure under Settings → Registries after install |
 
-| Requirement          | Notes                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Docker Engine**    | With access to `docker.sock` for the control plane                                                   |
-| **gVisor (`runsc`)** | Default OCI runtime for **user apps** — [install guide](https://gvisor.dev/docs/user_guide/install/) |
-| **BuildKit**         | Required for Railpack and Dockerfile builds                                                          |
-| **Railpack CLI**     | On `PATH` for host `pnpm dev` — [GitHub releases](https://github.com/railwayapp/railpack/releases)   |
-| **Node.js 22+**      | For the control plane                                                                                |
-| **pnpm 10**          | Monorepo package manager                                                                             |
+You do **not** need Node, pnpm, or Railpack on the host for production (they ship in the control-plane image). Supported image architecture today: **linux/amd64**.
 
-## gVisor setup
+## gVisor setup (k3s nodes)
 
-User application containers run under **gVisor** by default (`DEPLOW_APP_RUNTIME=runsc`). Platform services (Caddy, platform Redis) stay on ordinary runc. App Postgres/Redis are dedicated containers per service (also platform-managed, not gVisor). Object storage is an external MinIO or Cloudflare R2.
+User application **pods** run under **gVisor** by default (`DEPLOW_APP_RUNTIME=runsc` → Kubernetes RuntimeClass `gvisor`). Postgres/Redis and system workloads stay on the default containerd runtime.
+
+| Cluster path | gVisor install |
+| --- | --- |
+| **Managed Hetzner** (create / add worker) | cloud-init installs `runsc` |
+| **Self-hosted worker** (Cluster UI join script) | join script installs gVisor + k3s agent |
+| **BYO kubeconfig** | Run on **every** server and agent node: |
 
 ```bash
-# Follow https://gvisor.dev/docs/user_guide/install/ then:
-sudo runsc install
-sudo systemctl restart docker
-docker run --rm --runtime=runsc hello-world
+sudo bash scripts/install-gvisor-k3s.sh
+kubectl get runtimeclass gvisor
 ```
 
-Recommended: enable `userns-remap: default` in `/etc/docker/daemon.json` so container root is not host root. Full details are in the repo at `docs/secure-runtime.md`.
+If the RuntimeClass is missing and `DEPLOW_APP_RUNTIME_REQUIRED` is true (default), deploys **fail with a clear error** rather than silently falling back. Escape hatch: `DEPLOW_APP_RUNTIME=runc` (not sandboxed — not for production defaults).
 
-If `runsc` is missing and `DEPLOW_APP_RUNTIME_REQUIRED` is true (default), deploys fail with a clear error rather than silently falling back. Escape hatch: `DEPLOW_APP_RUNTIME=runc` (not sandboxed).
+## Public URLs (Traefik + edge)
 
-## BuildKit setup
+**Traefik on k3s** owns Host → Service. **Domains** are configured in the app (Networking & domains). Edges only forward to Traefik (usually `http://127.0.0.1:80` on the k3s server).
 
-Run BuildKit once (recommended: `moby/buildkit` container) — production install does this for you:
+**v1 is wildcard-only:** every web service gets a hostname under `*.{baseDomain}`. Custom domains are **v2**. **TLS terminates at the edge**; Traefik stays HTTP-only in-cluster for this ship slice.
 
-```bash
-docker run --rm --privileged -d --name buildkit moby/buildkit
-export BUILDKIT_HOST=docker-container://buildkit
-```
+Postgres and Redis are **never** exposed through the proxy.
 
-Add `BUILDKIT_HOST` to your shell profile or `apps/web/.env` so Railpack builds work consistently in development.
+## Platform services (control plane)
 
-## Railpack installation (development only)
+Compose runs control-plane glue — **not** your app runtime:
 
-Download the Railpack binary for your platform from the [releases page](https://github.com/railwayapp/railpack/releases) and place it on your `PATH`:
+| Service | Role |
+| --- | --- |
+| **web** | Control plane (TanStack Start) |
+| **platform Redis** | BullMQ queues |
+| **BuildKit** | Source / Dockerfile builds |
+| **MinIO** (optional bundle) | Platform S3 for backups and project buckets |
 
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-railpack --version
-```
-
-Optionally set `RAILPACK_BIN` if the binary lives elsewhere. Production images already include Railpack.
-
-## Public URLs (Caddy + cloudflared)
-
-Hostrig’s platform reverse proxy is **Caddy** (included in compose). **Domains are configured in the app** (Domains tab). Edges only forward to Caddy; the v1 edge is **cloudflared**.
-
-**v1 is wildcard-only:** every web service gets a hostname under `*.{baseDomain}`. Custom domains are **v2**. **TLS terminates at Cloudflare** on the tunnel; Caddy on the host is HTTP-only (no Let’s Encrypt on Caddy in v1).
-
-**Origins:** `http://caddy:80` (compose) · `http://127.0.0.1:8088` (host).
-
-1. In the dashboard: set base domain (e.g. `apps.example.com`), protocol `https`, enable auto-assign subdomains.
-2. Create a Cloudflare Tunnel. Public hostname `*.apps.example.com` → service `http://caddy:80` (path `/`). The compose `edge` profile runs cloudflared on the **same default network** as Caddy.
-3. Point a **wildcard** DNS CNAME `*.apps.example.com` at the tunnel **once** (proxied).
-4. Set `CLOUDFLARE_TUNNEL_TOKEN` and start the edge profile:
-
-```bash
-# Production (/opt/deplow):
-docker compose -p deplow --project-directory /opt/deplow --profile edge up -d
-
-# Dev (repo root):
-docker compose --profile edge up -d
-```
-
-Every web service then gets `https://{slug}.{baseDomain}` (or `{project}-{service}.{baseDomain}`) without more DNS. Postgres and Redis are never exposed through the proxy.
-
-`DEPLOW_BASE_DOMAIN` only seeds the DB on first boot. Other edges (Tailscale Serve, Netbird) forward to the same origins — see repo `docs/access.md` and `docs/gtm.md`.
-
-## Platform services
-
-Compose starts platform glue (not shared app databases):
-
-- **platform Redis** — BullMQ queues
-- **Caddy** — hostname → app container routing
-- **BuildKit** — source/Dockerfile builds (started by install scripts)
-- **web** — control plane image from GHCR (production) or `pnpm dev` (development)
-- **S3 (external)** — your MinIO or Cloudflare R2 (`DEPLOW_S3_PROVIDER`); not a compose service
-
-**Postgres and Redis for apps** are dedicated Docker containers created when you add those services to a project.
+**Apps, Postgres, and Redis** run as Kubernetes workloads on your **k3s** cluster after you connect it.
 
 ## What you do not need
 
 - A separate hosted Postgres / Redis / S3 account per app
-- Kubernetes, Swarm, or multi-host SSH setup
-- A separate database for each app's control plane (SQLite is used)
-- Per-project DNS records (one wildcard → cloudflared is enough)
-- Custom domains or Let’s Encrypt on Caddy (v1 uses Cloudflare TLS + platform wildcard)
+- Swarm, Docker-agent remotes, or SSH mesh as the app runtime
 - Node.js on the VPS for production installs
+- Per-project DNS records (one wildcard → edge is enough)
+- Custom domains kitchen sink in v1
+- MicroVMs / nested virtualization as an install prerequisite
+- Kubernetes expertise beyond “connect kubeconfig / run join script”
+
+## Development
+
+Local development is **Dev Container only** (see [Development](/docs/getting-started/development/)). Do not treat host `pnpm install` / `pnpm dev` as the supported path.

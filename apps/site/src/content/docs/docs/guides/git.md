@@ -7,26 +7,34 @@ Hostrig treats git as an **identity you connect once**, not a secret you re-past
 
 ## Happy path
 
-1. Open **Integrations** in the dashboard.
-2. **GitHub:** Create GitHub App (one click manifest) → Connect GitHub → install on your account/org.
+1. Open **Settings → Integrations** (instance admin for app/OAuth setup).
+2. **GitHub:** Create GitHub App (manifest) → Connect GitHub → install on your account/org.
 3. **GitLab:** Save OAuth Application credentials → Connect GitLab.
-4. On a project → **Settings → Source** → pick a repository and branch → **Connect**.
-5. Push to that branch → production deploy.
+4. On a project or service → pick a repository and branch → **Connect**.
+5. Ensure a [default build registry](/docs/guides/registries/) exists.
+6. Push to that branch → production deploy (Railpack/Dockerfile → registry → k3s).
 
-Hostrig registers the push webhook and clones with short-lived credentials. You should not need to paste a personal access token.
+Hostrig registers the push webhook and clones with short-lived credentials. You should not need to paste a personal access token for the happy path.
 
 ## Requirements
 
-| Item                | Notes                                                                                        |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| `DEPLOW_PUBLIC_URL` | Public URL of the control plane (OAuth callbacks + webhook URL). Use a tunnel in production. |
-| GitHub App          | Contents: read · Metadata: read · Webhooks: read/write · Events: push                        |
-| GitLab OAuth        | Scopes: `read_api`, `read_repository`, `write_repository`                                    |
+| Item | Notes |
+| --- | --- |
+| `DEPLOW_PUBLIC_URL` | Public URL of the control plane (OAuth callbacks + webhook URL) |
+| GitHub App | Contents: read · Metadata: read · Webhooks: read/write · Events: push |
+| GitLab OAuth | Scopes: `read_api`, `read_repository`, `write_repository` |
+| Registry | Default build registry for source builds |
+
+## Webhooks
+
+- Signature-verified (`X-Hub-Signature-256` / `X-Gitlab-Token`)
+- Endpoint shape: `POST /api/webhooks/git/{serviceId}`
+- Push to the configured production branch deploys that service
 
 ## Advanced
 
-- **PAT:** Source → Advanced → paste a token (escape hatch).
-- **Platform tokens:** `DEPLOW_GITHUB_TOKEN` / `DEPLOW_GITLAB_TOKEN` for operator-wide listing.
-- Manual webhook URL is only needed if auto-registration fails.
+- **PAT:** Advanced source settings — paste a token (escape hatch for private clones without OAuth)
+- **Platform tokens:** `DEPLOW_GITHUB_TOKEN` / `DEPLOW_GITLAB_TOKEN` for operator-wide listing
+- Manual webhook URL only if auto-registration fails
 
 Contributor detail: repository `docs/git-oauth.md`.

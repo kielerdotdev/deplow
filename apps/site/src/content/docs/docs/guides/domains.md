@@ -1,50 +1,69 @@
 ---
 title: Domains & URLs
-description: Platform wildcard URLs via Caddy and Cloudflare Tunnel. Custom domains are v2.
+description: Platform wildcard hostnames, edge TLS, and Traefik on k3s.
 ---
 
-Hostrig owns the local reverse proxy (**Caddy**). Edges only forward HTTP with the `Host` header intact. In v1 every web service gets a hostname under your **platform base domain** — not an arbitrary custom domain.
+**Traefik (k3s Ingress) owns Host → Service.** Edges only forward HTTP with the `Host` header intact. Domains are configured in the app (**Settings → Networking & domains**).
 
-## Happy path
-
-1. Open **Domains** in the dashboard.
-2. Set **base domain** (e.g. `apps.example.com` or `apps.localhost`), protocol (`https` or `http`), enable auto-assign subdomains.
-3. For public HTTPS: create a Cloudflare Tunnel. Public hostname `*.apps.example.com` → service `http://caddy:80`.
-4. Point a **wildcard** DNS CNAME at the tunnel once (proxied).
-5. Start the edge profile:
-
-```bash
-export CLOUDFLARE_TUNNEL_TOKEN=...
-docker compose --profile edge up -d
+```text
+Client
+  → Cloudflare Tunnel / NetBird reverse proxy / Tailscale Serve
+      → Traefik (:80 on the k3s server, usually 127.0.0.1)
+          → Service → Pod (gVisor for user apps)
 ```
 
-Primary web URL: `https://{project}.{baseDomain}`  
-Extra web services: `https://{project}-{service}.{baseDomain}`  
-Workers / Postgres / Redis: no public hostname.
+## v1 hostname scheme
 
-## Origins
+| Service | Hostname |
+| --- | --- |
+| Primary web service | `{project}.{baseDomain}` |
+| Additional web services | `{project}-{service}.{baseDomain}` |
+| Workers, Postgres, Redis | **not** published via Traefik |
 
-| From              | URL                         |
-| ----------------- | --------------------------- |
-| Compose network   | `http://caddy:80`           |
-| Host              | `http://127.0.0.1:8088`     |
+**Custom domains are v2** (schema may reserve `kind=custom`; do not expect the feature in v1).
 
-Local check without the tunnel:
+## Setup
+
+1. **Settings → Cluster** — cluster connected, Traefik detected.
+2. **Networking & domains** — set base domain (e.g. `apps.example.com`), protocol `https`, enable auto-assign subdomains.
+3. Point an edge at Traefik on the k3s server (default origin `http://127.0.0.1:80`, override with `DEPLOW_TRAEFIK_ORIGIN` only if needed).
+
+`DEPLOW_BASE_DOMAIN` / `DEPLOW_PUBLIC_URL_PROTOCOL` only **seed** Domains on first boot. Day-to-day changes are in the UI.
+
+## Edge recipes
+
+### NetBird guided
+
+1. Create a NetBird Personal Access Token.
+2. Hostrig → Networking → **NetBird guided setup** — management URL + PAT + domain mode.
+3. Connect — agent peer appears; Domains switch to NetBird mode.
+4. Deploy a web service — Hostrig can upsert reverse-proxy mappings for `{project}.{baseDomain}`.
+
+### Cloudflare Tunnel
+
+Public hostname `*.apps.example.com` → HTTP service `http://127.0.0.1:80` on a host that can reach Traefik (often the k3s server). Optional compose `edge` profile with `CLOUDFLARE_TUNNEL_TOKEN` on the control-plane host when that host can reach Traefik.
+
+### Tailscale Serve
+
+On the k3s server:
 
 ```bash
-curl -H "Host: acme.apps.example.com" http://127.0.0.1:8088/
+tailscale serve --bg http://127.0.0.1:80
 ```
 
-## TLS
+Clients use Tailnet HTTPS; Traefik still matches on the `Host` header for `{project}.{baseDomain}`.
 
-Caddy on the host is **HTTP-only** (`auto_https off`). TLS terminates at **Cloudflare** on the tunnel. There is no Let’s Encrypt on Caddy in v1.
+## TLS story (honest)
 
-## What is not v1
+- **TLS terminates at the edge**
+- Traefik is **HTTP-only** in-cluster for this ship slice
+- Do **not** expect Let’s Encrypt on Traefik in v1
+- Do **not** expect public-IP + sslip.io dogfood as the happy path
 
-- **Custom domains** (`www.customer.com`) — schema reserved; UI in v2
-- **PR preview URLs** — v2
-- Publishing Postgres/Redis through the proxy — never
+## Laptop check
 
-`DEPLOW_BASE_DOMAIN` / `DEPLOW_PUBLIC_URL_PROTOCOL` only **seed** the Domains settings on first boot. After that, change domains in the UI.
+From a host that can hit Traefik:
 
-Canonical detail: repo `docs/access.md`.
+```bash
+curl -H "Host: {project}.{baseDomain}" http://127.0.0.1:80/
+```

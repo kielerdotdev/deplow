@@ -2,90 +2,98 @@
 import LandingLayout from '../layouts/LandingLayout.astro';
 import Logo from '../components/landing/Logo.astro';
 import DashboardMockup from '../components/landing/diagrams/DashboardMockup.astro';
-import TrendsMockup from '../components/landing/diagrams/TrendsMockup.astro';
 
-const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
-const repoUrl = 'https://github.com/deplow/deplow';
-const installCmd =
-	'git clone https://github.com/deplow/deplow.git && cd deplow && bash scripts/install.sh && pnpm dev';
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://deplow.waitforit.cc';
+const repoUrl = 'https://github.com/kielerdotdev/deplow';
+const demoUrl = '/demo/hostrig-demo.mp4';
+const demoPoster = '/demo/hostrig-demo-poster.jpg';
 
-const deployPillars = [
+const pillars = [
 	{
-		title: 'One loop, not a catalog',
-		body: 'Add services, bind them, deploy, get a URL. No Compose files, no template marketplace.',
+		eyebrow: '01',
+		title: 'Service-first stack',
+		body: 'A project is web, worker, Postgres, and Redis services you add on demand — not a Compose catalog. Bind apps to data with explicit env keys. Destroy tears the namespace down.',
 	},
 	{
-		title: 'gVisor by default',
-		body: 'User apps run under runsc. Platform Postgres and Redis stay on runc. Missing gVisor fails the deploy — no quiet fallback.',
+		eyebrow: '02',
+		title: 'k3s + gVisor for apps',
+		body: 'User apps schedule as Kubernetes workloads under gVisor RuntimeClass by default. Postgres and Redis run in the project namespace on the default runtime. You own the cluster.',
 	},
 	{
-		title: 'Bindings, not env dumps',
-		body: 'Wire DATABASE_URL and REDIS_URL explicitly. Credentials scoped per binding, encrypted at rest.',
+		eyebrow: '03',
+		title: 'Git push + platform URL',
+		body: 'Connect GitHub or GitLab once. Push the production branch; Railpack or Dockerfile builds push to your registry and roll out on k3s. Public host is {project}.{baseDomain} via edge → Traefik.',
+	},
+	{
+		eyebrow: '04',
+		title: 'Agent-ready, UI-complete',
+		body: 'MCP tokens at /api/mcp for Cursor and similar clients. deploy_from_git creates a project, deploys a web service from a repo, and returns the public URL. Postgres and bindings stay explicit steps — same lifecycle as the dashboard.',
 	},
 ];
 
-const deploySteps = [
-	{ n: '1', title: 'Create', body: 'Postgres, Redis, bucket. Credentials encrypted at rest.' },
-	{ n: '2', title: 'Build', body: 'Railpack, Dockerfile, or pull a prebuilt image.' },
-	{ n: '3', title: 'Run', body: 'Env injected. Container starts under gVisor on your host.' },
-	{ n: '4', title: 'Back up', body: 'Scheduled pg_dump into the platform bucket.' },
+const loop = [
+	{ n: '01', title: 'Cluster + Domains', body: 'Connect or create k3s. Set base domain and edge (Cloudflare, NetBird, or Tailscale).' },
+	{ n: '02', title: 'Project + services', body: 'Empty project. Add web/worker and Postgres/Redis when you need them. Bind DATABASE_URL / REDIS_URL.' },
+	{ n: '03', title: 'Build & ship', body: 'Prebuilt image, or git → Railpack/Dockerfile → your registry → k3s under gVisor.' },
+	{ n: '04', title: 'Operate', body: 'Logs, retry, backups to platform S3, optional Observe. Destroy cleans the project namespace.' },
 ];
 
-const observePillars = [
+const vs = [
 	{
-		title: 'Trends query builder',
-		body: 'Multi-series A/B/C, arithmetic formulas, nested filter groups, breakdowns, baseline overlay — chart plus exact results table.',
+		them: 'Coolify / Dokploy',
+		us: 'Hostrig',
+		lines: [
+			{ them: 'Compose + templates + many DBs', us: 'Typed services + bindings only' },
+			{ them: 'Docker-host / multi-runtime sprawl', us: 'One k3s cluster, gVisor apps' },
+			{ them: 'Feature-matrix race', us: 'Railway-shaped loop, self-hosted' },
+			{ them: 'Panel-first only', us: 'Dashboard + MCP for agents' },
+		],
 	},
-	{
-		title: 'Traces, logs, issues',
-		body: 'Explore heatmaps, dig-down into traces and logs, group errors into issues. Same Context time range across surfaces.',
-	},
-	{
-		title: 'Dashboards from saved charts',
-		body: 'Save a Trends query as an Insight, place it on a dashboard, override period and group-by without rebuilding the chart.',
-	},
-];
-
-const trendsFeatures = [
-	{ label: 'Series', detail: 'Spans, root spans, logs, errors — count, rate, percentiles, error rate' },
-	{ label: 'Formulas', detail: 'B/A×100 and friends over aligned buckets' },
-	{ label: 'Filters', detail: 'Nested AND / OR / NOT groups, per-series and global' },
-	{ label: 'Breakdowns', detail: 'Top-N + Other, cardinality warnings' },
-	{ label: 'Compare', detail: 'Previous-period baseline on the same chart' },
-	{ label: 'Export', detail: 'CSV of exact buckets, or query + result JSON' },
 ];
 
 const notFor = [
-	'Compose as a deploy path',
-	'MySQL, Mongo, or template marketplaces',
-	'Product analytics funnels / retention / paths',
-	'Multi-server fleets or kube operators',
-	'SSO or a public CLI (v1)',
+	'Docker Compose as a deploy path',
+	'MySQL, Mongo, or one-click marketplaces',
+	'Custom domains kitchen sink (v2)',
+	'Enterprise SSO / fine-grained RBAC (v1)',
+	'MicroVMs or “completely secure” multi-tenant cloud claims',
 ];
 
 const faqs = [
 	{
+		q: 'What is Hostrig, in one sentence?',
+		a: 'An opinionated self-hosted PaaS: typed services on k3s, user apps under gVisor, platform wildcard URLs, git push-to-deploy, on infrastructure you control.',
+	},
+	{
 		q: 'How is this different from Coolify or Dokploy?',
-		a: 'They cover more surface area — Compose, templates, fleets. Hostrig is a Railway-style loop on one host with gVisor on user code, plus an Observe mode for OTEL traces, logs, and Trends charts.',
+		a: 'They win breadth — Compose, templates, fleets, many databases. We win a narrow Railway-shaped path: web/worker/Postgres/Redis, explicit bindings, Traefik + edge, gVisor for apps. If you need the kitchen sink, use them.',
 	},
 	{
-		q: 'What is Observe?',
-		a: 'Optional ClickHouse-backed observability in the same control plane. Ingest OpenTelemetry / Sentry-compatible envelopes, then query with Trends, Explore, Traces, Logs, and Issues.',
+		q: 'Does MCP auto-create Postgres?',
+		a: 'No. deploy_from_git creates a project (optional), analyzes the repo, creates a web service, deploys, and returns a public URL when ready. Add Postgres/Redis and bindings in the UI or with further steps — same as a human would.',
 	},
 	{
-		q: 'Do I have to use Observe to deploy?',
-		a: 'No. Deploy works alone. Enable Observe per project when you want charts and dig-down on the same host.',
+		q: 'Do I need Kubernetes expertise?',
+		a: 'You connect or create a k3s cluster once (BYO kubeconfig or managed Hetzner). Day-to-day is project → services → bind → deploy. Capacity grows by adding workers, not hand-writing Deployments for every app.',
+	},
+	{
+		q: 'What about Observe?',
+		a: 'Optional. Deploy works alone. Enable Observe (ClickHouse + flag) when you want Sentry-compatible errors, OTLP traces/metrics/logs, issues, and charts on the same control plane. Not required for GTM.',
 	},
 	{
 		q: 'Where does HTTPS come from?',
-		a: 'TLS terminates at Cloudflare on the tunnel. Caddy on the host is HTTP-only in v1.',
+		a: 'TLS terminates at your edge (Cloudflare Tunnel, NetBird reverse proxy, or Tailscale Serve). Traefik in the cluster is HTTP-only for this ship slice. Hostnames are platform wildcard: {project}.{baseDomain}.',
+	},
+	{
+		q: 'How secure are user apps?',
+		a: 'User apps run under gVisor on k3s with hardened pods and per-project NetworkPolicy. That is a real sandbox — not MicroVMs, not “unbreakable,” not hostile multi-tenant SaaS isolation. You trust the cluster operator and keep nodes patched. DEPLOW_APP_RUNTIME=runc is a temporary escape hatch that turns the sandbox off.',
 	},
 ];
 ---
 
 <LandingLayout
-	title="Hostrig — deploy & observe on your host"
-	description="Self-hosted deploy under gVisor, plus Trends observability: multi-series charts, traces, logs, and dashboards on your Docker host."
+	title="Hostrig — self-hosted PaaS on k3s"
+	description="Opinionated self-hosted PaaS: typed services on k3s, gVisor for user apps, git push-to-deploy, platform wildcard URLs. MCP for agents. You own the cluster."
 >
 	<nav class="nav">
 		<a href="/" class="nav-brand" aria-label="Hostrig home">
@@ -93,91 +101,116 @@ const faqs = [
 			<span class="nav-wordmark">Hostrig</span>
 		</a>
 		<div class="nav-right">
-			<a href="#deploy" class="nav-link">Deploy</a>
-			<a href="#observe" class="nav-link">Observe</a>
+			<a href="#product" class="nav-link">Product</a>
+			<a href="#loop" class="nav-link">How it works</a>
 			<a href="/docs/" class="nav-link">Docs</a>
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="nav-link">
 				GitHub
 				<span class="nav-link-arrow" aria-hidden="true">&#8599;</span>
 			</a>
+			<a class="nav-cta" href={appUrl}>Open app</a>
 		</div>
 	</nav>
 
 	<main>
 		<section class="hero">
 			<p class="brand-mark">Hostrig</p>
-			<h1 class="tagline">Deploy and observe<br />on your host.</h1>
+			<h1 class="tagline">Self-hosted PaaS on k3s.</h1>
 			<p class="lede">
-				One Docker machine: ship apps under gVisor, then dig into traces, logs, and
-				Trends charts without bolting on a second SaaS.
+				Typed services, explicit bindings, public URL — apps under gVisor on
+				a cluster you own. UI or MCP. Same loop.
 			</p>
-
 			<div class="hero-actions">
-				<a class="hero-button" href="/docs/getting-started/quick-start/">Get started</a>
-				<a class="secondary-link" href="#observe">See Observe →</a>
-			</div>
-
-			<div class="install" data-install>
-				<span class="prompt">$</span>
-				<code>{installCmd}</code>
-				<button type="button" class="copy" aria-label="Copy install command" data-copy={installCmd}>
-					Copy
-				</button>
+				<a class="hero-button" href={appUrl}>Start deploying</a>
+				<a class="secondary-link" href="#demo">Watch the demo →</a>
 			</div>
 		</section>
 
-		<!-- Split product rail -->
-		<section class="split" aria-label="Deploy and Observe">
-			<a class="split-pane split-pane--deploy" href="#deploy">
-				<span class="split-kicker">01 · Deploy</span>
-				<strong class="split-title">Ship the stack</strong>
-				<p class="split-body">
-					Web + Postgres + Redis, explicit bindings, git push, wildcard URL.
-					User code sandboxed under gVisor.
-				</p>
-				<span class="split-cta">Explore Deploy →</span>
-			</a>
-			<a class="split-pane split-pane--observe" href="#observe">
-				<span class="split-kicker">02 · Observe</span>
-				<strong class="split-title">Query the signal</strong>
-				<p class="split-body">
-					Trends multi-series builder, Explore dig-down, traces, logs, issues,
-					and dashboards from saved charts.
-				</p>
-				<span class="split-cta">Explore Observe →</span>
-			</a>
+		<section class="demo-bleed" id="demo" aria-label="Product demo">
+			<div class="demo-frame">
+				<video
+					class="demo-video"
+					src={demoUrl}
+					poster={demoPoster}
+					autoplay
+					muted
+					loop
+					playsinline
+					controls
+					preload="metadata"
+				>
+					Your browser does not support the video tag.
+				</video>
+			</div>
+			<p class="demo-caption">
+				Project → services → bind → deploy. Same path in the UI or via MCP.
+			</p>
 		</section>
 
-		<!-- DEPLOY -->
-		<section class="band" id="deploy">
-			<div class="mode-label">Deploy</div>
+		<section class="band" id="product">
 			<div class="band-head">
-				<h2>What Deploy actually does</h2>
+				<p class="mode-label">The product</p>
+				<h2>Railway-shaped. Self-hosted. Honest sandbox.</h2>
 				<p>
-					Most self-hosted panels try to run everything. We run the stack most
-					apps need — and isolate the code you did not write.
+					Coolify wins the feature list. Hosted PaaS wins convenience.
+					Hostrig wins a boring, opinionated path on a cluster you control.
 				</p>
 			</div>
-			<div class="diff-list">
+			<div class="moat-list">
 				{
-					deployPillars.map((d) => (
-						<div class="diff-item">
-							<h3>{d.title}</h3>
-							<p>{d.body}</p>
-						</div>
+					pillars.map((m) => (
+						<article class="moat-item">
+							<span class="moat-n">{m.eyebrow}</span>
+							<h3>{m.title}</h3>
+							<p>{m.body}</p>
+						</article>
 					))
 				}
 			</div>
 		</section>
 
-		<section class="band" id="how-deploy">
+		<section class="band prompt-band" id="agent" aria-label="Agent deploy">
 			<div class="band-head">
-				<h2>How Deploy works</h2>
-				<p>Four steps from install to running app. No resource catalog in the middle.</p>
+				<p class="mode-label">MCP</p>
+				<h2>Agents can drive the same lifecycle.</h2>
+				<p>
+					Streamable HTTP at <code>/api/mcp</code>. Operator tokens under Settings → API &amp; MCP.
+					<code>deploy_from_git</code> ships a repo to a web service URL — it does not invent
+					Postgres or bindings for you.
+				</p>
+			</div>
+			<div class="prompt-stage" data-prompt-stage>
+				<div class="prompt-row">
+					<span class="prompt-who">YOU</span>
+					<p class="prompt-bubble mono">
+						<span data-typed></span><span class="caret" data-caret></span>
+					</p>
+				</div>
+				<div class="prompt-row prompt-row--agent" data-agent-row>
+					<span class="prompt-who prompt-who--agent">AI</span>
+					<div class="prompt-bubble">
+						<p>Deploying the web service from that repo…</p>
+						<ul class="prompt-steps">
+							<li data-step>Create project</li>
+							<li data-step>Analyze source</li>
+							<li data-step>Create web service + deploy</li>
+							<li data-step>Poll until running</li>
+							<li data-step class="ok">https://showcase.apps.example.com</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="band" id="loop">
+			<div class="band-head">
+				<p class="mode-label">The loop</p>
+				<h2>Four moves. No detours.</h2>
+				<p>Same path whether a human or an agent drives it.</p>
 			</div>
 			<ol class="steps">
 				{
-					deploySteps.map((s) => (
+					loop.map((s) => (
 						<li>
 							<span class="step-n">{s.n}</span>
 							<div>
@@ -196,110 +229,62 @@ const faqs = [
 					<span class="dot"></span>
 					<span class="dot"></span>
 					<span class="dot"></span>
-					<span class="url">localhost:3000 / projects / acme-shop</span>
+					<span class="url">app.hostrig / projects / showcase</span>
 				</div>
 				<div class="shot-frame">
 					<DashboardMockup />
 				</div>
 				<figcaption>
-					Project stack — apps on the left, data on the right, bindings in between.
+					Nested chrome, dense rows — services and resources in one overview.
 				</figcaption>
 			</figure>
 		</section>
 
-		<!-- OBSERVE -->
-		<section class="band" id="observe">
-			<div class="mode-label mode-label--observe">Observe</div>
+		<section class="band" id="compare">
 			<div class="band-head">
-				<h2>Observability that lives next to Deploy</h2>
+				<p class="mode-label">Positioning</p>
+				<h2>Not Coolify-shaped. Not a Docker panel.</h2>
 				<p>
-					Ingest OpenTelemetry on the same host. Build charts with Trends, dig
-					into traces and logs, save Insights onto dashboards — one Context bar
-					for time and filters.
+					If you need Compose + every database + templates, use the panels that chase that.
+					If you want sandboxed app + Postgres + Redis + S3 on k3s with git push, use us.
 				</p>
 			</div>
-			<div class="diff-list">
-				{
-					observePillars.map((d) => (
-						<div class="diff-item">
-							<h3>{d.title}</h3>
-							<p>{d.body}</p>
+			{
+				vs.map((block) => (
+					<div class="compare">
+						<div class="compare-head">
+							<span>{block.them}</span>
+							<span>{block.us}</span>
 						</div>
-					))
-				}
-			</div>
+						{block.lines.map((line) => (
+							<div class="compare-row">
+								<span class="compare-them">{line.them}</span>
+								<span class="compare-us">{line.us}</span>
+							</div>
+						))}
+					</div>
+				))
+			}
 		</section>
 
-		<section class="band band--shot" id="trends">
-			<figure class="shot">
-				<div class="browser-chrome" aria-hidden="true">
-					<span class="dot"></span>
-					<span class="dot"></span>
-					<span class="dot"></span>
-					<span class="url">localhost:3010 / observe / projects / … / trends</span>
-				</div>
-				<div class="shot-frame">
-					<TrendsMockup />
-				</div>
-				<figcaption>
-					Trends — left builder (series, formulas, filters, breakdown), chart with
-					baseline, exact results grid, CSV / JSON export.
-				</figcaption>
-			</figure>
-		</section>
-
-		<section class="band" id="trends-features">
+		<section class="band" id="observe">
 			<div class="band-head">
-				<h2>Trends, in one pass</h2>
+				<p class="mode-label">Optional</p>
+				<h2>Observe when you need signal</h2>
 				<p>
-					PostHog-style visual query builder for ops signals — not product
-					analytics. Phase 1 ships the loop you use every day.
+					Sentry-compatible errors, OTLP traces / metrics / logs, issues, and charts —
+					same control plane, ClickHouse-backed. Not required to ship. Not the lead story.
 				</p>
 			</div>
-			<ul class="feature-rail">
-				{
-					trendsFeatures.map((f) => (
-						<li>
-							<span class="feature-label">{f.label}</span>
-							<span class="feature-detail">{f.detail}</span>
-						</li>
-					))
-				}
-			</ul>
-		</section>
-
-		<section class="band" id="observe-surfaces">
-			<div class="band-head">
-				<h2>The rest of Observe</h2>
-				<p>Trends is the deep builder. These surfaces share the same Context.</p>
-			</div>
-			<div class="surface-grid">
-				<div class="surface-item">
-					<h3>Explore</h3>
-					<p>Duration heatmap with brush dig-down into the time window that matters.</p>
-				</div>
-				<div class="surface-item">
-					<h3>Traces &amp; logs</h3>
-					<p>Waterfalls, correlated logs, attribute filters — jump from chart to span.</p>
-				</div>
-				<div class="surface-item">
-					<h3>Issues</h3>
-					<p>Grouped errors with stack frames, status, and links back into traces.</p>
-				</div>
-				<div class="surface-item">
-					<h3>Dashboards</h3>
-					<p>Place saved Trends charts as widgets; override period and group-by per board.</p>
-				</div>
-			</div>
+			<a class="inline-link" href="/docs/guides/observe/">Observe setup →</a>
 		</section>
 
 		<section class="band" id="not-for">
 			<div class="band-head">
-				<h2>Out of scope</h2>
+				<h2>Out of scope on purpose</h2>
 				<p>
-					Narrow on purpose. If you need Coolify’s breadth or a full product-analytics
-					suite, use those tools.
-					<a class="inline-link" href="/docs/concepts/scope/">Full Deploy list →</a>
+					Narrow tool, thick pen.
+					<a class="inline-link" href="/docs/concepts/scope/">Full list →</a>
 				</p>
 			</div>
 			<ul class="out-list">
@@ -324,11 +309,12 @@ const faqs = [
 		</section>
 
 		<section class="cta">
-			<h2>Install on your host</h2>
-			<p>Bootstrap Deploy. Flip on Observe when you want Trends and dig-down.</p>
+			<p class="brand-mark cta-mark">Hostrig</p>
+			<h2>Own the cluster.<br />Ship the boring stack.</h2>
+			<p>Self-hosted PaaS on k3s. gVisor for apps. Git push. MCP when you want it.</p>
 			<div class="hero-actions">
-				<a class="hero-button" href="/docs/getting-started/quick-start/">Read quick start</a>
-				<a class="secondary-link" href={appUrl}>Open dashboard</a>
+				<a class="hero-button" href={appUrl}>Open Hostrig</a>
+				<a class="secondary-link" href="/docs/getting-started/quick-start/">Quick start</a>
 			</div>
 		</section>
 	</main>
@@ -336,27 +322,48 @@ const faqs = [
 	<footer class="footer">
 		<span>&copy; {new Date().getFullYear()} Hostrig · MIT</span>
 		<div class="footer-links">
-			<a href="#deploy">Deploy</a>
-			<a href="#observe">Observe</a>
+			<a href="#product">Product</a>
+			<a href="#loop">Loop</a>
 			<a href="/docs/">Docs</a>
-			<a href={appUrl}>Dashboard</a>
+			<a href={appUrl}>App</a>
 			<a href={repoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 		</div>
 	</footer>
 
 	<script>
-		const copyBtn = document.querySelector('[data-copy]');
-		copyBtn?.addEventListener('click', async () => {
-			const text = copyBtn.getAttribute('data-copy') ?? '';
-			try {
-				await navigator.clipboard.writeText(text);
-				copyBtn.textContent = 'Copied';
-				setTimeout(() => {
-					copyBtn.textContent = 'Copy';
-				}, 1400);
-			} catch {
-				/* noop */
-			}
-		});
+		const prompt = 'Deploy my app from github.com/org/showcase and give me the URL.';
+		const typed = document.querySelector('[data-typed]');
+		const caret = document.querySelector('[data-caret]');
+		const agentRow = document.querySelector('[data-agent-row]');
+		const steps = [...document.querySelectorAll('[data-step]')];
+		const stage = document.querySelector('[data-prompt-stage]');
+
+		const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+		async function runPrompt() {
+			if (!typed || !stage) return;
+			const io = new IntersectionObserver(
+				async ([entry]) => {
+					if (!entry?.isIntersecting) return;
+					io.disconnect();
+					typed.textContent = '';
+					for (const ch of prompt) {
+						typed.textContent += ch;
+						await sleep(28);
+					}
+					caret?.classList.add('off');
+					await sleep(200);
+					agentRow?.classList.add('on');
+					for (const step of steps) {
+						await sleep(280);
+						step.classList.add('on');
+					}
+				},
+				{ threshold: 0.35 },
+			);
+			io.observe(stage);
+		}
+
+		runPrompt();
 	</script>
 </LandingLayout>
