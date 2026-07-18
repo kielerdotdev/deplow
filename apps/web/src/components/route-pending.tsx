@@ -3,36 +3,39 @@ import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 /**
- * Pending UI that preserves a sidebar-shaped chrome outline so authenticated
+ * Pending UI that preserves nested Atlasflow chrome so authenticated
  * navigations don't flash a bare content skeleton.
  */
 export function ShellPending({ className }: { className?: string }) {
   return (
     <div
-      className={cn("flex min-h-svh w-full bg-background", className)}
+      className={cn("app-shell select-none", className)}
       data-testid="shell-pending"
       role="status"
       aria-busy="true"
       aria-label="Loading page"
     >
-      <aside className="hidden w-56 shrink-0 border-r border-border bg-sidebar p-3 md:block">
-        <Skeleton className="mb-3 h-9 w-full" />
-        <Skeleton className="mb-2 h-7 w-full" />
-        <Skeleton className="mb-6 h-7 w-3/4" />
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-5/6" />
-          <Skeleton className="h-8 w-full" />
+      <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-8 rounded-sm" />
+          <span className="app-crumb-sep">/</span>
+          <Skeleton className="h-8 w-28 rounded-sm" />
+          <span className="app-crumb-sep">/</span>
+          <Skeleton className="h-8 w-32 rounded-sm" />
         </div>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-12 items-center gap-2 border-b border-border px-4">
-          <Skeleton className="size-7" />
-          <div className="flex-1" />
-          <Skeleton className="h-8 w-40" />
+        <Skeleton className="size-8 rounded-full" />
+      </div>
+      <div className="flex h-12 shrink-0 items-center gap-2 px-2">
+        <Skeleton className="h-8 w-24 rounded-sm" />
+        <Skeleton className="h-8 w-28 rounded-sm" />
+        <Skeleton className="h-8 w-20 rounded-sm" />
+        <Skeleton className="h-8 w-24 rounded-sm" />
+      </div>
+      <div className="app-shell-panel">
+        <div className="flex h-12 items-center border-b border-border px-4">
+          <Skeleton className="h-4 w-40" />
         </div>
-        <RoutePending className="flex-1" />
+        <RoutePending className="flex-1 p-0" />
       </div>
     </div>
   )
@@ -43,7 +46,7 @@ export function RoutePending({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:px-6 md:py-8",
+        "flex w-full flex-col gap-0",
         className,
       )}
       data-testid="route-pending"
@@ -51,21 +54,22 @@ export function RoutePending({ className }: { className?: string }) {
       aria-busy="true"
       aria-label="Loading page"
     >
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3 text-sm text-muted-foreground">
         <Spinner className="size-4" />
         <span>Loading…</span>
       </div>
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="h-4 w-80 max-w-full" />
-      </div>
-      <Skeleton className="h-40 w-full rounded-lg" />
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-3/4" />
-      </div>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex h-12 items-center gap-3 border-b border-border/60 px-4"
+        >
+          <Skeleton className="size-2 rounded-full" />
+          <Skeleton className="h-3.5 w-20" />
+          <Skeleton className="h-3.5 w-24" />
+          <Skeleton className="h-3.5 flex-1" />
+          <Skeleton className="h-3.5 w-16" />
+        </div>
+      ))}
     </div>
   )
 }
@@ -81,14 +85,14 @@ export function InlinePending({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-1 py-6 text-sm text-muted-foreground",
+        "flex items-center gap-2 py-6 text-sm text-muted-foreground",
         className,
       )}
       role="status"
       aria-busy="true"
     >
-      <Spinner className="size-3.5" />
-      {label}
+      <Spinner className="size-4" />
+      <span>{label}</span>
     </div>
   )
 }
@@ -105,7 +109,7 @@ export function TablePending({
 }) {
   return (
     <div
-      className={cn("flex flex-col gap-0 px-5 py-3", className)}
+      className={cn("flex flex-col gap-0 px-4 py-3", className)}
       role="status"
       aria-busy="true"
       aria-label="Loading table"

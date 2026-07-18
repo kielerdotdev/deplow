@@ -2,11 +2,13 @@ import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 
 import { AppShell } from "@/components/app-shell"
 import { SettingsShell } from "@/components/page-layout"
+import { ShellPending } from "@/components/route-pending"
 import { SettingsNav } from "@/components/settings/settings-nav"
 import { getSession } from "@/lib/auth.functions"
 import { loadShellContext } from "@/lib/shell-context"
 
 export const Route = createFileRoute("/settings")({
+  pendingComponent: ShellPending,
   loader: async () => {
     const session = await getSession()
     if (!session)

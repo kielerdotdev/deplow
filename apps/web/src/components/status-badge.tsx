@@ -69,6 +69,16 @@ const statusLabel: Record<string, string> = {
   success: "ready",
   succeeded: "done",
   completed: "ready",
+  mesh_ready: "mesh ready",
+  mesh_logged_out: "logged out",
+  mesh_missing: "no mesh",
+  deploy_ready: "ready",
+  deploy_blocked: "blocked",
+  netbird: "netbird",
+  tailscale: "tailscale",
+  connected: "connected",
+  connecting: "connecting",
+  disconnected: "disconnected",
 }
 
 const serviceLabel: Record<string, string> = {
@@ -83,6 +93,16 @@ const serviceLabel: Record<string, string> = {
 
 const statusVariantExtra: Record<string, BadgeVariant> = {
   not_deployed: "secondary",
+  mesh_ready: "success",
+  mesh_logged_out: "warning",
+  mesh_missing: "destructive",
+  deploy_ready: "success",
+  deploy_blocked: "warning",
+  netbird: "info",
+  tailscale: "info",
+  connected: "success",
+  connecting: "info",
+  disconnected: "secondary",
 }
 
 const deploymentLabel: Record<string, string> = {

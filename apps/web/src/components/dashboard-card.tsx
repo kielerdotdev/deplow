@@ -8,7 +8,11 @@ import { cn } from "@/lib/utils"
 type DashboardCardProps = {
   title: string
   count?: number
-  href?: "/" | "/settings/networking" | "/settings/integrations" | "/settings/nodes"
+  href?:
+    | "/"
+    | "/settings/networking"
+    | "/settings/integrations"
+    | "/settings/cluster"
   onAdd?: () => void
   children: React.ReactNode
   className?: string
@@ -89,7 +93,7 @@ type DashboardRowProps = {
       to:
         | "/settings/networking"
         | "/settings/integrations"
-        | "/settings/nodes"
+        | "/settings/cluster"
         | "/settings/notifications"
         | "/settings/members"
       params?: never
@@ -126,7 +130,7 @@ export function DashboardRow(props: DashboardRowProps) {
   )
 
   const className =
-    "flex w-full items-center gap-3 border-b border-border/60 px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-muted/35"
+    "flex h-12 w-full items-center gap-3 border-b border-border/60 px-4 text-left last:border-b-0 transition-colors hover:bg-foreground/[0.04]"
 
   if (props.to === "/projects/$projectId") {
     const link = (

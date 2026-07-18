@@ -3,7 +3,7 @@ import { createFileRoute, getRouteApi, useRouter } from "@tanstack/react-router"
 import { RocketIcon } from "lucide-react"
 
 import { ActionDialog } from "@/components/action-dialog"
-import { PageContent } from "@/components/page-layout"
+import { PageContent, PageHeader } from "@/components/page-layout"
 import { ProjectTopology } from "@/components/project-topology"
 import { ServiceDeleteDialog } from "@/components/service-delete-dialog"
 import { Button } from "@/components/ui/button"
@@ -137,21 +137,17 @@ function ProjectOverviewPage() {
   }
 
   return (
-    <PageContent width="wide">
-      {localError ? (
-        <p className="mb-4 text-sm text-destructive">{localError}</p>
-      ) : null}
-      <div className="space-y-8">
-        <div className="space-y-1">
-          <h2 className="text-xl font-semibold tracking-[-0.03em]">
-            {project.name}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {appCount} service{appCount === 1 ? "" : "s"} · {resourceCount}{" "}
-            resource{resourceCount === 1 ? "" : "s"}
-          </p>
-        </div>
-
+    <>
+      <PageHeader
+        title="Overview"
+        description={`${appCount} service${appCount === 1 ? "" : "s"} · ${resourceCount} resource${resourceCount === 1 ? "" : "s"}`}
+      />
+      <PageContent width="flush">
+        {localError ? (
+          <div className="border-b border-border px-4 py-3">
+            <p className="text-sm text-destructive">{localError}</p>
+          </div>
+        ) : null}
         <ProjectTopology
           projectId={project.id}
           services={project.services}
@@ -184,41 +180,41 @@ function ProjectOverviewPage() {
           }
           onDelete={(serviceId) => setDeleteServiceId(serviceId)}
         />
-      </div>
 
-      <DeployServiceDialog
-        service={selectedService ?? null}
-        onClose={() => setDeployServiceId(null)}
-        onDeployed={refresh}
-        onError={(msg) => {
-          setLocalError(msg)
-          setError(msg)
-        }}
-      />
+        <DeployServiceDialog
+          service={selectedService ?? null}
+          onClose={() => setDeployServiceId(null)}
+          onDeployed={refresh}
+          onError={(msg) => {
+            setLocalError(msg)
+            setError(msg)
+          }}
+        />
 
-      <ServiceDeleteDialog
-        service={serviceToDelete ?? null}
-        open={Boolean(serviceToDelete)}
-        onOpenChange={(open) => !open && setDeleteServiceId(null)}
-        pending={pending}
-        onConfirm={async () => {
-          if (!serviceToDelete) return
-          setPending(true)
-          setLocalError(null)
-          try {
-            await client.services.destroy({ id: serviceToDelete.id })
-            setDeleteServiceId(null)
-            await refresh()
-          } catch (cause) {
-            setLocalError(
-              cause instanceof Error ? cause.message : String(cause),
-            )
-          } finally {
-            setPending(false)
-          }
-        }}
-      />
-    </PageContent>
+        <ServiceDeleteDialog
+          service={serviceToDelete ?? null}
+          open={Boolean(serviceToDelete)}
+          onOpenChange={(open) => !open && setDeleteServiceId(null)}
+          pending={pending}
+          onConfirm={async () => {
+            if (!serviceToDelete) return
+            setPending(true)
+            setLocalError(null)
+            try {
+              await client.services.destroy({ id: serviceToDelete.id })
+              setDeleteServiceId(null)
+              await refresh()
+            } catch (cause) {
+              setLocalError(
+                cause instanceof Error ? cause.message : String(cause),
+              )
+            } finally {
+              setPending(false)
+            }
+          }}
+        />
+      </PageContent>
+    </>
   )
 }
 

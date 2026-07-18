@@ -70,8 +70,8 @@ export function EmptyState({
           className={cn(
             "icon-well mb-0 border border-dashed border-border bg-muted/60 text-muted-foreground",
             resolvedVariant === "default"
-              ? "size-12 rounded-lg [&_svg]:size-5"
-              : "size-10 rounded-md [&_svg]:size-4",
+              ? "size-12 rounded-sm [&_svg]:size-5"
+              : "size-10 rounded-sm [&_svg]:size-4",
           )}
         >
           <Icon />

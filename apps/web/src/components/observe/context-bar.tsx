@@ -5,6 +5,7 @@ import {
   XIcon,
 } from "lucide-react"
 
+import { AdvancedFilterDialog } from "./advanced-filter-dialog"
 import { BaselinePicker } from "./baseline-picker"
 import { FilterBuilder, FilterChips } from "./filter-builder"
 import { ObserveFacets } from "./observe-facets"
@@ -12,6 +13,10 @@ import { QueryInput } from "./query-input"
 import { SavedViewControls } from "./saved-view-controls"
 import { TimeRangePicker } from "./time-range-picker"
 import type { ObserveContext, QuerySpec } from "@/lib/observe/context"
+import {
+  applyWhereClauseToContext,
+  contextToWhereClause,
+} from "@/lib/observe/where-clause"
 import { cn } from "@/lib/utils"
 
 export type ObserveSurface =
@@ -133,6 +138,41 @@ export function ContextBar({
     [filterCount, context.query, hasBaseline],
   )
 
+  const whereText = useMemo(
+    () => contextToWhereClause(context.filters, context.query),
+    [context.filters, context.query],
+  )
+
+  const applyWhere = useCallback(
+    (where: string) => {
+      if (!where.trim()) {
+        onChange({
+          ...context,
+          filters: [],
+          query: {
+            ...context.query,
+            service: undefined,
+            operation: undefined,
+            environment: undefined,
+            errorsOnly: undefined,
+            minDurationMs: undefined,
+          },
+        })
+        return
+      }
+      const next = applyWhereClauseToContext(where, {
+        filters: context.filters,
+        query: context.query,
+      })
+      onChange({
+        ...context,
+        filters: next.filters,
+        query: next.query,
+      })
+    },
+    [context, onChange],
+  )
+
   const dimChips = useMemo(() => {
     const q = context.query
     const chips: Array<{
@@ -184,6 +224,10 @@ export function ContextBar({
     return chips
   }, [context.query])
 
+  const hasErrorsOnly = context.query.errorsOnly === true
+  const chipCount =
+    filterCount + dimChips.length + (hasErrorsOnly ? 1 : 0)
+
   return (
     <div
       role="toolbar"
@@ -191,7 +235,7 @@ export function ContextBar({
       data-testid="observe-context-bar"
       data-surface={surface}
       className={cn(
-        "sticky top-12 z-10 -mx-3 mb-1 flex flex-col gap-2 border-y border-border/70 bg-background/70 px-3 py-2 backdrop-blur-xl md:-mx-5 md:px-5",
+        "flex flex-col gap-2 rounded-sm border border-border/60 bg-muted/20 px-2 py-2",
         className,
       )}
     >
@@ -199,6 +243,7 @@ export function ContextBar({
         <TimeRangePicker
           value={context.time}
           onChange={(time) => onChange({ ...context, time })}
+          hotkey
         />
 
         {showQuery ? (
@@ -206,7 +251,8 @@ export function ContextBar({
             value={context.query.q ?? ""}
             onChange={setQuery}
             placeholder={PLACEHOLDERS[surface]}
-            className="max-w-md"
+            className="min-w-[12rem] max-w-none flex-1 basis-[14rem]"
+            shortcutFocus
           />
         ) : null}
 
@@ -218,27 +264,42 @@ export function ContextBar({
           />
         ) : null}
 
+        {(surface === "traces" ||
+          surface === "logs" ||
+          surface === "explore") && (
+          <AdvancedFilterDialog
+            initialValue={whereText}
+            onApply={applyWhere}
+          />
+        )}
+
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
-            expanded && "bg-muted text-foreground",
+            "inline-flex h-8 min-h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            expanded || chipCount > 0
+              ? "border-border bg-muted text-foreground"
+              : "border-border bg-background text-muted-foreground hover:text-foreground",
           )}
           aria-expanded={expanded}
+          aria-controls="observe-advanced-filters"
+          data-active={expanded || chipCount > 0 ? "" : undefined}
         >
-          <SlidersHorizontalIcon className="size-3.5" />
+          <SlidersHorizontalIcon className="size-3.5" aria-hidden />
           Filters
-          {filterCount > 0 ? (
-            <span className="rounded bg-muted px-1 tabular-nums text-[10px] text-foreground">
-              {filterCount}
+          {chipCount > 0 ? (
+            <span className="rounded-md bg-background/80 px-1.5 py-0.5 tabular-nums text-[11px] text-foreground">
+              {chipCount}
             </span>
           ) : null}
           <ChevronDownIcon
             className={cn(
-              "size-3.5 opacity-60 transition-transform",
+              "size-3.5 opacity-60 transition-transform motion-reduce:transition-none",
               expanded && "rotate-180",
             )}
+            aria-hidden
           />
         </button>
 
@@ -246,16 +307,34 @@ export function ContextBar({
           <button
             type="button"
             onClick={clearAll}
-            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:text-foreground"
+            className="inline-flex h-8 min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            data-testid="context-bar-clear-filters"
           >
-            <XIcon className="size-3.5" />
-            Clear
+            <XIcon className="size-3.5" aria-hidden />
+            Clear filters
           </button>
+        ) : null}
+
+        {onSaveView || projectId ? (
+          <div className="ml-auto flex items-center gap-2">
+            <SavedViewControls
+              projectId={projectId}
+              surface={surface === "default" ? undefined : surface}
+              context={context}
+              onSave={onSaveView}
+              onLoad={onChange}
+            />
+          </div>
         ) : null}
       </div>
 
-      {(filterCount > 0 || dimChips.length > 0) && !expanded ? (
-        <div className="flex flex-wrap items-center gap-1.5">
+      {(filterCount > 0 || dimChips.length > 0 || hasErrorsOnly) &&
+      !expanded ? (
+        <div
+          className="flex flex-wrap items-center gap-1.5"
+          data-testid="active-filter-summary"
+          aria-label="Active filters"
+        >
           <FilterChips
             filters={context.filters}
             onChange={(filters) => onChange({ ...context, filters })}
@@ -268,11 +347,37 @@ export function ContextBar({
               onRemove={() => patchQuery(c.clear)}
             />
           ))}
+          {hasErrorsOnly ? (
+            <QueryDimChip
+              label="level"
+              value="errors only"
+              onRemove={() => patchQuery({ errorsOnly: undefined })}
+            />
+          ) : null}
         </div>
       ) : null}
 
       {expanded ? (
-        <div className="flex w-full flex-col gap-2.5 rounded-md border border-border bg-card px-3 py-2.5">
+        <div
+          id="observe-advanced-filters"
+          className="flex w-full flex-col gap-3 border-t border-border pt-2.5"
+          data-testid="advanced-filter-panel"
+        >
+          {surface === "issues" ? (
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border"
+                checked={hasErrorsOnly}
+                onChange={(e) =>
+                  patchQuery({
+                    errorsOnly: e.target.checked ? true : undefined,
+                  })
+                }
+              />
+              Errors only
+            </label>
+          ) : null}
           <FilterBuilder
             filters={context.filters}
             onChange={(filters) => onChange({ ...context, filters })}
@@ -286,15 +391,6 @@ export function ContextBar({
                 onChange={(baseline) => onChange({ ...context, baseline })}
               />
             )}
-            <div className="ml-auto">
-              <SavedViewControls
-                projectId={projectId}
-                surface={surface === "default" ? undefined : surface}
-                context={context}
-                onSave={onSaveView}
-                onLoad={onChange}
-              />
-            </div>
           </div>
         </div>
       ) : null}

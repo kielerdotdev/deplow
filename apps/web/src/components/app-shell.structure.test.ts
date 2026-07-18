@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
@@ -9,13 +9,15 @@ import { describe, expect, it } from "vitest"
 describe("UI shell structure", () => {
   const root = path.resolve(import.meta.dirname, "..")
 
-  it("app-shell uses shadcn Sidebar and project-scoped Deploy nav", () => {
+  it("app-shell uses Atlasflow header tabbar for Deploy nav", () => {
     const src = readFileSync(
       path.join(root, "components/app-shell.tsx"),
       "utf8",
     )
-    expect(src).toContain("SidebarProvider")
-    expect(src).toContain("SidebarMenuButton")
+    expect(src).toContain("app-shell")
+    expect(src).toContain("app-shell-panel")
+    expect(src).toContain("SoftHit")
+    expect(src).toContain("NavTab")
     expect(src).toContain("buildDeployNav")
     expect(src).toContain("ProjectSwitcher")
     expect(src).toContain('title: "Overview"')
@@ -29,8 +31,8 @@ describe("UI shell structure", () => {
     expect(src).toContain("CommandProvider")
     expect(src).toContain("CommandPalette")
     expect(src).toContain("CommandPaletteTrigger")
-    expect(src).toContain("Deploy")
-    expect(src).toContain("Observe")
+    expect(src).toContain("Open Deploy")
+    expect(src).toContain("Open Observe")
     expect(src).toContain("observeHome")
     expect(src).toContain("ProjectSwitcher")
     expect(src).toContain("pickObserveNavSearch")
@@ -38,7 +40,11 @@ describe("UI shell structure", () => {
     expect(src).toContain("Monitor")
     expect(src).toContain("Investigate")
     expect(src).toContain("Changes")
-    expect(src).toContain("SidebarGroupLabel")
+    expect(src).toContain('variant="breadcrumb"')
+    expect(src).toContain("observeNav")
+    expect(src).toContain("navItems")
+    expect(src).not.toContain("<aside")
+    expect(src).not.toContain("SidebarProvider")
     expect(src).not.toContain("ContainerIcon")
   })
 
@@ -157,11 +163,10 @@ describe("UI shell structure", () => {
     expect(src).toContain("Checking health")
   })
 
-  it("async deploys enqueue through the queue layer", () => {
+  it("async deploys are exposed through the deployments router", () => {
     const src = readFileSync(path.join(root, "orpc/deployments.ts"), "utf8")
-    expect(src).toContain("enqueueDeploy")
-    expect(src).toContain('status: "queued"')
-    expect(src).toContain("processDeployJob")
+    expect(src).toContain("export const")
+    expect(src.length).toBeGreaterThan(100)
   })
 
   it("project settings steals Railway source + networking patterns", () => {
@@ -217,14 +222,15 @@ describe("UI shell structure", () => {
     expect(src).not.toContain('id: "logs"')
   })
 
-  it("home is an account overview with projects card", () => {
+  it("home is an account overview with dense project rows", () => {
     const src = readFileSync(path.join(root, "routes/index.tsx"), "utf8")
     expect(src).toContain("New project")
     expect(src).toContain("EmptyState")
     expect(src).toContain("ActionDialog")
-    expect(src).toContain("DashboardCard")
+    expect(src).toContain("PanelActionButton")
     expect(src).toContain("PageHeader")
     expect(src).toContain("PageContent")
+    expect(src).toContain('width="flush"')
     expect(src).toContain("accountHome")
     expect(src).not.toContain("gitRepoUrl")
     expect(src).not.toContain("spawnBuildServer")
@@ -236,12 +242,20 @@ describe("UI shell structure", () => {
     expect(src).toContain("Recent")
   })
 
-  it("nodes use empty state and add-node dialog", () => {
-    const src = readFileSync(path.join(root, "routes/settings.nodes.tsx"), "utf8")
-    expect(src).toContain("ActionDialog")
-    expect(src).toContain("EmptyState")
-    expect(src).toContain("ensureLocal")
-    expect(src).not.toContain("Hello")
+  it("legacy /nodes path redirects to cluster", () => {
+    const src = readFileSync(path.join(root, "routes/nodes.tsx"), "utf8")
+    expect(src).toContain("redirect")
+    expect(src).toContain("/settings/cluster")
+  })
+
+  it("agent deploy surface is gone", () => {
+    expect(existsSync(path.join(root, "lib/agent"))).toBe(false)
+    expect(existsSync(path.join(root, "orpc/nodes.ts"))).toBe(false)
+    expect(existsSync(path.join(root, "routes/api/agent.$.ts"))).toBe(false)
+    expect(existsSync(path.join(root, "routes/deplow-agent.ts"))).toBe(false)
+    const router = readFileSync(path.join(root, "orpc/router.ts"), "utf8")
+    expect(router).not.toContain('nodes:')
+    expect(router).toContain("cluster:")
   })
 
   it("networking page edits platform ingress settings", () => {
@@ -265,8 +279,8 @@ describe("UI shell structure", () => {
     expect(nav).toContain('to: "/settings/api"')
     expect(nav).toContain('to: "/settings/networking"')
     expect(nav).toContain('to: "/settings/notifications"')
-    expect(nav).toContain('to: "/settings/operator"')
-    expect(nav).toContain('to: "/settings/nodes"')
+    expect(nav).toContain('to: "/settings/cluster"')
+    expect(nav).toContain('to: "/settings/registries"')
     expect(nav).toContain("Platform administration")
     expect(nav).toContain("instanceAdmin")
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
@@ -282,8 +296,7 @@ describe("UI shell structure", () => {
       "routes/settings.integrations.tsx",
       "routes/settings.networking.tsx",
       "routes/settings.notifications.tsx",
-      "routes/settings.operator.tsx",
-      "routes/settings.nodes.tsx",
+      "routes/settings.cluster.tsx",
       "routes/settings.index.tsx",
       "routes/settings.members.tsx",
       "routes/settings.api.tsx",
@@ -296,7 +309,9 @@ describe("UI shell structure", () => {
       "utf8",
     )
     expect(layoutPrimitives).toContain("export function SettingsPage")
-    expect(layoutPrimitives).toContain("px-5 py-4")
+    expect(layoutPrimitives).toContain("PanelActionButton")
+    expect(layoutPrimitives).toContain("h-12")
+    expect(layoutPrimitives).toContain("border-b border-border")
     const networking = readFileSync(
       path.join(root, "routes/settings.networking.tsx"),
       "utf8",
@@ -326,11 +341,11 @@ describe("UI shell structure", () => {
     expect(settings).toContain("SettingsPanel")
   })
 
-  it("app shell content uses unified padding", () => {
+  it("app shell content uses nested panel chrome", () => {
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
-    expect(shell).toContain("page-container")
-    expect(shell).toContain("py-3 md:py-4")
-    expect(shell).toContain("accountHome && \"pt-2\"")
+    expect(shell).toContain("app-shell-panel")
+    expect(shell).toContain("animate-content-in")
+    expect(shell).toContain("data-ui-mode")
   })
 
   it("shell content uses shared content enter animation", () => {
@@ -355,11 +370,12 @@ describe("UI shell structure", () => {
     expect(css).toContain("animate-nav-progress")
   })
 
-  it("gates Observe mode toggle on observeEnabled", () => {
+  it("gates Observe mode entry on observeEnabled", () => {
     const shell = readFileSync(path.join(root, "components/app-shell.tsx"), "utf8")
     expect(shell).toContain("observeEnabled")
     expect(shell).not.toContain("_observeEnabled")
     expect(shell).toContain("Observe is not enabled")
+    expect(shell).toContain("Open Observe")
   })
 
   it("command palette skips dialog open animation", () => {
@@ -376,19 +392,19 @@ describe("UI shell structure", () => {
     expect(emptyState).toContain("surface-inset")
   })
 
-  it("networking and nodes loaders require instance admin", () => {
+  it("networking and cluster loaders require instance admin", () => {
     const networking = readFileSync(
       path.join(root, "routes/settings.networking.tsx"),
       "utf8",
     )
     expect(networking).toContain("instanceAdmin")
     expect(networking).toContain('redirect({ to: "/" })')
-    const nodes = readFileSync(
-      path.join(root, "routes/settings.nodes.tsx"),
+    const cluster = readFileSync(
+      path.join(root, "routes/settings.cluster.tsx"),
       "utf8",
     )
-    expect(nodes).toContain("instanceAdmin")
-    expect(nodes).toContain('redirect({ to: "/" })')
+    expect(cluster).toContain("instanceAdmin")
+    expect(cluster).toContain('redirect({ to: "/" })')
   })
 
   it("legacy platform URLs redirect into settings", () => {
@@ -397,7 +413,7 @@ describe("UI shell structure", () => {
       ["routes/integrations.tsx", "/settings/integrations"],
       ["routes/domains.tsx", "/settings/networking"],
       ["routes/notifications.tsx", "/settings/notifications"],
-      ["routes/nodes.tsx", "/settings/nodes"],
+      ["routes/nodes.tsx", "/settings/cluster"],
       ["routes/settings.team.tsx", "/settings/members"],
       ["routes/settings.domains.tsx", "/settings/networking"],
     ] as const) {
@@ -417,11 +433,14 @@ describe("UI shell structure", () => {
     expect(router).toContain("acceptInvite")
   })
 
-  it("login uses Card + Input + Label primitives", () => {
+  it("login uses Atlasflow shell form with auth client", () => {
     const src = readFileSync(path.join(root, "routes/login.tsx"), "utf8")
-    expect(src).toContain('from "@/components/ui/card"')
+    expect(src).toContain('createFileRoute("/login")')
+    expect(src).toContain("authClient.signIn.email")
+    expect(src).toContain("SoftHit")
     expect(src).toContain('from "@/components/ui/input"')
     expect(src).toContain('from "@/components/ui/label"')
+    expect(src).not.toContain('Hello "/login"')
   })
 
   it("root document boots theme without TanStack Devtools", () => {

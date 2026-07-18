@@ -3,10 +3,11 @@ import { Link, useRouterState } from "@tanstack/react-router"
 import {
   ActivityIcon,
   BellIcon,
+  BookmarkIcon,
   BugIcon,
   ChartLineIcon,
-  ChevronsUpDownIcon,
   CompassIcon,
+  GaugeIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
   LayoutGridIcon,
@@ -25,6 +26,7 @@ import {
   CommandPaletteTrigger,
 } from "@/components/command-palette"
 import { DeplowLogo } from "@/components/deplow-logo"
+import { SoftHit } from "@/components/soft-hit"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProjectSwitcher } from "@/components/project-switcher"
 import {
@@ -41,21 +43,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { authClient } from "@/lib/auth-client"
 import { CommandProvider } from "@/lib/command"
@@ -150,7 +137,7 @@ function buildObserveNav(projectId?: string): NavGroup[] {
         {
           title: "Saved charts",
           to: `${base}/insights`,
-          icon: ChartLineIcon,
+          icon: BookmarkIcon,
           match: (path: string) => path.includes("/insights"),
         },
         {
@@ -191,7 +178,7 @@ function buildObserveNav(projectId?: string): NavGroup[] {
         {
           title: "Metrics",
           to: `${base}/metrics`,
-          icon: ChartLineIcon,
+          icon: GaugeIcon,
           match: (path: string) => path.includes("/metrics"),
         },
         {
@@ -214,6 +201,191 @@ function buildObserveNav(projectId?: string): NavGroup[] {
       ],
     },
   ]
+}
+
+function NavTab({
+  item,
+  active,
+  search,
+}: {
+  item: NavItem
+  active: boolean
+  search?: Record<string, unknown>
+}) {
+  return (
+    <SoftHit active={active} className="shrink-0">
+      <Link
+        to={item.to as never}
+        search={
+          search && Object.keys(search).length > 0
+            ? (search as never)
+            : undefined
+        }
+        className="flex h-8 items-center gap-2 px-2"
+      >
+        <span className="flex size-5 items-center justify-center">
+          <item.icon
+            className={cn(
+              "size-4 transition-colors",
+              active
+                ? "text-foreground"
+                : "text-foreground/40 group-hover/h:text-foreground",
+            )}
+            strokeWidth={1.75}
+          />
+        </span>
+        <span className="text-[14px] font-medium text-foreground">
+          {item.title}
+        </span>
+      </Link>
+    </SoftHit>
+  )
+}
+
+function ShellChrome({
+  mode,
+  deployHome,
+  observeHome,
+  observeEnabled,
+  observeSearch,
+  organizations,
+  activeOrganization,
+  user,
+  onSignOut,
+  children,
+}: {
+  mode: "deploy" | "observe"
+  deployHome: string
+  observeHome: string
+  observeEnabled: boolean
+  observeSearch: Record<string, unknown>
+  organizations: OrgOption[]
+  activeOrganization: OrgOption | null
+  user: { name: string; email: string }
+  onSignOut: () => void
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="app-shell-chrome flex h-12 items-center justify-between gap-3 border-b border-border px-2">
+      <div className="flex min-w-0 items-center gap-2 text-[14px] font-medium text-foreground">
+        <SoftHit>
+          <Link
+            to={mode === "observe" ? observeHome : deployHome}
+            className="flex size-8 items-center justify-center"
+            title="Hostrig home"
+          >
+            <DeplowLogo size={20} className="text-foreground" />
+          </Link>
+        </SoftHit>
+
+        {organizations.length > 0 ? (
+          <>
+            <span className="app-crumb-sep">/</span>
+            <OrgSwitcher
+              organizations={organizations}
+              active={activeOrganization}
+              variant="breadcrumb"
+            />
+          </>
+        ) : null}
+
+        <span className="app-crumb-sep">/</span>
+        <ProjectSwitcher mode={mode} variant="breadcrumb" />
+
+        {children}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1">
+        <CommandPaletteTrigger className="hidden sm:inline-flex" />
+        <ThemeToggle />
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                className="group/h relative flex w-fit cursor-pointer items-center rounded-sm outline-none"
+              />
+            }
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-1 rounded-sm bg-foreground/[0.08] opacity-0 transition-[inset,opacity] duration-150 ease-out group-hover/h:inset-0 group-hover/h:opacity-100 group-active/h:inset-px"
+            />
+            <span className="relative z-[2] flex items-center justify-center p-0.5">
+              <PersonAvatar
+                name={user.name}
+                email={user.email}
+                className="size-8 ring-1 ring-white/10"
+              />
+            </span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="min-w-56 p-1.5"
+            align="end"
+            sideOffset={6}
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="px-2 py-1.5 font-normal">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {user.email}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              {mode === "deploy" && observeEnabled ? (
+                <DropdownMenuItem
+                  className="gap-2 rounded-sm"
+                  render={
+                    <Link
+                      to={observeHome}
+                      search={
+                        Object.keys(observeSearch).length > 0
+                          ? (observeSearch as never)
+                          : undefined
+                      }
+                    />
+                  }
+                >
+                  <ActivityIcon />
+                  Open Observe
+                </DropdownMenuItem>
+              ) : null}
+              {mode === "observe" ? (
+                <DropdownMenuItem
+                  className="gap-2 rounded-sm"
+                  render={<Link to={deployHome} />}
+                >
+                  <RocketIcon />
+                  Open Deploy
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                className="gap-2 rounded-sm"
+                render={<Link to="/settings" />}
+              >
+                <KeyRoundIcon />
+                Settings
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                className="gap-2 rounded-sm"
+                onClick={onSignOut}
+              >
+                <LogOutIcon />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  )
 }
 
 export function AppShell({
@@ -241,12 +413,15 @@ export function AppShell({
   const activeProjectId = useProjectStore((s) => s.activeProjectId)
   const mode =
     uiMode ?? (pathname.startsWith("/observe") ? "observe" : "deploy")
-  const observeGroups =
-    mode === "observe"
-      ? buildObserveNav(activeProjectId ?? undefined)
+  const observeNav =
+    mode === "observe" && !accountHome
+      ? buildObserveNav(activeProjectId ?? undefined).flatMap((g) => g.items)
       : []
   const deployNav =
-    mode === "deploy" ? buildDeployNav(activeProjectId ?? undefined) : []
+    mode === "deploy" && !accountHome
+      ? buildDeployNav(activeProjectId ?? undefined)
+      : []
+  const navItems = mode === "observe" ? observeNav : deployNav
 
   useEffect(() => {
     syncActiveProjectFromPath(pathname)
@@ -267,55 +442,50 @@ export function AppShell({
   return (
     <TooltipProvider>
       <CommandProvider>
-        <SidebarProvider>
-          <CommandPalette />
-          <CommandAction
-            id="account.sign-out"
-            label="Sign out"
-            group="Account"
-            mode="action"
-            keywords={["logout", "exit"]}
-            icon={LogOutIcon}
-            onSelect={handleSignOut}
-          />
-          <Sidebar
-            collapsible="icon"
-            className="border-r border-sidebar-border/80 bg-sidebar/95 backdrop-blur-sm"
-            style={{ viewTransitionName: "app-sidebar" }}
+        <CommandPalette />
+        <CommandAction
+          id="account.sign-out"
+          label="Sign out"
+          group="Account"
+          mode="action"
+          keywords={["logout", "exit"]}
+          icon={LogOutIcon}
+          onSelect={handleSignOut}
+        />
+
+        <div className="app-shell" data-ui-mode={mode}>
+          <ShellChrome
+            mode={mode}
+            deployHome={deployHome}
+            observeHome={observeHome}
+            observeEnabled={observeEnabled}
+            observeSearch={observeSearch}
+            organizations={organizations}
+            activeOrganization={activeOrganization}
+            user={user}
+            onSignOut={handleSignOut}
           >
-            <SidebarHeader className="gap-1.5 border-b border-sidebar-border/70 pb-2">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    size="lg"
-                    render={
-                      <Link to={mode === "observe" ? observeHome : deployHome} />
-                    }
-                    className="data-[slot=sidebar-menu-button]:p-1.5!"
-                  >
-                    <DeplowLogo size={22} className="text-foreground" />
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold tracking-[-0.03em]">
-                        Hostrig
-                      </span>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-              <div className="mx-2 flex h-9 items-stretch rounded-md border border-sidebar-border bg-background/40 p-0.5 text-xs">
+            <span className="app-crumb-sep mx-0.5">·</span>
+            <div className="flex items-center gap-0.5">
+              <SoftHit active={mode === "deploy"}>
                 <Link
                   to={deployHome}
-                  title="Deploy — same project; deployment and service config"
-                  className={cn(
-                    "flex flex-1 items-center justify-center rounded-[3px] px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-                    mode === "deploy"
-                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
+                  className="flex h-8 items-center px-2 text-[13px] font-medium"
+                  title="Deploy"
                 >
-                  Deploy
+                  <span
+                    className={cn(
+                      mode === "deploy"
+                        ? "text-foreground"
+                        : "text-foreground/40 group-hover/h:text-foreground",
+                    )}
+                  >
+                    Deploy
+                  </span>
                 </Link>
-                {observeEnabled ? (
+              </SoftHit>
+              {observeEnabled ? (
+                <SoftHit active={mode === "observe"}>
                   <Link
                     to={observeHome}
                     search={
@@ -323,181 +493,62 @@ export function AppShell({
                         ? (observeSearch as never)
                         : undefined
                     }
-                    className={cn(
-                      "flex flex-1 items-center justify-center rounded-[3px] px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-                      mode === "observe"
-                        ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                    title="Observe — same project; investigation scope carried when set"
+                    className="flex h-8 items-center px-2 text-[13px] font-medium"
+                    title="Observe"
                   >
-                    Observe
+                    <span
+                      className={cn(
+                        mode === "observe"
+                          ? "text-foreground"
+                          : "text-foreground/40 group-hover/h:text-foreground",
+                      )}
+                    >
+                      Observe
+                    </span>
                   </Link>
-                ) : (
-                  <span
-                    className="flex flex-1 cursor-not-allowed items-center justify-center rounded-[3px] px-2 text-muted-foreground/50"
-                    title="Observe is not enabled on this instance"
-                    aria-disabled="true"
-                  >
-                    Observe
-                  </span>
-                )}
-              </div>
-              {organizations.length > 1 ? (
-                <OrgSwitcher
-                  organizations={organizations}
-                  active={activeOrganization}
-                />
-              ) : null}
-              <ProjectSwitcher mode={mode} />
-            </SidebarHeader>
-
-            <SidebarContent>
-              {mode === "observe"
-                ? observeGroups.map((group) => (
-                    <SidebarGroup key={group.label}>
-                      <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                      <SidebarGroupContent>
-                        <SidebarMenu>
-                          {group.items.map((item) => (
-                            <SidebarMenuItem key={item.title}>
-                              <SidebarMenuButton
-                                isActive={item.match(pathname)}
-                                tooltip={item.title}
-                                render={
-                                  <Link
-                                    to={item.to as never}
-                                    search={
-                                      Object.keys(observeSearch).length > 0
-                                        ? (observeSearch as never)
-                                        : undefined
-                                    }
-                                  />
-                                }
-                              >
-                                <item.icon />
-                                <span>{item.title}</span>
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                          ))}
-                        </SidebarMenu>
-                      </SidebarGroupContent>
-                    </SidebarGroup>
-                  ))
-                : deployNav.length > 0 ? (
-                    <SidebarGroup>
-                      <SidebarGroupContent>
-                        <SidebarMenu>
-                          {deployNav.map((item) => (
-                            <SidebarMenuItem key={item.title}>
-                              <SidebarMenuButton
-                                isActive={item.match(pathname)}
-                                tooltip={item.title}
-                                render={<Link to={item.to as never} />}
-                              >
-                                <item.icon />
-                                <span>{item.title}</span>
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                          ))}
-                        </SidebarMenu>
-                      </SidebarGroupContent>
-                    </SidebarGroup>
-                  ) : null}
-            </SidebarContent>
-
-            <SidebarFooter>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <SidebarMenuButton
-                          size="lg"
-                          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                        />
-                      }
-                    >
-                      <PersonAvatar name={user.name} email={user.email} />
-                      <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-medium">
-                          {user.name}
-                        </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {user.email}
-                        </span>
-                      </div>
-                      <ChevronsUpDownIcon className="ml-auto size-4 opacity-60" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="w-(--anchor-width) min-w-56 p-1.5"
-                      side="top"
-                      align="start"
-                      sideOffset={6}
-                    >
-                      <DropdownMenuGroup>
-                        <DropdownMenuLabel className="px-2 py-1.5 font-normal">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium">
-                              {user.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {user.email}
-                            </span>
-                          </div>
-                        </DropdownMenuLabel>
-                      </DropdownMenuGroup>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuGroup>
-                        <DropdownMenuItem
-                          className="gap-2 rounded-md"
-                          render={<Link to="/settings" />}
-                        >
-                          <KeyRoundIcon />
-                          Settings
-                        </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuGroup>
-                        <DropdownMenuItem
-                          className="gap-2 rounded-md"
-                          onClick={handleSignOut}
-                        >
-                          <LogOutIcon />
-                          Sign out
-                        </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarFooter>
-          </Sidebar>
-
-          <SidebarInset className="min-w-0 overflow-x-hidden bg-transparent">
-            <header className="sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background/75 backdrop-blur-xl">
-              <div className="page-container flex h-12 items-center gap-2">
-                <SidebarTrigger className="-ml-0.5" />
-                <div className="flex-1" />
-                <CommandPaletteTrigger className="mr-0.5" />
-                <ThemeToggle />
-                {actions ? (
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {actions}
-                  </div>
-                ) : null}
-              </div>
-            </header>
-            <div
-              className={cn(
-                "animate-content-in page-container flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden py-3 md:py-4",
-                accountHome && "pt-2",
+                </SoftHit>
+              ) : (
+                <span
+                  className="flex h-8 items-center px-2 text-[13px] font-medium text-foreground/30"
+                  title="Observe is not enabled on this instance"
+                  aria-disabled="true"
+                >
+                  Observe
+                </span>
               )}
-            >
+            </div>
+          </ShellChrome>
+
+          {navItems.length > 0 ? (
+            <div className="app-shell-chrome flex h-12 items-center gap-1 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {navItems.map((item) => (
+                <NavTab
+                  key={item.title}
+                  item={item}
+                  active={item.match(pathname)}
+                  search={
+                    mode === "observe" ? observeSearch : undefined
+                  }
+                />
+              ))}
+              {actions ? (
+                <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
+                  {actions}
+                </div>
+              ) : null}
+            </div>
+          ) : actions ? (
+            <div className="app-shell-chrome flex h-12 items-center justify-end gap-1.5 px-2">
+              {actions}
+            </div>
+          ) : null}
+
+          <div className="app-shell-panel">
+            <div className="app-shell-panel-scroll animate-content-in flex min-w-0 flex-col">
               {children}
             </div>
-          </SidebarInset>
-        </SidebarProvider>
+          </div>
+        </div>
       </CommandProvider>
     </TooltipProvider>
   )

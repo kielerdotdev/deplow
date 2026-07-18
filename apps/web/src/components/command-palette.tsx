@@ -251,13 +251,13 @@ export function CommandPalette() {
         perform: () => void navigate({ to: "/settings/notifications" }),
       },
       {
-        id: "nav.nodes",
-        label: "Nodes",
+        id: "nav.cluster",
+        label: "Cluster",
         group: "Navigation",
         mode: "goto",
         icon: ServerIcon,
-        keywords: ["docker", "build"],
-        perform: () => void navigate({ to: "/settings/nodes" }),
+        keywords: ["k3s", "nodes", "workers", "hetzner"],
+        perform: () => void navigate({ to: "/settings/cluster" }),
       },
     ]
 
@@ -464,7 +464,7 @@ export function CommandPaletteTrigger({
       type="button"
       onClick={() => openPalette("goto")}
       className={cn(
-        "inline-flex h-9 max-w-56 items-center gap-2 rounded-lg border border-border bg-muted/40 px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "inline-flex h-8 max-w-56 items-center gap-2 rounded-sm border border-border bg-transparent px-2 text-xs text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         className,
       )}
       aria-label="Open go to palette"

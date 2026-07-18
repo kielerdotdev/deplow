@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router"
 
+import { SoftHit } from "@/components/soft-hit"
 import { cn } from "@/lib/utils"
 
 type NavItem = {
@@ -59,15 +60,15 @@ const GROUPS: NavGroup[] = [
         admin: true,
       },
       {
-        id: "operator",
-        title: "Operator",
-        to: "/settings/operator",
+        id: "cluster",
+        title: "Cluster",
+        to: "/settings/cluster",
         admin: true,
       },
       {
-        id: "nodes",
-        title: "Nodes",
-        to: "/settings/nodes",
+        id: "registries",
+        title: "Registries",
+        to: "/settings/registries",
         admin: true,
       },
     ],
@@ -94,34 +95,36 @@ export function SettingsNav({ instanceAdmin }: { instanceAdmin: boolean }) {
   return (
     <nav
       aria-label="Settings"
-      className="flex w-full shrink-0 flex-col gap-5 lg:sticky lg:top-16 lg:w-52"
+      className="flex h-full w-full shrink-0 flex-col overflow-y-auto"
     >
-      <p className="text-xl font-semibold tracking-[-0.035em] text-foreground md:text-[1.375rem]">
-        Settings
-      </p>
-      <div className="flex flex-col gap-5">
+      <div className="flex h-12 shrink-0 items-center border-b border-border px-4">
+        <span className="text-[14px] font-medium text-foreground">Settings</span>
+      </div>
+      <div className="flex flex-col gap-4 px-2 py-3">
         {groups.map((group) => (
           <div key={group.id} className="min-w-0">
-            <p className="mb-1.5 px-2.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            <p className="mb-1 px-2 text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase">
               {group.title}
             </p>
-            <ul className="flex flex-row flex-wrap gap-0.5 lg:flex-col">
+            <ul className="flex flex-col gap-0.5">
               {group.items.map((item) => {
                 const active = itemIsActive(pathname, item.to)
                 return (
                   <li key={item.id} className="min-w-0">
-                    <Link
-                      to={item.to}
-                      className={cn(
-                        "block rounded-md px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        active
-                          ? "bg-muted font-medium text-foreground"
-                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                      )}
-                      aria-current={active ? "page" : undefined}
-                    >
-                      {item.title}
-                    </Link>
+                    <SoftHit active={active} className="w-full">
+                      <Link
+                        to={item.to}
+                        className={cn(
+                          "flex h-8 w-full items-center px-2 text-[13px] font-medium",
+                          active
+                            ? "text-foreground"
+                            : "text-muted-foreground group-hover/h:text-foreground",
+                        )}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        <span className="truncate">{item.title}</span>
+                      </Link>
+                    </SoftHit>
                   </li>
                 )
               })}

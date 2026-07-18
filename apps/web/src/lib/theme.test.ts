@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest"
 import { THEME_BOOT_SCRIPT, resolveTheme } from "./theme"
 
 describe("theme", () => {
-  it("defaults to light product theme", () => {
-    expect(resolveTheme(null)).toBe("light")
+  it("defaults to dark product theme", () => {
+    expect(resolveTheme(null)).toBe("dark")
   })
 
   it("honors stored preference", () => {

@@ -13,9 +13,9 @@ export function getStoredTheme(): ThemeMode | null {
   return null
 }
 
-/** Product default is light (“Instrument white”); only explicit storage overrides. */
+/** Product default is dark (Atlasflow-style nested chrome). */
 export function resolveTheme(stored: ThemeMode | null): ThemeMode {
-  return stored ?? "light"
+  return stored ?? "dark"
 }
 
 export function applyTheme(mode: ThemeMode) {
@@ -44,4 +44,4 @@ export function toggleTheme(): ThemeMode {
 }
 
 /** Inline boot script — keep in sync with STORAGE_KEY / class names. */
-export const THEME_BOOT_SCRIPT = `(function(){try{var k=${JSON.stringify(STORAGE_KEY)};var s=localStorage.getItem(k);var m=s==="dark"?"dark":"light";var r=document.documentElement;r.classList.toggle("dark",m==="dark");r.style.colorScheme=m;r.dataset.theme=m}catch(e){}})();`
+export const THEME_BOOT_SCRIPT = `(function(){try{var k=${JSON.stringify(STORAGE_KEY)};var s=localStorage.getItem(k);var m=s==="light"?"light":"dark";var r=document.documentElement;r.classList.toggle("dark",m==="dark");r.style.colorScheme=m;r.dataset.theme=m}catch(e){}})();`

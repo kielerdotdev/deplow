@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 
+import { SoftHit } from "@/components/soft-hit"
 import { cn } from "@/lib/utils"
 
 type PageHeaderProps = {
@@ -9,6 +10,7 @@ type PageHeaderProps = {
   className?: string
 }
 
+/** Atlasflow panel header: 48px bar, title + muted description + actions. */
 export function PageHeader({
   title,
   description,
@@ -18,26 +20,49 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "flex flex-wrap items-start justify-between gap-3",
+        "flex h-12 shrink-0 min-w-0 items-center justify-between gap-2 overflow-hidden border-b border-border px-3",
         className,
       )}
     >
-      <div className="flex min-w-0 flex-col gap-1">
-        <h1 className="flex flex-wrap items-center gap-2 text-balance text-xl font-semibold tracking-[-0.035em] text-foreground md:text-[1.375rem]">
-          {title}
-        </h1>
+      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden text-[14px] font-medium text-muted-foreground">
+        <span className="shrink-0 text-foreground">{title}</span>
         {description ? (
-          <p className="max-w-2xl text-pretty text-[13px] leading-relaxed text-muted-foreground">
+          <span className="hidden min-w-0 truncate text-shell-faint sm:inline">
             {description}
-          </p>
+          </span>
         ) : null}
       </div>
       {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {actions}
-        </div>
+        <div className="flex shrink-0 items-center gap-1.5">{actions}</div>
       ) : null}
     </header>
+  )
+}
+
+/** Solid soft-hit button for panel headers (Create deployment, etc.). */
+export function PanelActionButton({
+  children,
+  onClick,
+  disabled,
+  className,
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <SoftHit
+      as="button"
+      tone="solid"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn("shrink-0", className)}
+    >
+      <span className="flex h-8 items-center px-2.5 text-[13px] font-medium text-foreground/80">
+        {children}
+      </span>
+    </SoftHit>
   )
 }
 
@@ -45,9 +70,10 @@ type PageContentProps = {
   children: React.ReactNode
   /**
    * narrow: settings form column (~780px)
-   * wide: shared page-container width
+   * wide: padded panel body
+   * flush: no padding (dense lists)
    */
-  width?: "narrow" | "wide"
+  width?: "narrow" | "wide" | "flush"
   className?: string
 }
 
@@ -59,9 +85,10 @@ export function PageContent({
   return (
     <div
       className={cn(
-        "flex w-full flex-col gap-4",
-        /* AppShell already applies .page-container; narrow further constrains forms. */
-        width === "narrow" && "max-w-[780px]",
+        "flex min-h-0 w-full flex-1 flex-col",
+        width === "narrow" && "mx-auto max-w-[780px] gap-4 p-4",
+        width === "wide" && "gap-4 p-4",
+        width === "flush" && "gap-0 p-0",
         className,
       )}
     >
@@ -83,19 +110,22 @@ export function SettingsShell({
   return (
     <div
       className={cn(
-        "flex w-full max-w-[1280px] flex-col gap-8 lg:flex-row lg:items-start lg:gap-10",
+        "flex min-h-0 w-full flex-1 flex-col md:flex-row",
         className,
       )}
     >
-      {nav}
-      <div className="min-w-0 flex-1 pt-0.5">{children}</div>
+      <aside className="w-full shrink-0 border-b border-border md:w-52 md:border-r md:border-b-0 md:overflow-y-auto">
+        {nav}
+      </aside>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+        {children}
+      </div>
     </div>
   )
 }
 
 /**
- * Standard settings page stack: title → description → body.
- * Use this instead of bare PageHeader + PageContent fragments.
+ * Standard settings page stack: panel header → padded body.
  */
 export function SettingsPage({
   title,
@@ -113,15 +143,16 @@ export function SettingsPage({
   className?: string
 }) {
   return (
-    <div
-      className={cn(
-        "flex w-full flex-col gap-6",
-        width === "narrow" && "max-w-[780px]",
-        className,
-      )}
-    >
+    <div className={cn("flex min-h-0 w-full flex-1 flex-col", className)}>
       <PageHeader title={title} description={description} actions={actions} />
-      <div className="flex flex-col gap-4">{children}</div>
+      <div
+        className={cn(
+          "flex flex-col gap-4 p-4",
+          width === "narrow" && "max-w-[780px]",
+        )}
+      >
+        {children}
+      </div>
     </div>
   )
 }
@@ -157,17 +188,15 @@ export function SettingsPanel({
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3.5">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex h-12 items-center justify-between gap-3 border-b border-border px-2">
+        <div className="flex min-w-0 items-center gap-2 px-2">
           {Icon ? (
-            <div className="icon-well mt-0.5 size-7 shrink-0">
-              <Icon className="size-3.5" />
-            </div>
+            <Icon className="size-4 shrink-0 text-muted-foreground" />
           ) : null}
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+            <h2 className="text-[14px] font-medium text-foreground">{title}</h2>
             {description ? (
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              <p className="truncate text-[12px] text-muted-foreground">
                 {description}
               </p>
             ) : null}
@@ -175,9 +204,9 @@ export function SettingsPanel({
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className={cn(flush ? "py-0" : "px-5 py-4")}>{children}</div>
+      <div className={cn(flush ? "py-0" : "px-4 py-4")}>{children}</div>
       {footer ? (
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
           {footer}
         </div>
       ) : null}

@@ -1,5 +1,6 @@
 import {
   AlertTriangleIcon,
+  ClockIcon,
   InboxIcon,
   Loader2Icon,
   SearchXIcon,
@@ -22,6 +23,7 @@ export type EmptyVariant =
   | "outside_range"
   | "loading"
   | "error"
+  | "no_unresolved"
 
 const VARIANT_DEFAULTS: Record<
   EmptyVariant,
@@ -38,7 +40,7 @@ const VARIANT_DEFAULTS: Record<
     description: "Try widening the time range or clearing filters.",
   },
   outside_range: {
-    icon: SearchXIcon,
+    icon: ClockIcon,
     title: "No data in this time range",
     description: "Telemetry may exist outside the selected period.",
   },
@@ -52,13 +54,24 @@ const VARIANT_DEFAULTS: Record<
     title: "Query failed",
     description: "Something went wrong loading this data. Try again.",
   },
+  no_unresolved: {
+    icon: InboxIcon,
+    title: "No unresolved issues",
+    description:
+      "No grouped errors were found for the selected time range and filters.",
+  },
 }
 
+/**
+ * Integrated empty / loading / error state for Observe pages.
+ * Aligns to the page content grid — not a floating modal card.
+ */
 export function ObserveEmptyState({
   icon,
   title,
   description,
   action,
+  secondaryAction,
   className,
   variant = "empty",
 }: {
@@ -66,6 +79,7 @@ export function ObserveEmptyState({
   title?: string
   description?: string
   action?: React.ReactNode
+  secondaryAction?: React.ReactNode
   className?: string
   variant?: EmptyVariant
 }) {
@@ -74,28 +88,37 @@ export function ObserveEmptyState({
   return (
     <Empty
       className={cn(
-        "items-start border border-dashed border-border bg-muted/15 px-4 py-8 text-left",
+        "items-start justify-start border-0 bg-transparent px-0 py-10 text-left sm:py-12",
         className,
       )}
       data-testid="observe-empty-state"
       data-variant={variant}
     >
-      <EmptyHeader className="max-w-md items-start gap-3">
+      <EmptyHeader className="max-w-lg items-start gap-3">
         <EmptyMedia
           variant="icon"
-          className="icon-well mb-0 size-9 rounded-md border border-dashed border-border bg-muted/60"
+          className="icon-well mb-0 size-10 rounded-sm border border-border bg-muted/50"
         >
-          <Icon className={cn(variant === "loading" && "animate-spin")} />
+          <Icon
+            className={cn(
+              "size-4",
+              variant === "loading" && "animate-spin",
+              variant === "error" && "text-destructive",
+            )}
+          />
         </EmptyMedia>
-        <EmptyTitle className="text-sm font-semibold tracking-tight">
+        <EmptyTitle className="text-base font-semibold tracking-tight text-foreground">
           {title ?? defaults.title}
         </EmptyTitle>
-        <EmptyDescription className="text-sm text-muted-foreground">
+        <EmptyDescription className="text-sm leading-relaxed text-muted-foreground">
           {description ?? defaults.description}
         </EmptyDescription>
       </EmptyHeader>
-      {action ? (
-        <EmptyContent className="mt-0 items-start">{action}</EmptyContent>
+      {action || secondaryAction ? (
+        <EmptyContent className="mt-1 flex flex-wrap items-start gap-2 sm:flex-row">
+          {action}
+          {secondaryAction}
+        </EmptyContent>
       ) : null}
     </Empty>
   )

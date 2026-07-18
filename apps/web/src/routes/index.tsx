@@ -19,23 +19,19 @@ import { ActionDialog } from "@/components/action-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { AppShell } from "@/components/app-shell"
 import { CommandAction } from "@/components/command-action"
-import { DashboardCard, DashboardRow } from "@/components/dashboard-card"
+import { DashboardRow } from "@/components/dashboard-card"
 import { ProjectContextMenu } from "@/components/project-context-menu"
 import { ProjectDeleteDialog } from "@/components/project-delete-dialog"
-import { PageContent, PageHeader } from "@/components/page-layout"
+import {
+  PageContent,
+  PageHeader,
+  PanelActionButton,
+} from "@/components/page-layout"
 import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { getSession } from "@/lib/auth.functions"
 import { client } from "@/lib/orpc"
 import { loadShellContext } from "@/lib/shell-context"
@@ -49,12 +45,14 @@ export const Route = createFileRoute("/")({
       throw redirect({ to: "/login", search: { redirect: undefined } })
     }
     const shell = await loadShellContext()
-    const [projects, nodes, git] = await Promise.all([
+    const [projects, cluster, git] = await Promise.all([
       client.projects.list(),
-      shell.instanceAdmin ? client.nodes.list() : Promise.resolve([]),
+      shell.instanceAdmin
+        ? client.cluster.get()
+        : Promise.resolve(null),
       client.git.connectionStatus(),
     ])
-    return { session, shell, projects, nodes, git }
+    return { session, shell, projects, cluster, git }
   },
   component: DashboardPage,
 })
@@ -160,7 +158,7 @@ function CreateProjectDialogBody({
 }
 
 function DashboardPage() {
-  const { session, shell, projects, nodes, git } = Route.useLoaderData()
+  const { session, shell, projects, cluster, git } = Route.useLoaderData()
   const router = useRouter()
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null)
@@ -169,17 +167,17 @@ function DashboardPage() {
 
   const projectToDelete = projects.find((project) => project.id === deleteProjectId)
 
-  const firstName = session.user.name.trim().split(/\s+/)[0] || "there"
   const serviceCount = projects.reduce(
     (sum, p) => sum + (p.services?.length ?? 0),
     0,
   )
   const githubLinked = git.links.find((l) => l.provider === "github")
   const gitlabLinked = git.links.find((l) => l.provider === "gitlab")
+  const clusterReady = cluster?.status === "connected"
 
   const nextSteps: {
     label: string
-    to: "/settings/integrations" | "/settings/nodes"
+    to: "/settings/integrations" | "/settings/cluster"
     done: boolean
   }[] = shell.instanceAdmin
     ? [
@@ -189,9 +187,9 @@ function DashboardPage() {
           done: Boolean(githubLinked || gitlabLinked),
         },
         {
-          label: "Register a build node",
-          to: "/settings/nodes",
-          done: nodes.length > 0,
+          label: "Connect a k3s cluster",
+          to: "/settings/cluster",
+          done: clusterReady,
         },
       ]
     : []
@@ -234,10 +232,9 @@ function DashboardPage() {
   })
 
   const newProjectButton = (
-    <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
-      <PlusIcon data-icon="inline-start" />
+    <PanelActionButton onClick={() => setCreateOpen(true)}>
       New project
-    </Button>
+    </PanelActionButton>
   )
 
   return (
@@ -250,8 +247,8 @@ function DashboardPage() {
       observeEnabled={shell.observeEnabled}
     >
       <PageHeader
-        title={`Welcome back, ${firstName}`}
-        description="Deploy and manage services on your Docker host. Sandboxed by default."
+        title="Projects"
+        description={`${serviceCount} services across ${projects.length} project${projects.length === 1 ? "" : "s"}`}
         actions={
           <>
             <CommandAction
@@ -265,112 +262,76 @@ function DashboardPage() {
           </>
         }
       />
-      <PageContent width="wide">
+      <PageContent width="flush">
+        {error ? (
+          <div className="border-b border-border px-4 py-3">
+            <Alert variant="destructive">
+              <AlertTitle>Could not destroy project</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
 
-      {error ? (
-        <Alert variant="destructive" className="mb-4">
-          <AlertTitle>Could not destroy project</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+        {shell.instanceAdmin && openSteps.length > 0 ? (
+          <div className="border-b border-border px-4 py-3">
+            <Alert>
+              <AlertTitle>Setup</AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {openSteps.map((step) => (
+                  <Link
+                    key={step.label}
+                    to={step.to}
+                    className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                  >
+                    {step.label}
+                    <ArrowRightIcon className="size-3.5" />
+                  </Link>
+                ))}
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
 
-      {shell.instanceAdmin && openSteps.length > 0 ? (
-        <Alert>
-          <AlertTitle>Setup</AlertTitle>
-          <AlertDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {openSteps.map((step) => (
-              <Link
-                key={step.label}
-                to={step.to}
-                className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
-              >
-                {step.label}
-                <ArrowRightIcon className="size-3.5" />
-              </Link>
-            ))}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div
-        className={cn(
-          "grid min-w-0 gap-6",
-          showSidebar && "xl:grid-cols-[minmax(0,1fr)_17.5rem] xl:gap-8",
-        )}
-      >
-        <section className="surface-panel min-w-0 overflow-hidden">
-          <header className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">
-                Projects
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                {serviceCount} services across {projects.length} project
-                {projects.length === 1 ? "" : "s"}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setCreateOpen(true)}
-            >
-              <PlusIcon data-icon="inline-start" />
-              Add
-            </Button>
-          </header>
-
-          {projects.length === 0 ? (
-            <EmptyState
-              variant="compact"
-              icon={FolderPlusIcon}
-              title="No projects yet"
-              description="Add Postgres, Redis, and deploy from git in one workspace."
-              action={
-                <Button size="sm" onClick={() => setCreateOpen(true)}>
-                  <FolderPlusIcon data-icon="inline-start" />
-                  New project
-                </Button>
-              }
-              steps={[
-                {
-                  icon: FolderPlusIcon,
-                  label: "Create project",
-                  hint: "One workspace per app",
-                },
-                {
-                  icon: PlusIcon,
-                  label: "Add services",
-                  hint: "Postgres, Redis, web apps",
-                },
-                {
-                  icon: GitBranchIcon,
-                  label: "Deploy",
-                  hint: "Connect git and push",
-                },
-              ]}
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="data-table-head data-table-cell pl-5">
-                    Project
-                  </TableHead>
-                  <TableHead className="data-table-head data-table-cell">
-                    URL
-                  </TableHead>
-                  <TableHead className="data-table-head data-table-cell">
-                    Services
-                  </TableHead>
-                  <TableHead className="data-table-head data-table-cell">
-                    Status
-                  </TableHead>
-                  <TableHead className="data-table-head data-table-cell pr-5 text-right">
-                    Updated
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+        <div
+          className={cn(
+            "grid min-h-0 min-w-0 flex-1",
+            showSidebar && "xl:grid-cols-[minmax(0,1fr)_15rem]",
+          )}
+        >
+          <section className="min-w-0 overflow-hidden">
+            {projects.length === 0 ? (
+              <div className="p-6">
+                <EmptyState
+                  variant="compact"
+                  icon={FolderPlusIcon}
+                  title="No projects yet"
+                  description="Add Postgres, Redis, and deploy from git in one workspace."
+                  action={
+                    <PanelActionButton onClick={() => setCreateOpen(true)}>
+                      New project
+                    </PanelActionButton>
+                  }
+                  steps={[
+                    {
+                      icon: FolderPlusIcon,
+                      label: "Create project",
+                      hint: "One workspace per app",
+                    },
+                    {
+                      icon: PlusIcon,
+                      label: "Add services",
+                      hint: "Postgres, Redis, web apps",
+                    },
+                    {
+                      icon: GitBranchIcon,
+                      label: "Deploy",
+                      hint: "Connect git and push",
+                    },
+                  ]}
+                />
+              </div>
+            ) : (
+              <div className="overflow-auto">
                 {projects.map((project) => {
                   const host = project.publicUrl?.replace(/^https?:\/\//, "")
                   return (
@@ -384,103 +345,102 @@ function DashboardPage() {
                       pending={pending}
                       onDelete={() => setDeleteProjectId(project.id)}
                       render={
-                        <TableRow className="data-table-row group" />
-                      }
-                    >
-                      <TableCell className="data-table-cell pl-5 font-medium">
                         <Link
                           to="/projects/$projectId"
                           params={{ projectId: project.id }}
-                          className="hover:text-primary hover:underline"
-                        >
-                          {project.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="data-table-cell font-mono text-xs text-muted-foreground">
-                        {host ?? "—"}
-                      </TableCell>
-                      <TableCell className="data-table-cell text-muted-foreground tabular-nums">
-                        {project.services?.length ?? 0}
-                      </TableCell>
-                      <TableCell className="data-table-cell">
+                          className="app-row grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_100px_112px]"
+                        />
+                      }
+                    >
+                      <div className="flex min-w-0 items-center gap-2 px-2">
                         <StatusBadge status={project.status} />
-                      </TableCell>
-                      <TableCell className="data-table-cell pr-5 text-right text-xs text-muted-foreground">
+                        <span className="truncate text-foreground">
+                          {project.name}
+                        </span>
+                      </div>
+                      <div className="min-w-0 truncate px-2 font-mono text-[12px] text-muted-foreground">
+                        {host ?? "—"}
+                      </div>
+                      <div className="px-2 text-muted-foreground">
+                        {(project.services?.length ?? 0) === 1
+                          ? "1 service"
+                          : `${project.services?.length ?? 0} services`}
+                      </div>
+                      <div className="px-2 text-right tabular-nums text-muted-foreground">
                         {formatRelativeTime(project.updatedAt)}
-                      </TableCell>
+                      </div>
                     </ProjectContextMenu>
                   )
                 })}
-              </TableBody>
-            </Table>
-          )}
-        </section>
+              </div>
+            )}
+          </section>
 
-        {showSidebar ? (
-          <aside className="flex min-w-0 flex-col gap-4">
-            {recentProjects.length > 0 ? (
-              <DashboardCard title="Recent" count={recentProjects.length}>
-                {recentProjects.map((project) => {
-                  const host = project.publicUrl?.replace(/^https?:\/\//, "")
-                  return (
-                    <DashboardRow
-                      key={project.id}
-                      to="/projects/$projectId"
-                      params={{ projectId: project.id }}
-                      projectMenu={projectMenuProps(project)}
-                      title={project.name}
-                      subtitle={
-                        host ??
-                        `${project.services?.length ?? 0} service${(project.services?.length ?? 0) === 1 ? "" : "s"}`
-                      }
-                      trailing={formatRelativeTime(project.updatedAt)}
-                    />
-                  )
-                })}
-              </DashboardCard>
-            ) : null}
+          {showSidebar ? (
+            <aside className="hidden min-w-0 flex-col border-l border-border xl:flex">
+              {recentProjects.length > 0 ? (
+                <div className="border-b border-border">
+                  <div className="flex h-12 items-center px-4 text-[14px] font-medium text-foreground">
+                    Recent
+                  </div>
+                  {recentProjects.map((project) => {
+                    const host = project.publicUrl?.replace(/^https?:\/\//, "")
+                    return (
+                      <DashboardRow
+                        key={project.id}
+                        to="/projects/$projectId"
+                        params={{ projectId: project.id }}
+                        projectMenu={projectMenuProps(project)}
+                        title={project.name}
+                        subtitle={
+                          host ??
+                          `${project.services?.length ?? 0} service${(project.services?.length ?? 0) === 1 ? "" : "s"}`
+                        }
+                        trailing={formatRelativeTime(project.updatedAt)}
+                      />
+                    )
+                  })}
+                </div>
+              ) : null}
 
-            {shell.instanceAdmin ? (
-              <DashboardCard title="Quick links">
-                <DashboardRow
-                  to="/settings/integrations"
-                  leading={
-                    <div className="icon-well size-7 shrink-0">
-                      <PlugIcon className="size-3.5" />
-                    </div>
-                  }
-                  title="Integrations"
-                  subtitle={integrationStatus}
-                />
-                <DashboardRow
-                  to="/settings/nodes"
-                  leading={
-                    <div className="icon-well size-7 shrink-0">
-                      <ServerIcon className="size-3.5" />
-                    </div>
-                  }
-                  title="Nodes"
-                  subtitle={
-                    nodes.length === 0
-                      ? "Register a build host"
-                      : `${nodes.length} node${nodes.length === 1 ? "" : "s"} registered`
-                  }
-                />
-                <DashboardRow
-                  to="/settings/networking"
-                  leading={
-                    <div className="icon-well size-7 shrink-0">
-                      <GlobeIcon className="size-3.5" />
-                    </div>
-                  }
-                  title="Networking"
-                  subtitle="Public URLs and subdomains"
-                />
-              </DashboardCard>
-            ) : null}
-          </aside>
-        ) : null}
-      </div>
+              {shell.instanceAdmin ? (
+                <div>
+                  <div className="flex h-12 items-center px-4 text-[14px] font-medium text-foreground">
+                    Quick links
+                  </div>
+                  <DashboardRow
+                    to="/settings/integrations"
+                    leading={
+                      <PlugIcon className="size-4 text-muted-foreground" />
+                    }
+                    title="Integrations"
+                    subtitle={integrationStatus}
+                  />
+                  <DashboardRow
+                    to="/settings/cluster"
+                    leading={
+                      <ServerIcon className="size-4 text-muted-foreground" />
+                    }
+                    title="Cluster"
+                    subtitle={
+                      clusterReady
+                        ? "k3s connected"
+                        : "Connect or create k3s"
+                    }
+                  />
+                  <DashboardRow
+                    to="/settings/networking"
+                    leading={
+                      <GlobeIcon className="size-4 text-muted-foreground" />
+                    }
+                    title="Networking"
+                    subtitle="Public URLs and subdomains"
+                  />
+                </div>
+              ) : null}
+            </aside>
+          ) : null}
+        </div>
       </PageContent>
 
       <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
